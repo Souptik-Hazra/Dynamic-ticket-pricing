@@ -1,0 +1,91 @@
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import API_URL from '../config/api';
+import './Analytics.css';
+
+function Analytics() {
+  const [analytics, setAnalytics] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, []);
+
+  const fetchAnalytics = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`${API_URL}/analytics`);
+      setAnalytics(response.data);
+    } catch (error) {
+      console.error('Error fetching analytics:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="loading">Loading analytics...</div>;
+  }
+
+  if (!analytics) {
+    return <div className="error">Failed to load analytics</div>;
+  }
+
+  return (
+    <div className="analytics-container">
+      <h2>System Analytics</h2>
+
+      <div className="analytics-grid">
+        <div className="analytics-card">
+          <div className="card-icon">🎭</div>
+          <div className="card-content">
+            <h3>Total Events</h3>
+            <p className="stat-value">{analytics.totalEvents}</p>
+          </div>
+        </div>
+
+        <div className="analytics-card">
+          <div className="card-icon">🎟️</div>
+          <div className="card-content">
+            <h3>Tickets Sold</h3>
+            <p className="stat-value">{analytics.totalTicketsSold}</p>
+          </div>
+        </div>
+
+        <div className="analytics-card">
+          <div className="card-icon">💰</div>
+          <div className="card-content">
+            <h3>Total Revenue</h3>
+            <p className="stat-value">₹{analytics.totalRevenue.toFixed(2)}</p>
+          </div>
+        </div>
+
+        <div className="analytics-card">
+          <div className="card-icon">📅</div>
+          <div className="card-content">
+            <h3>Upcoming Events</h3>
+            <p className="stat-value">{analytics.upcomingEvents}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="analytics-info">
+        <h3>About Dynamic Pricing</h3>
+        <p>
+          Our ML model considers multiple factors to determine optimal ticket prices:
+        </p>
+        <ul>
+          <li><strong>Demand:</strong> Current ticket inquiry rate</li>
+          <li><strong>Capacity:</strong> Total venue capacity and occupancy rate</li>
+          <li><strong>Time:</strong> Days remaining until the event</li>
+          <li><strong>Popularity:</strong> Event popularity score (0-1)</li>
+          <li><strong>Competition:</strong> Competitor pricing data</li>
+          <li><strong>History:</strong> Historical sales patterns</li>
+          <li><strong>Seasonality:</strong> Time of year and day of week</li>
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+export default Analytics;
