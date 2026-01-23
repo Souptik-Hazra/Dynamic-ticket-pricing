@@ -1,7 +1,39 @@
+
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const { generateToken } = require('../middleware/auth');
+
+// @route   PUT /api/auth/update-profile
+// @desc    Update user profile
+// @access  Private
+router.put('/update-profile', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Not authorized' });
+    }
+    const jwt = require('jsonwebtoken');
+    const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this-in-production';
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = await User.findById(decoded.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    // Allow updating name, email, icon, city, birthdate, and password
+    if (req.body.name) user.name = req.body.name;
+    if (req.body.email) user.email = req.body.email;
+    if (req.body.icon) user.icon = req.body.icon;
+    if (req.body.city) user.city = req.body.city;
+    if (req.body.birthdate) user.birthdate = req.body.birthdate;
+    if (req.body.password && req.body.password.length >= 6) user.password = req.body.password;
+    await user.save();
+    res.json({ success: true, user: user.toJSON() });
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({ error: error.message || 'Server error' });
+  }
+});
 
 // @route   POST /api/auth/signup
 // @desc    Register new user

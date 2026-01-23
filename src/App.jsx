@@ -10,6 +10,7 @@ import Analytics from './components/Analytics';
 import TicketPurchase from './components/TicketPurchase';
 import API_URL from './config/api';
 import './App.css';
+import UserProfile from "./components/UserProfile.jsx";
 
 function AppContent() {
   const { user, loading: authLoading, logout, isAuthenticated, isAdmin } = useAuth();
@@ -113,6 +114,7 @@ function AppContent() {
           ) : (
             <div className="nav-user">
               <span className="user-name">{user?.name}</span>
+              <button onClick={() => setView('profile')} className="nav-profile-btn">Profile</button>
               <button onClick={logout} className="nav-logout-btn">Logout</button>
             </div>
           )}
@@ -177,6 +179,10 @@ function AppContent() {
             setView('events');
           }}
         />
+      )}
+
+      {view === 'profile' && isAuthenticated && (
+        <UserProfile />
       )}
     </div>
   );

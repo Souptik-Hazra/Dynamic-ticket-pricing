@@ -104,6 +104,18 @@ export const AuthProvider = ({ children }) => {
     return user?.role === 'admin';
   };
 
+
+  // Update user profile
+  const updateUser = async (profileData) => {
+    try {
+      const response = await axios.put(`${API_URL}/auth/update-profile`, profileData);
+      setUser(response.data.user);
+      return response.data.user;
+    } catch (error) {
+      throw error;
+    }
+  };
+
   const value = {
     user,
     loading,
@@ -111,7 +123,8 @@ export const AuthProvider = ({ children }) => {
     signin,
     logout,
     isAdmin,
-    isAuthenticated: !!user
+    isAuthenticated: !!user,
+    updateUser
   };
 
   return (
