@@ -86,16 +86,19 @@ const HomePage = ({ onNavigate }) => {
               <p>No events found. Check back soon!</p>
             </div>
           ) : (
-            <div className="events-grid">
+            <div className="events-grid" onClick={() => onNavigate('booking', event)}>
               {filteredEvents.map(event => (
                 <div key={event._id} className="event-card">
                   <div className="event-image">
                     <div className="event-badge">{event.category}</div>
                     <div className="event-date-badge">
-                      {new Date(event.eventDate).toLocaleDateString('en-US', { 
-                        month: 'short', 
-                        day: 'numeric' 
-                      })}
+                      {event.startDate && event.endDate
+                        ? `${new Date(event.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} to ${new Date(event.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+                        : event.startDate
+                          ? new Date(event.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                          : event.endDate
+                            ? new Date(event.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                            : 'Date not set'}
                     </div>
                   </div>
                   <div className="event-content">
@@ -116,19 +119,6 @@ const HomePage = ({ onNavigate }) => {
                           {event.capacity - event.ticketsSold} / {event.capacity} left
                         </span>
                       </div>
-                    </div>
-
-                    <div className="event-footer">
-                      <div className="event-price">
-                        <span className="price-label">From</span>
-                        <span className="price-value">₹{event.currentPrice || event.basePrice}</span>
-                      </div>
-                      <button 
-                        className="book-btn"
-                        onClick={() => onNavigate('booking', event)}
-                      >
-                        Book Now
-                      </button>
                     </div>
                   </div>
                 </div>

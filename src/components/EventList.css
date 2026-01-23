@@ -1,5 +1,5 @@
 .event-list-container {
-  background: white;
+  background: #f0f0f0;
   border-radius: 12px;
   padding: 2rem;
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
@@ -87,7 +87,8 @@
   top: 10px;
   right: 10px;
   padding: 0.5rem 1rem;
-  background: rgba(255, 255, 255, 0.95);
+  background: #1a237e;
+  color: #fff;
   border-radius: 20px;
   font-size: 0.9rem;
   font-weight: 600;
@@ -132,7 +133,15 @@
 
 .detail-item .label {
   font-weight: 600;
-  color: #555;
+  color: #333;
+}
+
+.detail-item .value {
+  color: #000;
+}
+
+.detail-item span {
+  color: #000;
 }
 
 .occupancy-bar {

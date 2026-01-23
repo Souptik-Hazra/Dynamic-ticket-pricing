@@ -43,13 +43,13 @@ const eventSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  date: {
+  startDate: {
     type: Date,
     required: true
   },
-  eventDate: {
+  endDate: {
     type: Date,
-    default: function() { return this.date; }
+    required: false
   },
   ticketCategories: {
     type: [ticketCategorySchema],

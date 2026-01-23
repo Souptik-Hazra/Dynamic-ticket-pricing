@@ -89,16 +89,14 @@ function AppContent() {
           <button onClick={() => setView('events')} className={view === 'events' ? 'active' : ''}>
             Events
           </button>
-          {isAuthenticated && (
+          {isAuthenticated && isAdmin() && (
             <>
               <button onClick={() => setView('analytics')} className={view === 'analytics' ? 'active' : ''}>
                 Analytics
               </button>
-              {isAdmin && (
-                <button onClick={() => setView('admin')} className={view === 'admin' ? 'active' : ''}>
-                  Admin
-                </button>
-              )}
+              <button onClick={() => setView('admin')} className={view === 'admin' ? 'active' : ''}>
+                Admin
+              </button>
             </>
           )}
         </div>

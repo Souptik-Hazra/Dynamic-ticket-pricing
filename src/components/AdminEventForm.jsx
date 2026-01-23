@@ -8,7 +8,8 @@ function AdminEventForm({ event, onClose }) {
     name: '',
     description: '',
     venue: '',
-    date: '',
+    startDate: '',
+    endDate: '',
     eventPopularity: 0.5,
     category: 'concert',
     image: 'https://via.placeholder.com/400x250',
@@ -26,14 +27,15 @@ function AdminEventForm({ event, onClose }) {
 
   useEffect(() => {
     if (event) {
-      // Format date for datetime-local input
-      const eventDate = new Date(event.date || event.eventDate).toISOString().slice(0, 16);
-      
+      // Format start and end date for datetime-local input
+      const startDate = event.startDate ? new Date(event.startDate).toISOString().slice(0, 16) : '';
+      const endDate = event.endDate ? new Date(event.endDate).toISOString().slice(0, 16) : '';
       setFormData({
         name: event.name,
         description: event.description,
         venue: event.venue,
-        date: eventDate,
+        startDate,
+        endDate,
         eventPopularity: event.eventPopularity || 0.5,
         category: event.category,
         image: event.image,
@@ -83,7 +85,7 @@ function AdminEventForm({ event, onClose }) {
     e.preventDefault();
     setError('');
 
-    if (!formData.name || !formData.venue || !formData.date) {
+    if (!formData.name || !formData.venue || !formData.startDate) {
       setError('Please fill all required fields');
       return;
     }
@@ -202,14 +204,25 @@ function AdminEventForm({ event, onClose }) {
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="date">Event Date & Time *</label>
+              <label htmlFor="startDate">Start Date & Time *</label>
               <input
                 type="datetime-local"
-                id="date"
-                name="date"
-                value={formData.date}
+                id="startDate"
+                name="startDate"
+                value={formData.startDate}
                 onChange={handleChange}
                 required
+                disabled={loading}
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="endDate">End Date & Time</label>
+              <input
+                type="datetime-local"
+                id="endDate"
+                name="endDate"
+                value={formData.endDate}
+                onChange={handleChange}
                 disabled={loading}
               />
             </div>

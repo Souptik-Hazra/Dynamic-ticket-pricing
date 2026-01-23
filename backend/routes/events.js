@@ -26,7 +26,7 @@ const getDayOfWeek = (date) => {
 // @access  Public
 router.get('/', async (req, res) => {
   try {
-    const events = await Event.find().sort({ eventDate: 1 });
+      const events = await Event.find().sort({ startDate: 1 });
     
     // Remove maxPrice from public response (admin-only field)
     const publicEvents = events.map(event => {
@@ -58,21 +58,18 @@ router.get('/:id/dynamic-prices', async (req, res) => {
 
     // Calculate demand factors
     const occupancyRate = event.capacity > 0 ? event.ticketsSold / event.capacity : 0;
-    const daysUntilEvent = Math.max(1, Math.ceil((new Date(event.eventDate) - new Date()) / (1000 * 60 * 60 * 24)));
-
     // Dynamic pricing logic:
     // - Start at base price (multiplier = 1.0)
-    // - Increase gradually based on demand and time
+    // - Increase gradually based on demand and popularity
     // - Never exceed maxPrice
-    
+
     // Calculate price increase factor (0 to 1 range)
-    // Based on: occupancy rate (40%), days until event urgency (30%), popularity (30%)
+    // Based on: occupancy rate (50%), popularity (50%)
     const occupancyFactor = occupancyRate; // 0 to 1
-    const urgencyFactor = daysUntilEvent <= 7 ? (7 - daysUntilEvent) / 7 : 0; // Increases as event approaches
     const popularityFactor = event.eventPopularity || 0.5;
-    
+
     // Combined increase factor (0 to 1)
-    const increaseFactor = (occupancyFactor * 0.4) + (urgencyFactor * 0.3) + (popularityFactor * 0.3);
+    const increaseFactor = (occupancyFactor * 0.5) + (popularityFactor * 0.5);
 
     // Apply dynamic pricing to all categories
     const prices = {};
@@ -99,7 +96,6 @@ router.get('/:id/dynamic-prices', async (req, res) => {
       prices,
       factors: {
         occupancyRate: Math.round(occupancyRate * 100),
-        daysUntilEvent,
         ticketsSold: event.ticketsSold,
         capacity: event.capacity,
         increaseFactor: Math.round(increaseFactor * 100)

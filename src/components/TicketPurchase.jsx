@@ -29,8 +29,7 @@ function TicketPurchase({ event, onBack, onSuccess }) {
         console.log('Using base prices');
         // Calculate simple dynamic pricing locally as fallback
         const occupancyRate = event.ticketsSold / event.capacity;
-        const daysUntil = Math.max(1, event.daysUntilEvent || 7);
-        let multiplier = 1 + (occupancyRate * 0.5) + (daysUntil < 3 ? 0.3 : 0);
+        let multiplier = 1 + (occupancyRate * 0.5);
         multiplier = Math.max(0.9, Math.min(2.0, multiplier));
         
         const prices = {};
@@ -168,12 +167,13 @@ function TicketPurchase({ event, onBack, onSuccess }) {
           <h2>{event.name}</h2>
           <p className="venue">📍 {event.venue}</p>
           <p className="date">
-            📅 {new Date(event.eventDate).toLocaleDateString('en-US', {
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric'
-            })}
+            📅 {event.startDate && event.endDate
+              ? `${new Date(event.startDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} to ${new Date(event.endDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`
+              : event.startDate
+                ? new Date(event.startDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+                : event.endDate
+                  ? new Date(event.endDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+                  : 'Date not set'}
           </p>
           <p className="category-tag">🎭 {event.category}</p>
         </div>

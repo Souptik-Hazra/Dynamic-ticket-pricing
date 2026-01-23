@@ -33,9 +33,7 @@ function AutoPriceUpdater({ eventId, onPriceUpdate, compact = false }) {
       <div className="updater-header">
         <span className="updater-icon">🤖</span>
         <span className="updater-title">Dynamic Pricing</span>
-        {priceInfo?.factors?.daysUntilEvent != null && (
-          <span className="days-left">⏰ {priceInfo.factors.daysUntilEvent} days left</span>
-        )}
+        {/* Removed daysUntilEvent display */}
       </div>
 
       {priceInfo?.prices && (

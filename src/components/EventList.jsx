@@ -3,13 +3,15 @@ import './EventList.css';
 import AutoPriceUpdater from './AutoPriceUpdater';
 
 function EventList({ events, onUpdatePrice, onSelectEvent, onRefresh }) {
-  const formatDate = (date) => {
-    return new Date(date).toLocaleDateString('en-US', {
+  const formatDateTime = (date) => {
+    if (!date) return '';
+    const d = new Date(date);
+    return isNaN(d.getTime()) ? '' : `${d.toLocaleDateString('en-US', {
       weekday: 'short',
       year: 'numeric',
       month: 'short',
       day: 'numeric'
-    });
+    })} ${d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
   };
 
   const getOccupancyPercentage = (event) => {
@@ -46,13 +48,7 @@ function EventList({ events, onUpdatePrice, onSelectEvent, onRefresh }) {
     return event.ticketsSold >= event.capacity;
   };
 
-  const getDaysUntil = (date) => {
-    const now = new Date();
-    const eventDate = new Date(date);
-    const diffTime = eventDate - now;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return Math.max(0, diffDays);
-  };
+  // Removed daysUntil logic
 
   return (
     <div className="event-list-container">
@@ -90,12 +86,13 @@ function EventList({ events, onUpdatePrice, onSelectEvent, onRefresh }) {
                   </div>
                   <div className="detail-item">
                     <span className="label">📅 Date:</span>
-                    <span>{formatDate(event.eventDate)}</span>
+                    <span>
+                      {formatDateTime(event.startDate) && formatDateTime(event.endDate)
+                        ? `${formatDateTime(event.startDate)} to ${formatDateTime(event.endDate)}`
+                        : formatDateTime(event.startDate) || formatDateTime(event.endDate) || 'Date not set'}
+                    </span>
                   </div>
-                  <div className="detail-item">
-                    <span className="label">⏰ Days Until:</span>
-                    <span>{getDaysUntil(event.eventDate)} days</span>
-                  </div>
+                  {/* Removed Days Until display */}
                   <div className="detail-item">
                     <span className="label">🎭 Category:</span>
                     <span>{event.category}</span>
