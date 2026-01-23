@@ -156,7 +156,7 @@ function TicketPurchase({ event, onBack, onSuccess }) {
   const hasCategories = event.ticketCategories && event.ticketCategories.length > 0;
 
   return (
-    <div className="ticket-purchase-container">
+    <div className="ticket-purchase-container bg-white dark:bg-gray-900 text-gray-900 dark:text-white min-h-screen">
       <button className="back-button" onClick={onBack}>
         ← Back to Events
       </button>

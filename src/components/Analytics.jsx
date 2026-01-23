@@ -32,7 +32,7 @@ function Analytics() {
   }
 
   return (
-    <div className="analytics-container">
+    <div className="analytics-container bg-white dark:bg-gray-900 text-gray-900 dark:text-white min-h-screen">
       <h2>System Analytics</h2>
 
       <div className="analytics-grid">

@@ -37,7 +37,7 @@ const HomePage = ({ onNavigate }) => {
   }
 
   return (
-    <div className="home-page">
+    <div className="home-page bg-white dark:bg-gray-900 text-gray-900 dark:text-white min-h-screen">
       {/* Hero Section */}
       <section className="hero-section">
         <div className="hero-overlay"></div>

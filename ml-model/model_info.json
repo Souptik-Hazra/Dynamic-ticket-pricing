@@ -1,5 +1,5 @@
 {
-  "modelVersion": "v2.0.20260117",
+  "modelVersion": "v2.0.20260124",
   "modelType": "VotingRegressor (RF + GB + ET + Ridge + XGB)",
   "features": [
     "demand",
@@ -22,7 +22,7 @@
   "trainMAE": 28.0366511684342,
   "testMAE": 78.73205183085457,
   "trainRMSE": 41.16993965484595,
-  "testRMSE": 124.5790041524831,
+  "testRMSE": 124.57900415248311,
   "cvMean": 0.9297368321333412,
   "cvStd": 0.001979351245832908,
   "parameters": {
@@ -61,7 +61,7 @@
     "is_weekend": 0.0077313186912916255
   },
   "metadata": {
-    "trainedAt": "2026-01-17T19:19:36.067082",
+    "trainedAt": "2026-01-24T00:13:22.035452",
     "currency": "INR",
     "priceRange": {
       "min": 50,

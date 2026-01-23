@@ -132,7 +132,7 @@ function AdminEventForm({ event, onClose }) {
   };
 
   return (
-    <div className="admin-event-form-overlay">
+    <div className="admin-event-form-overlay bg-white dark:bg-gray-900 text-gray-900 dark:text-white min-h-screen">
       <div className="admin-event-form-container">
         <div className="form-header">
           <h2>{event ? 'Edit Event' : 'Create New Event'}</h2>

@@ -51,7 +51,7 @@ function EventList({ events, onUpdatePrice, onSelectEvent, onRefresh }) {
   // Removed daysUntil logic
 
   return (
-    <div className="event-list-container">
+    <div className="event-list-container bg-white dark:bg-gray-900 text-gray-900 dark:text-white min-h-screen">
       <div className="list-header">
         <h2>Available Events</h2>
         <button className="refresh-btn" onClick={onRefresh}>

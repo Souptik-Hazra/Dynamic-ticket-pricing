@@ -10,9 +10,12 @@ app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
 # Load the trained model and scaler
-MODEL_PATH = 'model.pkl'
-SCALER_PATH = 'scaler.pkl'
-MODEL_INFO_PATH = 'model_info.json'
+
+# Use path relative to this script for reliability
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(BASE_DIR, 'model.pkl')
+SCALER_PATH = os.path.join(BASE_DIR, 'scaler.pkl')
+MODEL_INFO_PATH = os.path.join(BASE_DIR, 'model_info.json')
 
 # Load model version info
 model_version = 'v1.0'  # Default version

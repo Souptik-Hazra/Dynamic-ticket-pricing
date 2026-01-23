@@ -29,7 +29,7 @@ function AutoPriceUpdater({ eventId, onPriceUpdate, compact = false }) {
   }, [fetchDynamicPrice]);
 
   return (
-    <div className={`auto-price-updater ${compact ? 'compact' : ''}`}>
+    <div className={`auto-price-updater ${compact ? 'compact' : ''} bg-white dark:bg-gray-900 text-gray-900 dark:text-white`}>
       <div className="updater-header">
         <span className="updater-icon">🤖</span>
         <span className="updater-title">Dynamic Pricing</span>
