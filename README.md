@@ -54,7 +54,7 @@ A comprehensive full-stack event ticketing platform with intelligent dynamic pri
 - Context API for state management
 - Axios for API communication
 - React Router for navigation
-- Modern CSS with responsive design
+- Custom CSS with responsive design (no Tailwind)
 
 **Backend:**
 - Node.js with Express.js
@@ -87,7 +87,7 @@ Dynamic-Ticket-Pricing/
 │   ├── train_model_enhanced.py # Enhanced ensemble model training
 │   ├── app.py                  # Flask API server
 │   ├── requirements.txt        # Python dependencies
-│   ├── model.pkl              # Trained Ensemble model (RF+GB+XGB+ET+Ridge)
+│   ├── model.pkl              # Trained Ensemble model 
 │   └── scaler.pkl             # Feature scaler
 │
 ├── backend/                    # Node.js Backend
@@ -114,22 +114,22 @@ Dynamic-Ticket-Pricing/
 │       └── concurrencyService.js   # Locking mechanisms
 │
 └── Dynamic-ticket-pricing/     # React Frontend
-    ├── src/
-    │   ├── App.jsx            # Main application
-    │   ├── context/
-    │   │   └── AuthContext.jsx # Auth state
-    │   ├── components/
-    │   │   ├── HomePage.jsx   # Landing page
-    │   │   ├── Login.jsx      # User login
-    │   │   ├── Signup.jsx     # User registration
-    │   │   ├── AdminDashboard.jsx  # Admin panel
-    │   │   ├── AdminEventForm.jsx  # Event creation/edit
-    │   │   ├── EventList.jsx  # Event browsing
-    │   │   ├── TicketPurchase.jsx  # Booking flow
-    │   │   ├── Analytics.jsx  # Stats dashboard
-    │   │   └── PriceChart.jsx # Price visualization
-    │   └── App.css            # Global styles
-    └── package.json
+  ├── src/
+  │   ├── App.jsx            # Main application
+  │   ├── context/
+  │   │   └── AuthContext.jsx # Auth state
+  │   ├── components/
+  │   │   ├── HomePage.jsx   # Landing page
+  │   │   ├── Login.jsx      # User login
+  │   │   ├── Signup.jsx     # User registration
+  │   │   ├── AdminDashboard.jsx  # Admin panel
+  │   │   ├── AdminEventForm.jsx  # Event creation/edit
+  │   │   ├── EventList.jsx  # Event browsing
+  │   │   ├── TicketPurchase.jsx  # Booking flow
+  │   │   ├── Analytics.jsx  # Stats dashboard
+  │   │   └── PriceHistoryChart.jsx # Price visualization
+  │   └── App.css            # Global styles
+  └── package.json
 ```
 
 ## 🚀 Quick Start
@@ -330,7 +330,10 @@ GET    /health                # API health check
 - **Routing**: React Router DOM 6.20+
 - **HTTP Client**: Axios 1.6+
 - **State Management**: React Context API
-- **Styling**: Modern CSS with gradients
+- **Styling**: Custom CSS (no Tailwind)
+## ⚠️ Security Note
+
+This project now tracks .env and environment variable files in version control. **Do not commit real secrets or production credentials to public repositories.** Always use example or template environment files for sharing.
 
 ### ML Service Technologies
 - **Language**: Python 3.13
