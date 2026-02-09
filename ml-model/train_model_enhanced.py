@@ -34,7 +34,7 @@ class EnhancedTicketPricingModel:
         self.scaler = RobustScaler()  # More robust to outliers
         self.model = None
         self.feature_names = [
-            'demand', 'capacity', 'days_until_event', 'event_popularity',
+            'demand', 'capacity', 'days_until_event', 'event_duration_days', 'event_popularity',
             'competitor_price', 'historical_sales', 'season', 'day_of_week',
             'hour_of_day', 'is_weekend', 'is_holiday',
             'venue_tier', 'artist_tier'
@@ -48,6 +48,7 @@ class EnhancedTicketPricingModel:
         demand = np.random.randint(10, 3000, n_samples)
         capacity = np.random.randint(100, 10000, n_samples)
         days_until_event = np.random.randint(1, 180, n_samples)
+        event_duration_days = np.random.randint(1, 30, n_samples)  # Duration from 1 to 30 days
         event_popularity = np.random.beta(2, 3, n_samples)  # Skewed toward lower popularity
         
         # Indian market competitor prices (INR)
@@ -68,6 +69,7 @@ class EnhancedTicketPricingModel:
         # Calculate derived factors for pricing
         occupancy_rate = np.clip(demand / capacity, 0, 1.5)
         urgency_factor = np.exp(-days_until_event / 30)  # Exponential urgency
+        event_duration_factor = 1 + (event_duration_days / 10) * 0.1  # Multi-day events get premium
         
         # Base price varies by venue and artist tier
         base_price = 150 + (venue_tier * 50) + (artist_tier * 100)
@@ -76,6 +78,7 @@ class EnhancedTicketPricingModel:
         price = base_price * (
             (1 + occupancy_rate * 0.6) *  # Demand factor
             (1 + urgency_factor * 0.5) *  # Urgency factor
+            event_duration_factor *  # Event duration factor
             (1 + event_popularity * 0.7) *  # Popularity premium
             (1 + is_weekend * 0.12) *  # Weekend premium
             (1 + is_holiday * 0.25) *  # Holiday premium
@@ -102,6 +105,7 @@ class EnhancedTicketPricingModel:
             'demand': demand,
             'capacity': capacity,
             'days_until_event': days_until_event,
+            'event_duration_days': event_duration_days,
             'event_popularity': event_popularity,
             'competitor_price': competitor_price,
             'historical_sales': historical_sales,
@@ -321,14 +325,14 @@ def main():
     # Test predictions with various scenarios
     print("\n🧪 Testing predictions with real-world scenarios...")
     test_cases = [
-        # Low demand, far out, small venue, local artist
-        ("Budget Event (Low Demand)", [100, 1000, 60, 0.3, 200, 50, 2, 3, 14, 0, 0, 1, 2]),
-        # High demand, close to event, large venue, star artist
-        ("Premium Concert (High Demand)", [2500, 3000, 3, 0.9, 2000, 1500, 4, 6, 20, 1, 0, 3, 5]),
-        # Medium demand, weekend, holiday
-        ("Weekend Holiday Show", [800, 1500, 15, 0.6, 800, 400, 1, 7, 19, 1, 1, 2, 3]),
-        # Last minute, high popularity
-        ("Last Minute Hot Event", [1200, 2000, 1, 0.85, 1500, 800, 3, 5, 21, 0, 0, 2, 4]),
+        # Low demand, far out, small venue, local artist, 1-day event
+        ("Budget Event (Low Demand)", [100, 1000, 60, 1, 0.3, 200, 50, 2, 3, 14, 0, 0, 1, 2]),
+        # High demand, close to event, large venue, star artist, 3-day festival
+        ("Premium Concert (3-day)", [2500, 3000, 3, 3, 0.9, 2000, 1500, 4, 6, 20, 1, 0, 3, 5]),
+        # Medium demand, weekend, holiday, 2-day event
+        ("Weekend Holiday Show (2-days)", [800, 1500, 15, 2, 0.6, 800, 400, 1, 7, 19, 1, 1, 2, 3]),
+        # Last minute, high popularity, 1-day event
+        ("Last Minute Hot Event (1-day)", [1200, 2000, 1, 1, 0.85, 1500, 800, 3, 5, 21, 0, 0, 2, 4]),
     ]
     
     for name, features in test_cases:

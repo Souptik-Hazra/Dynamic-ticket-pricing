@@ -43,13 +43,13 @@ const eventSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  date: {
+  startDate: {
     type: Date,
     required: true
   },
-  eventDate: {
+  endDate: {
     type: Date,
-    default: function() { return this.date; }
+    required: false
   },
   ticketCategories: {
     type: [ticketCategorySchema],
@@ -146,6 +146,26 @@ const eventSchema = new mongoose.Schema({
     enum: ['upcoming', 'ongoing', 'completed', 'cancelled'],
     default: 'upcoming'
   },
+  hourOfDay: {
+    type: Number,
+    min: 0,
+    max: 23,
+    default: 12  // Default to noon
+  },
+  isHoliday: {
+    type: Boolean,
+    default: false
+  },
+  venueTier: {
+    type: Number,
+    enum: [1, 2, 3],  // 1=Small, 2=Medium, 3=Large/Stadium
+    default: 2
+  },
+  artistTier: {
+    type: Number,
+    enum: [1, 2, 3, 4, 5],  // 1=Local, 5=International Superstar
+    default: 3
+  },
   createdAt: {
     type: Date,
     default: Date.now
@@ -167,10 +187,20 @@ eventSchema.pre('save', function(next) {
 // Virtual field for days until event
 eventSchema.virtual('daysUntilEvent').get(function() {
   const now = new Date();
-  const eventDate = new Date(this.eventDate);
+  const eventDate = new Date(this.startDate);
   const diffTime = eventDate - now;
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   return Math.max(0, diffDays);
+});
+
+// Virtual field for event duration in days
+eventSchema.virtual('eventDuration').get(function() {
+  if (!this.startDate || !this.endDate) return 1;
+  const start = new Date(this.startDate);
+  const end = new Date(this.endDate);
+  const diffTime = end - start;
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return Math.max(1, diffDays);
 });
 
 // Virtual field for occupancy rate

@@ -60,9 +60,41 @@ router.post('/events', protect, admin, async (req, res) => {
   try {
     console.log('📝 Creating event with data:', req.body);
     
-    // Validate ticket categories
+    // Validate required fields
     if (!req.body.ticketCategories || req.body.ticketCategories.length === 0) {
       return res.status(400).json({ error: 'At least one ticket category is required' });
+    }
+    
+    // Validate event date is in the future
+    if (!req.body.startDate) {
+      return res.status(400).json({ error: 'Event start date is required' });
+    }
+    
+    const eventDate = new Date(req.body.startDate);
+    if (eventDate <= new Date()) {
+      return res.status(400).json({ error: 'Event date must be in the future' });
+    }
+    
+    // Validate new fields
+    if (req.body.hourOfDay !== undefined) {
+      const hour = parseInt(req.body.hourOfDay);
+      if (hour < 0 || hour > 23) {
+        return res.status(400).json({ error: 'Hour of day must be between 0 and 23' });
+      }
+    }
+    
+    if (req.body.venueTier !== undefined) {
+      const tier = parseInt(req.body.venueTier);
+      if (![1, 2, 3].includes(tier)) {
+        return res.status(400).json({ error: 'Venue tier must be 1 (Small), 2 (Medium), or 3 (Large/Stadium)' });
+      }
+    }
+    
+    if (req.body.artistTier !== undefined) {
+      const tier = parseInt(req.body.artistTier);
+      if (tier < 1 || tier > 5) {
+        return res.status(400).json({ error: 'Artist tier must be between 1 (Local) and 5 (International Superstar)' });
+      }
     }
     
     // Create the event
@@ -91,6 +123,28 @@ router.put('/events/:id', protect, admin, async (req, res) => {
     // Validate ticket categories if provided
     if (req.body.ticketCategories && req.body.ticketCategories.length === 0) {
       return res.status(400).json({ error: 'At least one ticket category is required' });
+    }
+    
+    // Validate new fields
+    if (req.body.hourOfDay !== undefined) {
+      const hour = parseInt(req.body.hourOfDay);
+      if (hour < 0 || hour > 23) {
+        return res.status(400).json({ error: 'Hour of day must be between 0 and 23' });
+      }
+    }
+    
+    if (req.body.venueTier !== undefined) {
+      const tier = parseInt(req.body.venueTier);
+      if (![1, 2, 3].includes(tier)) {
+        return res.status(400).json({ error: 'Venue tier must be 1 (Small), 2 (Medium), or 3 (Large/Stadium)' });
+      }
+    }
+    
+    if (req.body.artistTier !== undefined) {
+      const tier = parseInt(req.body.artistTier);
+      if (tier < 1 || tier > 5) {
+        return res.status(400).json({ error: 'Artist tier must be between 1 (Local) and 5 (International Superstar)' });
+      }
     }
     
     // Get existing event to preserve sold ticket data

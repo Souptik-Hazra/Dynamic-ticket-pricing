@@ -19,8 +19,7 @@ echo [2/5] Starting MongoDB (if not running)...
 REM Check if mongod is running
 for /f "tokens=2 delims==;" %%I in ('wmic process where "name='mongod.exe'" get ProcessId /value 2^>nul') do set MONGO_PID=%%I
 if not defined MONGO_PID (
-    if not exist "%cd%\mongodb_data" mkdir "%cd%\mongodb_data"
-    start "MongoDB" cmd /k "mongod --dbpath \"%cd%\\mongodb_data\""
+    start "MongoDB" cmd /k "mongod"
     echo MongoDB started in new window.
     timeout /t 5 /nobreak >nul
 ) else (

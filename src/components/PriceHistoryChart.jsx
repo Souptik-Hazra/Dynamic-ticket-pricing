@@ -118,7 +118,7 @@ const PriceHistoryChart = ({ eventId, eventName }) => {
   }
 
   return (
-    <div className="price-chart-container">
+    <div className="price-chart-container bg-white dark:bg-gray-900 text-gray-900 dark:text-white min-h-screen">
       <div className="chart-header">
         <div className="chart-title">
           <h3>📈 Price History</h3>

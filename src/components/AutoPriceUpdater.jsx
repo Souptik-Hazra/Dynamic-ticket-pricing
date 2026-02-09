@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import API_URL from '../config/api';
+import { API_URL } from '../config/api';
 import './AutoPriceUpdater.css';
 
 function AutoPriceUpdater({ eventId, onPriceUpdate, compact = false }) {
@@ -29,13 +29,11 @@ function AutoPriceUpdater({ eventId, onPriceUpdate, compact = false }) {
   }, [fetchDynamicPrice]);
 
   return (
-    <div className={`auto-price-updater ${compact ? 'compact' : ''}`}>
+    <div className={`auto-price-updater ${compact ? 'compact' : ''} bg-white dark:bg-gray-900 text-gray-900 dark:text-white`}>
       <div className="updater-header">
         <span className="updater-icon">🤖</span>
         <span className="updater-title">Dynamic Pricing</span>
-        {priceInfo?.factors?.daysUntilEvent != null && (
-          <span className="days-left">⏰ {priceInfo.factors.daysUntilEvent} days left</span>
-        )}
+        {/* Removed daysUntilEvent display */}
       </div>
 
       {priceInfo?.prices && (

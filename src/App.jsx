@@ -8,8 +8,9 @@ import AdminDashboard from './components/AdminDashboard';
 import EventList from './components/EventList';
 import Analytics from './components/Analytics';
 import TicketPurchase from './components/TicketPurchase';
-import API_URL from './config/api';
+import { API_URL } from './config/api';
 import './App.css';
+import UserProfile from "./components/UserProfile.jsx";
 
 function AppContent() {
   const { user, loading: authLoading, logout, isAuthenticated, isAdmin } = useAuth();
@@ -89,16 +90,14 @@ function AppContent() {
           <button onClick={() => setView('events')} className={view === 'events' ? 'active' : ''}>
             Events
           </button>
-          {isAuthenticated && (
+          {isAuthenticated && isAdmin() && (
             <>
               <button onClick={() => setView('analytics')} className={view === 'analytics' ? 'active' : ''}>
                 Analytics
               </button>
-              {isAdmin && (
-                <button onClick={() => setView('admin')} className={view === 'admin' ? 'active' : ''}>
-                  Admin
-                </button>
-              )}
+              <button onClick={() => setView('admin')} className={view === 'admin' ? 'active' : ''}>
+                Admin
+              </button>
             </>
           )}
         </div>
@@ -115,6 +114,7 @@ function AppContent() {
           ) : (
             <div className="nav-user">
               <span className="user-name">{user?.name}</span>
+              <button onClick={() => setView('profile')} className="nav-profile-btn">Profile</button>
               <button onClick={logout} className="nav-logout-btn">Logout</button>
             </div>
           )}
@@ -179,6 +179,10 @@ function AppContent() {
             setView('events');
           }}
         />
+      )}
+
+      {view === 'profile' && isAuthenticated && (
+        <UserProfile />
       )}
     </div>
   );

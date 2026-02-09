@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import AdminEventForm from './AdminEventForm';
-import API_URL from '../config/api';
+import { API_URL } from '../config/api';
 import './AdminDashboard.css';
 
 function AdminDashboard() {

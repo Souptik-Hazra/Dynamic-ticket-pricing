@@ -30,7 +30,7 @@ router.get('/', protect, async (req, res) => {
     res.json(tickets);
   } catch (error) {
     console.error('Error fetching tickets:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
@@ -40,18 +40,18 @@ router.get('/:id', protect, async (req, res) => {
     const ticket = await Ticket.findById(req.params.id).populate('eventId');
     
     if (!ticket) {
-      return res.status(404).json({ message: 'Ticket not found' });
+      return res.status(404).json({ error: 'Ticket not found' });
     }
 
     // Check ownership
     if (ticket.userId.toString() !== req.user.id && req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Access denied' });
+      return res.status(403).json({ error: 'Access denied' });
     }
 
     res.json(ticket);
   } catch (error) {
     console.error('Error fetching ticket:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
