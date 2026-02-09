@@ -5,6 +5,8 @@ import numpy as np
 import os
 import json
 from datetime import datetime
+from fraud_detector import check_fraud
+from peak_hour_detector import detect_peak_hours, predict_event_demand
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -269,6 +271,128 @@ def model_info():
         pass
     
     return jsonify(info)
+
+# ==================== FRAUD DETECTION ROUTES ====================
+
+@app.route('/fraud/detect', methods=['POST'])
+def detect_fraud():
+    """Detect fraud in a single ticket purchase"""
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'error': 'No input data provided'}), 400
+        
+        # Build transaction data
+        transaction_data = {
+            'quantity': int(data.get('quantity', 1)),
+            'amount': float(data.get('amount', 0)),
+            'user_purchase_frequency': int(data.get('user_purchase_frequency', 0)),
+            'time_of_day': int(data.get('time_of_day', 12)),
+            'day_of_week': int(data.get('day_of_week', 0)),
+            'account_age_days': int(data.get('account_age_days', 365))
+        }
+        
+        # Check fraud
+        result = check_fraud(transaction_data)
+        
+        return jsonify({
+            'success': True,
+            'fraud_detection': result,
+            'timestamp': datetime.now().isoformat()
+        })
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+@app.route('/fraud/batch-check', methods=['POST'])
+def batch_check_fraud():
+    """Check multiple transactions for fraud"""
+    try:
+        data = request.get_json()
+        
+        if not data or 'transactions' not in data:
+            return jsonify({'error': 'No transactions provided'}), 400
+        
+        transactions = data['transactions']
+        results = []
+        
+        for transaction in transactions:
+            transaction_data = {
+                'quantity': int(transaction.get('quantity', 1)),
+                'amount': float(transaction.get('amount', 0)),
+                'user_purchase_frequency': int(transaction.get('user_purchase_frequency', 0)),
+                'time_of_day': int(transaction.get('time_of_day', 12)),
+                'day_of_week': int(transaction.get('day_of_week', 0)),
+                'account_age_days': int(transaction.get('account_age_days', 365))
+            }
+            
+            result = check_fraud(transaction_data)
+            results.append(result)
+        
+        # Calculate summary
+        high_risk_count = sum(1 for r in results if r['risk_level'] == 'high')
+        medium_risk_count = sum(1 for r in results if r['risk_level'] == 'medium')
+        
+        return jsonify({
+            'success': True,
+            'count': len(results),
+            'high_risk': high_risk_count,
+            'medium_risk': medium_risk_count,
+            'low_risk': len(results) - high_risk_count - medium_risk_count,
+            'detections': results,
+            'timestamp': datetime.now().isoformat()
+        })
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+# ==================== PEAK HOUR DETECTION ROUTES ====================
+
+@app.route('/peak-hours/predict', methods=['GET'])
+def predict_peak_hours():
+    """Get peak hour predictions"""
+    try:
+        peak_data = detect_peak_hours()
+        
+        return jsonify({
+            'success': True,
+            'peak_hours': peak_data,
+            'timestamp': datetime.now().isoformat()
+        })
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+@app.route('/peak-hours/event-demand', methods=['POST'])
+def predict_event_demand_route():
+    """Predict demand for a specific event"""
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'error': 'No input data provided'}), 400
+        
+        # Build event data
+        event_data = {
+            'category': data.get('category', 'theater'),
+            'days_until_event': int(data.get('days_until_event', 30)),
+            'event_popularity': int(data.get('event_popularity', 5)),
+            'time_of_day': int(data.get('time_of_day', 19)),
+            'day_of_week': int(data.get('day_of_week', 4))
+        }
+        
+        # Predict demand
+        demand_prediction = predict_event_demand(event_data)
+        
+        return jsonify({
+            'success': True,
+            'demand_prediction': demand_prediction,
+            'timestamp': datetime.now().isoformat()
+        })
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
