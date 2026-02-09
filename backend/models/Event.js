@@ -163,8 +163,8 @@ const eventSchema = new mongoose.Schema({
   },
   artistTier: {
     type: Number,
-    enum: [1, 2, 3, 4, 5],  // 1=Local, 5=International Superstar
-    default: 3
+    enum: [0, 1, 2, 3, 4, 5],  // 0=No Artist/N/A, 1=Local, 5=International Superstar
+    default: 0
   },
   createdAt: {
     type: Date,
