@@ -540,3 +540,452 @@
     gap: 0.75rem;
   }
 }
+
+/* ===== Print Ticket Button ===== */
+.print-ticket-btn {
+  margin-top: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid rgba(102, 126, 234, 0.35);
+  border-radius: 6px;
+  background: rgba(102, 126, 234, 0.1);
+  color: #a5b4fc;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.print-ticket-btn:hover {
+  background: rgba(102, 126, 234, 0.25);
+  border-color: #667eea;
+  color: #fff;
+}
+
+/* ===== Print Overlay & Modal ===== */
+.print-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.print-ticket-modal {
+  background: #1a1a2e;
+  border-radius: 18px;
+  max-width: 560px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  position: relative;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.print-modal-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  color: #ccc;
+  font-size: 1.2rem;
+  cursor: pointer;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.print-modal-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+/* ===== Printable Ticket Content ===== */
+.print-ticket-content {
+  padding: 2rem;
+}
+
+.print-ticket-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.print-ticket-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.print-brand-icon {
+  font-size: 1.8rem;
+}
+
+.print-brand-name {
+  font-size: 1.4rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #667eea, #f093fb);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.print-ticket-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: #667eea;
+  padding: 0.35rem 1rem;
+  border: 2px solid #667eea;
+  border-radius: 6px;
+}
+
+/* Event Image */
+.print-event-image {
+  width: 100%;
+  height: 180px;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+
+.print-event-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Event Info */
+.print-event-info {
+  margin-bottom: 1.25rem;
+}
+
+.print-event-name {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 1rem;
+}
+
+.print-event-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.print-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.print-detail-label {
+  font-size: 0.85rem;
+  color: #888;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.print-detail-value {
+  font-size: 0.9rem;
+  color: #ddd;
+  font-weight: 500;
+  text-align: right;
+}
+
+/* Divider */
+.print-divider {
+  border: none;
+  border-top: 1px dashed rgba(255, 255, 255, 0.12);
+  margin: 1.25rem 0;
+  position: relative;
+}
+
+.print-divider::before,
+.print-divider::after {
+  content: "";
+  position: absolute;
+  top: -10px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #1a1a2e;
+}
+
+.print-divider::before {
+  left: -2.5rem;
+}
+
+.print-divider::after {
+  right: -2.5rem;
+}
+
+/* Ticket Details Grid */
+.print-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.print-detail-box {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  padding: 0.85rem;
+}
+
+.print-box-label {
+  display: block;
+  font-size: 0.72rem;
+  color: #777;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.35rem;
+}
+
+.print-box-value {
+  display: block;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.print-ref {
+  font-family: monospace;
+  font-size: 0.85rem;
+  color: #a5b4fc;
+  word-break: break-all;
+}
+
+/* Total Section */
+.print-total-section {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15));
+  border: 1px solid rgba(102, 126, 234, 0.25);
+  border-radius: 10px;
+  padding: 1rem 1.2rem;
+}
+
+.print-total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #ccc;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.print-total-amount {
+  font-size: 1.35rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #667eea, #f093fb);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Customer Info */
+.print-customer-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.print-status-confirmed {
+  color: #34d399 !important;
+  font-weight: 700 !important;
+}
+
+/* Footer */
+.print-ticket-footer {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  text-align: center;
+}
+
+.print-ticket-footer p {
+  color: #555;
+  font-size: 0.75rem;
+  margin: 0.25rem 0;
+}
+
+/* Modal Actions */
+.print-modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1.25rem 2rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.print-now-btn {
+  flex: 1;
+  padding: 0.85rem;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.print-now-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.45);
+}
+
+.print-cancel-btn {
+  padding: 0.85rem 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  background: transparent;
+  color: #aaa;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.print-cancel-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+/* ===== Print Media Styles ===== */
+@media print {
+  /* Hide everything except the ticket */
+  body * {
+    visibility: hidden !important;
+  }
+
+  .print-ticket-content,
+  .print-ticket-content * {
+    visibility: visible !important;
+  }
+
+  .print-ticket-content {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 2rem;
+    background: #fff !important;
+    color: #111 !important;
+    z-index: 99999;
+  }
+
+  /* Recolor for print (white background) */
+  .print-brand-name {
+    -webkit-text-fill-color: #333 !important;
+    color: #333 !important;
+  }
+
+  .print-ticket-title {
+    color: #333 !important;
+    border-color: #333 !important;
+  }
+
+  .print-event-name {
+    color: #111 !important;
+  }
+
+  .print-detail-label {
+    color: #666 !important;
+  }
+
+  .print-detail-value {
+    color: #222 !important;
+  }
+
+  .print-box-value {
+    color: #111 !important;
+  }
+
+  .print-ref {
+    color: #444 !important;
+  }
+
+  .print-total-amount {
+    -webkit-text-fill-color: #111 !important;
+    color: #111 !important;
+    font-size: 1.4rem;
+  }
+
+  .print-total-section {
+    background: #f5f5f5 !important;
+    border-color: #ddd !important;
+  }
+
+  .print-total-row {
+    color: #333 !important;
+  }
+
+  .print-detail-box {
+    background: #f9f9f9 !important;
+    border-color: #e0e0e0 !important;
+  }
+
+  .print-box-label {
+    color: #666 !important;
+  }
+
+  .print-status-confirmed {
+    color: #16a34a !important;
+  }
+
+  .print-divider {
+    border-top-color: #ccc !important;
+  }
+
+  .print-divider::before,
+  .print-divider::after {
+    background: #fff !important;
+  }
+
+  .print-ticket-footer p {
+    color: #999 !important;
+  }
+
+  .print-customer-info .print-detail-value {
+    color: #222 !important;
+  }
+
+  /* Hide non-printable parts */
+  .print-overlay {
+    background: none !important;
+    backdrop-filter: none !important;
+  }
+
+  .print-ticket-modal {
+    background: #fff !important;
+    box-shadow: none !important;
+    border: none !important;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .print-modal-close,
+  .print-modal-actions,
+  .top-navigation,
+  .profile-header-card,
+  .profile-tabs,
+  .profile-card {
+    display: none !important;
+  }
+}

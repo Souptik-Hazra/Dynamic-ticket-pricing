@@ -18,6 +18,7 @@ const UserProfile = () => {
   const [loading, setLoading] = useState(false);
   const [tickets, setTickets] = useState([]);
   const [ticketsLoading, setTicketsLoading] = useState(false);
+  const [printTicket, setPrintTicket] = useState(null);
 
   useEffect(() => {
     if (activeTab === "tickets") {
@@ -79,6 +80,13 @@ const UserProfile = () => {
       month: "long",
       year: "numeric",
     });
+  };
+
+  const handlePrintTicket = (ticket) => {
+    setPrintTicket(ticket);
+    setTimeout(() => {
+      window.print();
+    }, 300);
   };
 
   return (
@@ -282,6 +290,13 @@ const UserProfile = () => {
                     <span className={`ticket-status ${ticket.status || "confirmed"}`}>
                       {ticket.status || "confirmed"}
                     </span>
+                    <button
+                      className="print-ticket-btn"
+                      onClick={() => handlePrintTicket(ticket)}
+                      title="Print / Save as PDF"
+                    >
+                      🖨️ Print
+                    </button>
                   </div>
                 </div>
               ))}
@@ -306,6 +321,170 @@ const UserProfile = () => {
               </div>
             </div>
           )}
+        </div>
+      )}
+      {/* Print Ticket Modal (hidden on screen, visible on print) */}
+      {printTicket && (
+        <div className="print-overlay" onClick={() => setPrintTicket(null)}>
+          <div className="print-ticket-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="print-modal-close" onClick={() => setPrintTicket(null)}>×</button>
+            <div className="print-ticket-content" id="printable-ticket">
+              {/* Header */}
+              <div className="print-ticket-header">
+                <div className="print-ticket-brand">
+                  <span className="print-brand-icon">🎫</span>
+                  <span className="print-brand-name">TicketHub</span>
+                </div>
+                <div className="print-ticket-title">E-TICKET</div>
+              </div>
+
+              {/* Event Image */}
+              {printTicket.eventId?.image && (
+                <div className="print-event-image">
+                  <img
+                    src={printTicket.eventId.image}
+                    alt={printTicket.eventId?.name}
+                    onError={(e) => (e.target.style.display = "none")}
+                  />
+                </div>
+              )}
+
+              {/* Event Info */}
+              <div className="print-event-info">
+                <h2 className="print-event-name">{printTicket.eventId?.name || "Event"}</h2>
+                <div className="print-event-details">
+                  {printTicket.eventId?.venue && (
+                    <div className="print-detail-row">
+                      <span className="print-detail-label">📍 Venue</span>
+                      <span className="print-detail-value">{printTicket.eventId.venue}</span>
+                    </div>
+                  )}
+                  {printTicket.eventId?.startDate && (
+                    <div className="print-detail-row">
+                      <span className="print-detail-label">📅 Date</span>
+                      <span className="print-detail-value">
+                        {new Date(printTicket.eventId.startDate).toLocaleDateString("en-US", {
+                          weekday: "long",
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })}
+                        {printTicket.eventId.endDate &&
+                          printTicket.eventId.endDate !== printTicket.eventId.startDate &&
+                          ` — ${new Date(printTicket.eventId.endDate).toLocaleDateString("en-US", {
+                            weekday: "long",
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          })}`}
+                      </span>
+                    </div>
+                  )}
+                  {printTicket.eventId?.category && (
+                    <div className="print-detail-row">
+                      <span className="print-detail-label">🎭 Category</span>
+                      <span className="print-detail-value">
+                        {printTicket.eventId.category.charAt(0).toUpperCase() +
+                          printTicket.eventId.category.slice(1)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div className="print-divider"></div>
+
+              {/* Ticket Details */}
+              <div className="print-ticket-details">
+                <div className="print-detail-grid">
+                  <div className="print-detail-box">
+                    <span className="print-box-label">Booking Reference</span>
+                    <span className="print-box-value print-ref">
+                      {printTicket.bookingReference || printTicket._id}
+                    </span>
+                  </div>
+                  <div className="print-detail-box">
+                    <span className="print-box-label">Ticket Type</span>
+                    <span className="print-box-value">
+                      {printTicket.categoryName?.toUpperCase() || "STANDARD"}
+                    </span>
+                  </div>
+                  <div className="print-detail-box">
+                    <span className="print-box-label">Quantity</span>
+                    <span className="print-box-value">{printTicket.quantity}</span>
+                  </div>
+                  <div className="print-detail-box">
+                    <span className="print-box-label">Price per Ticket</span>
+                    <span className="print-box-value">
+                      ₹{printTicket.price?.toFixed(2) || (printTicket.totalAmount / printTicket.quantity).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="print-total-section">
+                  <div className="print-total-row">
+                    <span>Total Amount Paid</span>
+                    <span className="print-total-amount">
+                      ₹{printTicket.totalAmount?.toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div className="print-divider"></div>
+
+              {/* Customer Info */}
+              <div className="print-customer-info">
+                <div className="print-detail-row">
+                  <span className="print-detail-label">👤 Name</span>
+                  <span className="print-detail-value">
+                    {printTicket.customerName || user?.name || "N/A"}
+                  </span>
+                </div>
+                <div className="print-detail-row">
+                  <span className="print-detail-label">📧 Email</span>
+                  <span className="print-detail-value">
+                    {printTicket.customerEmail || user?.email || "N/A"}
+                  </span>
+                </div>
+                <div className="print-detail-row">
+                  <span className="print-detail-label">📅 Purchased</span>
+                  <span className="print-detail-value">
+                    {new Date(printTicket.purchaseDate).toLocaleString("en-US", {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                </div>
+                <div className="print-detail-row">
+                  <span className="print-detail-label">✅ Status</span>
+                  <span className="print-detail-value print-status-confirmed">
+                    {(printTicket.status || "confirmed").toUpperCase()}
+                  </span>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="print-ticket-footer">
+                <p>This is a computer-generated ticket. No signature required.</p>
+                <p>Transaction ID: {printTicket._id}</p>
+              </div>
+            </div>
+
+            <div className="print-modal-actions">
+              <button className="print-now-btn" onClick={() => window.print()}>
+                🖨️ Print / Save as PDF
+              </button>
+              <button className="print-cancel-btn" onClick={() => setPrintTicket(null)}>
+                Close
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
