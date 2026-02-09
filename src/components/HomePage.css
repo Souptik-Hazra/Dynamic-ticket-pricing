@@ -205,6 +205,38 @@
   text-transform: uppercase;
 }
 
+.event-status-badge {
+  position: absolute;
+  bottom: 1rem;
+  left: 1rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.event-status-badge.upcoming {
+  background: rgba(76, 175, 80, 0.9);
+  color: #fff;
+}
+
+.event-status-badge.ongoing {
+  background: rgba(255, 152, 0, 0.9);
+  color: #fff;
+}
+
+.event-status-badge.completed {
+  background: rgba(158, 158, 158, 0.85);
+  color: #fff;
+}
+
+.event-status-badge.cancelled {
+  background: rgba(244, 67, 54, 0.9);
+  color: #fff;
+}
+
 .event-date-badge {
   position: absolute;
   top: 1rem;

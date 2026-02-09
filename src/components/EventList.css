@@ -99,8 +99,16 @@
   color: #4caf50;
 }
 
+.event-status.ongoing {
+  color: #ff9800;
+}
+
 .event-status.completed {
   color: #9e9e9e;
+}
+
+.event-status.cancelled {
+  color: #f44336;
 }
 
 .event-content {

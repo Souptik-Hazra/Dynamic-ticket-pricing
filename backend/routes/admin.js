@@ -9,6 +9,9 @@ const { protect, admin } = require('../middleware/auth');
 // @access  Private/Admin
 router.get('/events', protect, admin, async (req, res) => {
   try {
+    // Auto-update event statuses based on current date
+    await Event.updateEventStatuses();
+    
     const events = await Event.find().sort({ createdAt: -1 });
     
     // Calculate profit margin for each event

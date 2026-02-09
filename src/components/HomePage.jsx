@@ -80,7 +80,7 @@ const HomePage = ({ onNavigate }) => {
       {/* Events Grid */}
       <section className="events-section">
         <div className="events-container">
-          <h2>Upcoming Events</h2>
+          <h2>Events</h2>
           {filteredEvents.length === 0 ? (
             <div className="no-events">
               <p>No events found. Check back soon!</p>
@@ -91,6 +91,7 @@ const HomePage = ({ onNavigate }) => {
                 <div key={event._id} className="event-card">
                   <div className="event-image">
                     <div className="event-badge">{event.category}</div>
+                    <div className={`event-status-badge ${event.status}`}>{event.status}</div>
                     <div className="event-date-badge">
                       {event.startDate && event.endDate
                         ? `${new Date(event.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} to ${new Date(event.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
