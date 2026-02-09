@@ -13,7 +13,10 @@ function AdminEventForm({ event, onClose }) {
     eventPopularity: 0.5,
     category: 'concert',
     image: 'https://via.placeholder.com/400x250',
-    status: 'upcoming'
+    status: 'upcoming',
+    venueTier: 2,
+    artistTier: 3,
+    isHoliday: false
   });
   
   const [ticketCategories, setTicketCategories] = useState([
@@ -39,7 +42,10 @@ function AdminEventForm({ event, onClose }) {
         eventPopularity: event.eventPopularity || 0.5,
         category: event.category,
         image: event.image,
-        status: event.status
+        status: event.status,
+        venueTier: event.venueTier || 2,
+        artistTier: event.artistTier || 3,
+        isHoliday: event.isHoliday || false
       });
       
       // Set ticket categories if they exist
@@ -103,6 +109,9 @@ function AdminEventForm({ event, onClose }) {
       const eventData = {
         ...formData,
         eventPopularity: parseFloat(formData.eventPopularity),
+        venueTier: parseInt(formData.venueTier),
+        artistTier: parseInt(formData.artistTier),
+        isHoliday: formData.isHoliday === true || formData.isHoliday === 'true',
         ticketCategories: validCategories.map(cat => ({
           name: cat.name,
           price: parseFloat(cat.price),
@@ -347,6 +356,55 @@ function AdminEventForm({ event, onClose }) {
               disabled={loading}
             />
             <small>0 = Low popularity, 1 = High popularity</small>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label htmlFor="venueTier">Venue Tier</label>
+              <select
+                id="venueTier"
+                name="venueTier"
+                value={formData.venueTier}
+                onChange={handleChange}
+                disabled={loading}
+              >
+                <option value={1}>Small Venue</option>
+                <option value={2}>Medium Venue</option>
+                <option value={3}>Large / Stadium</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="artistTier">Artist / Performer Tier</label>
+              <select
+                id="artistTier"
+                name="artistTier"
+                value={formData.artistTier}
+                onChange={handleChange}
+                disabled={loading}
+              >
+                <option value={1}>Local</option>
+                <option value={2}>Regional</option>
+                <option value={3}>National</option>
+                <option value={4}>International</option>
+                <option value={5}>Superstar</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="isHoliday">Holiday Event?</label>
+              <select
+                id="isHoliday"
+                name="isHoliday"
+                value={formData.isHoliday}
+                onChange={handleChange}
+                disabled={loading}
+              >
+                <option value={false}>No</option>
+                <option value={true}>Yes</option>
+              </select>
+              <small>Is this event on or near a holiday?</small>
+            </div>
           </div>
 
           <div className="form-group">

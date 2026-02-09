@@ -67,6 +67,10 @@ router.post('/', protect, async (req, res) => {
       return res.status(400).json({ error: 'Invalid request data - quantity must be a positive number' });
     }
 
+    if (parsedQuantity > 15) {
+      return res.status(400).json({ error: 'Maximum 15 tickets allowed per purchase' });
+    }
+
     console.log(`📝 Processing ticket purchase: Event=${eventId}, Category=${categoryName}, Quantity=${parsedQuantity}`);
 
     // Find the event

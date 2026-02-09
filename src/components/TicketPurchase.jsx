@@ -118,6 +118,10 @@ function TicketPurchase({ event, onBack, onSuccess }) {
     }
 
     const available = getAvailableTickets();
+    if (formData.quantity > 15) {
+      alert('You can purchase a maximum of 15 tickets per event.');
+      return;
+    }
     if (formData.quantity > available) {
       alert(`Only ${available} tickets available!`);
       return;
@@ -282,7 +286,7 @@ function TicketPurchase({ event, onBack, onSuccess }) {
             </div>
 
             <div className="form-group">
-              <label htmlFor="quantity">Number of Tickets *</label>
+              <label htmlFor="quantity">Number of Tickets * <small>(max 15 per purchase)</small></label>
               <input
                 type="number"
                 id="quantity"
@@ -290,7 +294,7 @@ function TicketPurchase({ event, onBack, onSuccess }) {
                 value={formData.quantity}
                 onChange={handleChange}
                 min="1"
-                max={getAvailableTickets()}
+                max={Math.min(15, getAvailableTickets())}
                 required
               />
             </div>
