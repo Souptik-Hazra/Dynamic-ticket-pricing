@@ -885,85 +885,12 @@
     left: 0;
     width: 100%;
     padding: 2rem;
-    background: #fff !important;
-    color: #111 !important;
+    background: #1a1a2e !important;
+    color: #ddd !important;
     z-index: 99999;
-  }
-
-  /* Recolor for print (white background) */
-  .print-brand-name {
-    -webkit-text-fill-color: #333 !important;
-    color: #333 !important;
-  }
-
-  .print-ticket-title {
-    color: #333 !important;
-    border-color: #333 !important;
-  }
-
-  .print-event-name {
-    color: #111 !important;
-  }
-
-  .print-detail-label {
-    color: #666 !important;
-  }
-
-  .print-detail-value {
-    color: #222 !important;
-  }
-
-  .print-box-value {
-    color: #111 !important;
-  }
-
-  .print-ref {
-    color: #444 !important;
-  }
-
-  .print-total-amount {
-    -webkit-text-fill-color: #111 !important;
-    color: #111 !important;
-    font-size: 1.4rem;
-  }
-
-  .print-total-section {
-    background: #f5f5f5 !important;
-    border-color: #ddd !important;
-  }
-
-  .print-total-row {
-    color: #333 !important;
-  }
-
-  .print-detail-box {
-    background: #f9f9f9 !important;
-    border-color: #e0e0e0 !important;
-  }
-
-  .print-box-label {
-    color: #666 !important;
-  }
-
-  .print-status-confirmed {
-    color: #16a34a !important;
-  }
-
-  .print-divider {
-    border-top-color: #ccc !important;
-  }
-
-  .print-divider::before,
-  .print-divider::after {
-    background: #fff !important;
-  }
-
-  .print-ticket-footer p {
-    color: #999 !important;
-  }
-
-  .print-customer-info .print-detail-value {
-    color: #222 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
   }
 
   /* Hide non-printable parts */
@@ -973,7 +900,7 @@
   }
 
   .print-ticket-modal {
-    background: #fff !important;
+    background: #1a1a2e !important;
     box-shadow: none !important;
     border: none !important;
     max-height: none;

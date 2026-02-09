@@ -659,86 +659,12 @@
     left: 0;
     width: 100%;
     padding: 2rem;
-    background: #fff !important;
-    color: #111 !important;
+    background: #1a1a2e !important;
+    color: #ddd !important;
     z-index: 99999;
-  }
-
-  .pp-brand-name,
-  .print-brand-name {
-    -webkit-text-fill-color: #333 !important;
-    color: #333 !important;
-  }
-
-  .pp-badge {
-    color: #333 !important;
-    border-color: #333 !important;
-  }
-
-  .pp-success-banner {
-    background: #e8f5e9 !important;
-    border-color: #a5d6a7 !important;
-    color: #2e7d32 !important;
-  }
-
-  .pp-event-name {
-    color: #111 !important;
-  }
-
-  .pp-label {
-    color: #666 !important;
-  }
-
-  .pp-value {
-    color: #222 !important;
-  }
-
-  .pp-box-value {
-    color: #111 !important;
-  }
-
-  .pp-ref {
-    color: #444 !important;
-  }
-
-  .pp-total-amount {
-    -webkit-text-fill-color: #111 !important;
-    color: #111 !important;
-  }
-
-  .pp-total-section {
-    background: #f5f5f5 !important;
-    border-color: #ddd !important;
-  }
-
-  .pp-total-row {
-    color: #333 !important;
-  }
-
-  .pp-detail-box {
-    background: #f9f9f9 !important;
-    border-color: #e0e0e0 !important;
-  }
-
-  .pp-box-label {
-    color: #666 !important;
-  }
-
-  .pp-confirmed {
-    color: #16a34a !important;
-  }
-
-  .pp-divider {
-    border-top-color: #ccc !important;
-  }
-
-  .pp-divider::before,
-  .pp-divider::after {
-    background: #fff !important;
-  }
-
-  .pp-footer p {
-    color: #999 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
   }
 
   .purchase-print-overlay {
@@ -747,7 +673,7 @@
   }
 
   .purchase-print-modal {
-    background: #fff !important;
+    background: #1a1a2e !important;
     box-shadow: none !important;
     border: none !important;
     max-height: none;
