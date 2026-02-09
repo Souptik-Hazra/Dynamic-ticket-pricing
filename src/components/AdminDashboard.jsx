@@ -260,7 +260,16 @@ function AdminDashboard() {
                         <tr key={event._id}>
                           <td><strong>{event.name}</strong></td>
                           <td>{event.venue}</td>
-                          <td>{formatDate(event.eventDate)}</td>
+                          <td>
+                            {event.startDate
+                              ? (() => {
+                                  const fmt = { month: 'short', day: 'numeric', year: 'numeric' };
+                                  const start = new Date(event.startDate).toLocaleDateString('en-US', fmt);
+                                  const end = event.endDate ? new Date(event.endDate).toLocaleDateString('en-US', fmt) : null;
+                                  return end && end !== start ? `${start} - ${end}` : start;
+                                })()
+                              : 'N/A'}
+                          </td>
                           <td>{event.capacity}</td>
                           <td>{event.ticketsSold}</td>
                           <td>₹{event.baseRevenue?.toFixed(2) || '0.00'}</td>
