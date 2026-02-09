@@ -2,31 +2,32 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
-const { generateToken } = require('../middleware/auth');
+const { generateToken, protect } = require('../middleware/auth');
+const bcryptjs = require('bcryptjs');
 
 // @route   PUT /api/auth/update-profile
 // @desc    Update user profile
 // @access  Private
-router.put('/update-profile', async (req, res) => {
+router.put('/update-profile', protect, async (req, res) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return res.status(401).json({ error: 'Not authorized' });
-    }
-    const jwt = require('jsonwebtoken');
-    const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this-in-production';
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const user = await User.findById(decoded.id);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
+    const user = req.user;
+    
     // Allow updating name, email, icon, city, birthdate, and password
     if (req.body.name) user.name = req.body.name;
     if (req.body.email) user.email = req.body.email;
     if (req.body.icon) user.icon = req.body.icon;
     if (req.body.city) user.city = req.body.city;
     if (req.body.birthdate) user.birthdate = req.body.birthdate;
-    if (req.body.password && req.body.password.length >= 6) user.password = req.body.password;
+    
+    // Hash password if provided
+    if (req.body.password) {
+      if (req.body.password.length < 8) {
+        return res.status(400).json({ error: 'Password must be at least 8 characters' });
+      }
+      const salt = await bcryptjs.genSalt(10);
+      user.password = await bcryptjs.hash(req.body.password, salt);
+    }
+    
     await user.save();
     res.json({ success: true, user: user.toJSON() });
   } catch (error) {
@@ -50,9 +51,15 @@ router.post('/signup', async (req, res) => {
       return res.status(400).json({ error: 'Please provide all required fields' });
     }
 
-    if (password.length < 6) {
+    if (password.length < 8) {
       console.log('❌ Validation failed: Password too short');
-      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+    
+    // Check for at least one number and one letter
+    if (!/\d/.test(password) || !/[a-zA-Z]/.test(password)) {
+      console.log('❌ Validation failed: Password must contain letters and numbers');
+      return res.status(400).json({ error: 'Password must contain at least one letter and one number' });
     }
 
     // Check if user already exists
@@ -152,24 +159,9 @@ router.post('/signin', async (req, res) => {
 // @route   GET /api/auth/me
 // @desc    Get current user
 // @access  Private
-router.get('/me', async (req, res) => {
+router.get('/me', protect, async (req, res) => {
   try {
-    // Get token from header
-    const token = req.headers.authorization?.split(' ')[1];
-    
-    if (!token) {
-      return res.status(401).json({ error: 'Not authorized' });
-    }
-
-    const jwt = require('jsonwebtoken');
-    const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this-in-production';
-    
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const user = await User.findById(decoded.id).select('-password');
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
+    const user = req.user;
 
     res.json({
       success: true,
@@ -185,46 +177,6 @@ router.get('/me', async (req, res) => {
   } catch (error) {
     console.error('Get user error:', error);
     res.status(401).json({ error: 'Not authorized' });
-  }
-});
-
-// @route   POST /api/auth/create-admin
-// @desc    Create admin user (temporary - remove in production)
-// @access  Public (SHOULD BE PROTECTED IN PRODUCTION)
-router.post('/create-admin', async (req, res) => {
-  try {
-    const { name, email, password } = req.body;
-
-    // Check if admin already exists
-    const existingAdmin = await User.findOne({ email });
-    if (existingAdmin) {
-      return res.status(400).json({ error: 'User already exists with this email' });
-    }
-
-    // Create admin user
-    const admin = await User.create({
-      name,
-      email,
-      password,
-      role: 'admin'
-    });
-
-    const token = generateToken(admin._id);
-
-    res.status(201).json({
-      success: true,
-      message: 'Admin created successfully',
-      token,
-      user: {
-        id: admin._id,
-        name: admin.name,
-        email: admin.email,
-        role: admin.role
-      }
-    });
-  } catch (error) {
-    console.error('Create admin error:', error);
-    res.status(500).json({ error: error.message || 'Server error' });
   }
 });
 

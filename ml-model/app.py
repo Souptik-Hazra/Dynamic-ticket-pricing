@@ -58,11 +58,12 @@ def predict_price():
         if not data:
             return jsonify({'error': 'No input data provided'}), 400
         
-        # Validate input features - Enhanced 13-feature model
+        # Validate input features - Enhanced 14-feature model with event duration
         try:
             demand = float(data.get('demand', 100))
             capacity = float(data.get('capacity', 1000))
             days_until = float(data.get('days_until_event', 30))
+            event_duration = float(data.get('event_duration_days', 1))
             popularity = float(data.get('event_popularity', 0.5))
             competitor = float(data.get('competitor_price', 100))
             historical = float(data.get('historical_sales', 50))
@@ -82,6 +83,7 @@ def predict_price():
         demand = max(0, min(demand, 100000))
         capacity = max(1, min(capacity, 100000))
         days_until = max(0, min(days_until, 365))
+        event_duration = max(1, min(event_duration, 365))
         popularity = max(0, min(popularity, 1))
         competitor = max(0, min(competitor, 50000))
         historical = max(0, min(historical, 100000))
@@ -91,11 +93,12 @@ def predict_price():
         venue_tier = max(1, min(venue_tier, 3))
         artist_tier = max(1, min(artist_tier, 5))
         
-        # Build feature vector (13 features matching training)
+        # Build feature vector (14 features: added event_duration_days)
         features = [
             demand,
             capacity,
             days_until,
+            event_duration,
             popularity,
             competitor,
             historical,
@@ -132,16 +135,17 @@ def predict_price():
                 'demand': features[0],
                 'capacity': features[1],
                 'days_until_event': features[2],
-                'event_popularity': features[3],
-                'competitor_price': features[4],
-                'historical_sales': features[5],
-                'season': features[6],
-                'day_of_week': features[7],
-                'hour_of_day': features[8],
-                'is_weekend': features[9],
-                'is_holiday': features[10],
-                'venue_tier': features[11],
-                'artist_tier': features[12]
+                'event_duration_days': features[3],
+                'event_popularity': features[4],
+                'competitor_price': features[5],
+                'historical_sales': features[6],
+                'season': features[7],
+                'day_of_week': features[8],
+                'hour_of_day': features[9],
+                'is_weekend': features[10],
+                'is_holiday': features[11],
+                'venue_tier': features[12],
+                'artist_tier': features[13]
             },
             'timestamp': datetime.now().isoformat()
         }
@@ -170,6 +174,7 @@ def batch_predict():
             demand = float(scenario.get('demand', 100))
             capacity = float(scenario.get('capacity', 1000))
             days_until = float(scenario.get('days_until_event', 30))
+            event_duration = float(scenario.get('event_duration_days', 1))
             popularity = float(scenario.get('event_popularity', 0.5))
             competitor = float(scenario.get('competitor_price', 100))
             historical = float(scenario.get('historical_sales', 50))
@@ -184,7 +189,7 @@ def batch_predict():
             is_holiday = int(scenario.get('is_holiday', 0))
             
             features = [
-                demand, capacity, days_until, popularity, competitor,
+                demand, capacity, days_until, event_duration, popularity, competitor,
                 historical, season, day_of_week, hour_of_day, is_weekend,
                 is_holiday, venue_tier, artist_tier
             ]
@@ -210,7 +215,7 @@ def batch_predict():
 
 @app.route('/model-info', methods=['GET'])
 def model_info():
-    """Get information about the enhanced model v2.0"""
+    """Get information about the enhanced model v2.1 with event duration"""
     info = {
         'model_type': 'VotingRegressor Ensemble (RF + GradientBoosting + ExtraTrees + Ridge + XGBoost)',
         'version': model_version,
@@ -218,6 +223,7 @@ def model_info():
             'demand',
             'capacity',
             'days_until_event',
+            'event_duration_days',
             'event_popularity',
             'competitor_price',
             'historical_sales',
@@ -233,6 +239,7 @@ def model_info():
             'demand': 'Current ticket demand (number of inquiries)',
             'capacity': 'Venue capacity (total seats)',
             'days_until_event': 'Days remaining until event',
+            'event_duration_days': 'Total duration of event in days',
             'event_popularity': 'Event popularity score (0-1)',
             'competitor_price': 'Average competitor ticket price (₹)',
             'historical_sales': 'Historical sales for similar events',

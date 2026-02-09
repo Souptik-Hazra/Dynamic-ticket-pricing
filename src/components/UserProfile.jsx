@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
-import defaultUserIcon from "../assets/default-user-icon.png";
 import "./UserProfile.css";
 
 const UserProfile = () => {

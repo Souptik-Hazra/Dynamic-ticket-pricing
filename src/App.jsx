@@ -8,7 +8,7 @@ import AdminDashboard from './components/AdminDashboard';
 import EventList from './components/EventList';
 import Analytics from './components/Analytics';
 import TicketPurchase from './components/TicketPurchase';
-import API_URL from './config/api';
+import { API_URL } from './config/api';
 import './App.css';
 import UserProfile from "./components/UserProfile.jsx";
 

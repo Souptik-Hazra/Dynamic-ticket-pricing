@@ -195,16 +195,31 @@ router.get('/:id/price', async (req, res) => {
     const historicalSales = event.ticketsSold;
     const daysUntilEvent = event.daysUntilEvent;
 
+    // Calculate event duration
+    const eventDuration = event.endDate ? 
+      Math.max(1, Math.ceil((new Date(event.endDate) - new Date(event.startDate)) / (1000 * 60 * 60 * 24))) : 
+      1;
+
+    // Extract hour from start date, use hourOfDay field if set
+    const eventHour = new Date(event.startDate).getHours();
+
     // Prepare features for ML model
     const features = {
       demand: demand || 100,
       capacity: event.capacity,
       days_until_event: daysUntilEvent,
+      event_duration_days: eventDuration,
       event_popularity: event.eventPopularity,
       competitor_price: event.basePrice * 1.2,
       historical_sales: historicalSales,
-      season: getSeason(event.eventDate),
-      day_of_week: getDayOfWeek(event.eventDate)
+      season: getSeason(event.startDate),
+      day_of_week: getDayOfWeek(event.startDate),
+      hour_of_day: event.hourOfDay !== undefined ? event.hourOfDay : eventHour,
+      is_holiday: event.isHoliday ? 1 : 0,
+      venue_tier: event.venueTier || 2,
+      artist_tier: event.artistTier || 3,
+      start_date: new Date(event.startDate).getTime(),
+      end_date: event.endDate ? new Date(event.endDate).getTime() : new Date(event.startDate).getTime()
     };
 
     // Call ML API for price prediction
@@ -239,11 +254,18 @@ router.get('/:id/price', async (req, res) => {
         demand: features.demand,
         capacity: features.capacity,
         daysUntilEvent: features.days_until_event,
+        eventDuration: features.event_duration_days,
+        startDate: new Date(features.start_date).toISOString(),
+        endDate: new Date(features.end_date).toISOString(),
         eventPopularity: features.event_popularity,
         competitorPrice: features.competitor_price,
         historicalSales: features.historical_sales,
         season: features.season,
-        dayOfWeek: features.day_of_week
+        dayOfWeek: features.day_of_week,
+        hourOfDay: features.hour_of_day,
+        isHoliday: features.is_holiday,
+        venueTier: features.venue_tier,
+        artistTier: features.artist_tier
       },
       predictedPrice: predictedPrice,
       priceRange: response.data.price_range,
