@@ -171,7 +171,11 @@ router.get('/me', protect, async (req, res) => {
         email: user.email,
         role: user.role,
         createdAt: user.createdAt,
-        lastLogin: user.lastLogin
+        lastLogin: user.lastLogin,
+        subscription: user.subscription,
+        icon: user.icon,
+        city: user.city,
+        birthdate: user.birthdate
       }
     });
   } catch (error) {

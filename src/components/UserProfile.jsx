@@ -103,6 +103,11 @@ const UserProfile = () => {
               <span className="profile-badge">
                 {user?.role === "admin" ? "👑 Admin" : "🎫 Member"}
               </span>
+              {user?.subscription?.plan && user?.subscription?.plan !== 'none' && (
+                <span className="profile-badge subscription-badge" style={{background: '#2ecc71', color: 'black', marginLeft: '10px'}}>
+                   ⭐ {user.subscription.plan.replace(/_/g, ' ').toUpperCase()}
+                </span>
+              )}
               <span className="profile-member-since">
                 Member since {getMemberSince()}
               </span>

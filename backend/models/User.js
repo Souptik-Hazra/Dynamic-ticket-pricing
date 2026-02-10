@@ -47,6 +47,23 @@ const userSchema = new mongoose.Schema({
   },
   birthdate: {
     type: Date
+  },
+  subscription: {
+    plan: {
+      type: String,
+      enum: ['none', '7_days', '30_days', '3_months', '6_months', '1_year'],
+      default: 'none'
+    },
+    startDate: {
+      type: Date
+    },
+    endDate: {
+      type: Date
+    },
+    isActive: { // Derived/Managed status
+      type: Boolean,
+      default: false
+    }
   }
 });
 
