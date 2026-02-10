@@ -53,43 +53,6 @@
   color: #fff;
 }
 
-.analytics-info {
-  background: #f8f9fa;
-  padding: 2rem;
-  border-radius: 12px;
-  margin-top: 2rem;
-}
-
-.analytics-info h3 {
-  color: #333;
-  font-size: 1.5rem;
-  margin-bottom: 1rem;
-}
-
-.analytics-info p {
-  color: #666;
-  line-height: 1.6;
-  margin-bottom: 1rem;
-}
-
-.analytics-info ul {
-  list-style: none;
-  padding-left: 0;
-}
-
-.analytics-info li {
-  color: #555;
-  padding: 0.75rem;
-  margin: 0.5rem 0;
-  background: white;
-  border-radius: 8px;
-  border-left: 4px solid #667eea;
-}
-
-.analytics-info strong {
-  color: #667eea;
-}
-
 .loading, .error {
   text-align: center;
   padding: 3rem;
@@ -106,5 +69,274 @@
 @media (min-width: 769px) and (max-width: 1024px) {
   .analytics-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+}
+/* Peak Hours Section Styles */
+.peak-hours-section {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 2.5rem;
+  border-radius: 16px;
+  margin-top: 3rem;
+  color: white;
+}
+
+.peak-hours-section h2 {
+  color: white;
+  font-size: 1.8rem;
+  margin-bottom: 2rem;
+  text-align: left;
+}
+
+.peak-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2.5rem;
+}
+
+.peak-card {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  padding: 1.5rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  transition: all 0.3s ease;
+}
+
+.peak-card:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.peak-card .card-icon {
+  font-size: 2.2rem;
+  min-width: 50px;
+}
+
+.peak-card h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.peak-value {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin: 0.5rem 0;
+  color: #fff;
+}
+
+.peak-card small {
+  opacity: 0.85;
+  font-size: 0.8rem;
+}
+
+/* Hourly Chart */
+.hourly-chart-container {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+}
+
+.hourly-chart-container h3 {
+  color: white;
+  margin-bottom: 1.5rem;
+  font-size: 1.3rem;
+}
+
+.hourly-demand-chart {
+  display: grid;
+  grid-template-columns: repeat(24, 1fr);
+  gap: 0.4rem;
+  align-items: flex-end;
+  height: 200px;
+  margin-bottom: 1.5rem;
+  background: rgba(0, 0, 0, 0.1);
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+.hour-bar-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+}
+
+.hour-bar {
+  width: 100%;
+  background: linear-gradient(180deg, #4facfe 0%, #00f2fe 100%);
+  border-radius: 4px 4px 0 0;
+  position: relative;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.hour-bar:hover {
+  opacity: 0.8;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.hour-bar.peak {
+  background: linear-gradient(180deg, #ff6b6b 0%, #ff5252 100%);
+}
+
+.hour-bar.off-peak {
+  background: linear-gradient(180deg, #95de64 0%, #69db7c 100%);
+}
+
+.peak-indicator {
+  position: absolute;
+  top: -20px;
+  font-size: 0.9rem;
+}
+
+.hour-label {
+  font-size: 0.7rem;
+  margin-top: 0.4rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
+}
+
+.chart-legend {
+  display: flex;
+  gap: 2rem;
+  justify-content: center;
+  margin-top: 1rem;
+  font-size: 0.9rem;
+}
+
+.legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 6px;
+  display: inline-block;
+  margin-right: 0.5rem;
+}
+
+.legend-dot.peak {
+  background: #ff6b6b;
+}
+
+.legend-dot.normal {
+  background: #4facfe;
+}
+
+.legend-dot.off-peak {
+  background: #95de64;
+}
+
+/* Weekly Pattern */
+.weekly-pattern {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+}
+
+.weekly-pattern h3 {
+  color: white;
+  margin-bottom: 1.5rem;
+  font-size: 1.3rem;
+}
+
+.weekly-info {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.weekly-info p {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 1rem;
+  border-radius: 8px;
+  border-left: 3px solid rgba(255, 255, 255, 0.5);
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.weekly-info strong {
+  color: #fff;
+  font-weight: 600;
+}
+
+/* Buying Tips */
+.buying-tips {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2rem;
+  border-radius: 12px;
+}
+
+.buying-tips h3 {
+  color: white;
+  margin-bottom: 1.5rem;
+  font-size: 1.3rem;
+}
+
+.tips-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.5rem;
+}
+
+.tip-card {
+  background: rgba(255, 255, 255, 0.15);
+  padding: 1.5rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+}
+
+.tip-card:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateY(-3px);
+}
+
+.tip-card h4 {
+  color: #fff;
+  margin: 0 0 0.8rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.tip-card p {
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .peak-hours-section {
+    padding: 1.5rem;
+  }
+
+  .peak-hours-section h2 {
+    font-size: 1.4rem;
+  }
+
+  .peak-summary-grid,
+  .tips-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hourly-demand-chart {
+    grid-template-columns: repeat(12, 1fr);
+    height: 150px;
+  }
+
+  .hour-label {
+    font-size: 0.6rem;
+  }
+
+  .chart-legend {
+    gap: 1rem;
+    font-size: 0.8rem;
   }
 }

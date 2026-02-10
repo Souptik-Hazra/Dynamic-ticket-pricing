@@ -163,8 +163,8 @@ const eventSchema = new mongoose.Schema({
   },
   artistTier: {
     type: Number,
-    enum: [1, 2, 3, 4, 5],  // 1=Local, 5=International Superstar
-    default: 3
+    enum: [0, 1, 2, 3, 4, 5],  // 0=No Artist/N/A, 1=Local, 5=International Superstar
+    default: 0
   },
   createdAt: {
     type: Date,
@@ -178,11 +178,73 @@ const eventSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Update the updatedAt field before saving
+// Auto-update status based on current date before saving
 eventSchema.pre('save', function(next) {
   this.updatedAt = Date.now();
+  
+  // Auto-set status based on dates (skip if cancelled)
+  if (this.status !== 'cancelled') {
+    const now = new Date();
+    const start = new Date(this.startDate);
+    // Treat endDate as end-of-day (23:59:59) so same-day events stay "ongoing" all day
+    const end = this.endDate ? new Date(this.endDate) : new Date(start);
+    end.setHours(23, 59, 59, 999);
+    
+    if (now < start) {
+      this.status = 'upcoming';
+    } else if (now >= start && now <= end) {
+      this.status = 'ongoing';
+    } else {
+      this.status = 'completed';
+    }
+  }
+  
   next();
 });
+
+// Static method to bulk-update event statuses based on current date
+eventSchema.statics.updateEventStatuses = async function() {
+  const now = new Date();
+  
+  // Build end-of-today for same-day comparison
+  const endOfToday = new Date(now);
+  endOfToday.setHours(23, 59, 59, 999);
+  
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+  
+  // 1. Completed: endDate is before today (not cancelled)
+  await this.updateMany(
+    {
+      status: { $in: ['upcoming', 'ongoing'] },
+      endDate: { $ne: null, $lt: startOfToday }
+    },
+    { $set: { status: 'completed', updatedAt: now } }
+  );
+  
+  // Also complete events with no endDate where startDate is before today  
+  await this.updateMany(
+    {
+      status: { $in: ['upcoming', 'ongoing'] },
+      endDate: null,
+      startDate: { $lt: startOfToday }
+    },
+    { $set: { status: 'completed', updatedAt: now } }
+  );
+  
+  // 2. Ongoing: startDate <= now AND (endDate >= today OR endDate is today)
+  await this.updateMany(
+    {
+      status: { $in: ['upcoming'] },
+      startDate: { $lte: endOfToday },
+      $or: [
+        { endDate: { $gte: startOfToday } },
+        { endDate: null, startDate: { $gte: startOfToday } }
+      ]
+    },
+    { $set: { status: 'ongoing', updatedAt: now } }
+  );
+};
 
 // Virtual field for days until event
 eventSchema.virtual('daysUntilEvent').get(function() {

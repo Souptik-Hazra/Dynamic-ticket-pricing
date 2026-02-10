@@ -18,6 +18,7 @@ const PredictionLog = require('./models/PredictionLog');
 // Import routes
 const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
+const subscriptionRoutes = require('./routes/subscription');
 const mlModelRoutes = require('./routes/mlModel');
 const ticketRoutes = require('./routes/tickets');
 const analyticsRoutes = require('./routes/analytics');
@@ -144,6 +145,9 @@ app.get('/api-docs.json', (req, res) => {
 
 // Auth routes
 app.use('/api/auth', authRoutes);
+
+// Subscription routes
+app.use('/api/subscription', subscriptionRoutes);
 
 // Admin routes
 app.use('/api/admin', adminRoutes);

@@ -343,3 +343,347 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ===== Purchase Print Overlay & Modal ===== */
+.purchase-print-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.purchase-print-modal {
+  background: #1a1a2e;
+  border-radius: 18px;
+  max-width: 560px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.purchase-print-content {
+  padding: 2rem;
+}
+
+/* Header */
+.pp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+}
+
+.pp-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pp-brand-icon {
+  font-size: 1.8rem;
+}
+
+.pp-brand-name {
+  font-size: 1.4rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #667eea, #f093fb);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.pp-badge {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: #667eea;
+  padding: 0.3rem 0.9rem;
+  border: 2px solid #667eea;
+  border-radius: 6px;
+}
+
+/* Success Banner */
+.pp-success-banner {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(52, 211, 153, 0.1));
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 10px;
+  padding: 0.85rem 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1.5rem;
+  color: #34d399;
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.pp-success-icon {
+  font-size: 1.3rem;
+}
+
+/* Event Image */
+.pp-event-image {
+  width: 100%;
+  height: 180px;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+
+.pp-event-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Event Info */
+.pp-event-info {
+  margin-bottom: 1.25rem;
+}
+
+.pp-event-name {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 1rem;
+}
+
+.pp-event-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.pp-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.pp-label {
+  font-size: 0.85rem;
+  color: #888;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.pp-value {
+  font-size: 0.9rem;
+  color: #ddd;
+  font-weight: 500;
+  text-align: right;
+}
+
+/* Divider */
+.pp-divider {
+  border: none;
+  border-top: 1px dashed rgba(255, 255, 255, 0.12);
+  margin: 1.25rem 0;
+  position: relative;
+}
+
+.pp-divider::before,
+.pp-divider::after {
+  content: "";
+  position: absolute;
+  top: -10px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #1a1a2e;
+}
+
+.pp-divider::before { left: -2.5rem; }
+.pp-divider::after { right: -2.5rem; }
+
+/* Detail Grid */
+.pp-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.pp-detail-box {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  padding: 0.85rem;
+}
+
+.pp-box-label {
+  display: block;
+  font-size: 0.72rem;
+  color: #777;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.35rem;
+}
+
+.pp-box-value {
+  display: block;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.pp-ref {
+  font-family: monospace;
+  font-size: 0.82rem;
+  color: #a5b4fc;
+  word-break: break-all;
+}
+
+/* Total */
+.pp-total-section {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15));
+  border: 1px solid rgba(102, 126, 234, 0.25);
+  border-radius: 10px;
+  padding: 1rem 1.2rem;
+}
+
+.pp-total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #ccc;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.pp-total-amount {
+  font-size: 1.35rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #667eea, #f093fb);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Customer Info */
+.pp-customer-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.pp-confirmed {
+  color: #34d399 !important;
+  font-weight: 700 !important;
+}
+
+/* Footer */
+.pp-footer {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  text-align: center;
+}
+
+.pp-footer p {
+  color: #555;
+  font-size: 0.75rem;
+  margin: 0.25rem 0;
+}
+
+/* Actions */
+.pp-actions {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1.25rem 2rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.pp-print-btn {
+  flex: 1;
+  padding: 0.85rem;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.pp-print-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.45);
+}
+
+.pp-done-btn {
+  padding: 0.85rem 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  background: transparent;
+  color: #aaa;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pp-done-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+/* ===== Print Styles ===== */
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+
+  .purchase-print-content,
+  .purchase-print-content *,
+  .print-ticket-content,
+  .print-ticket-content * {
+    visibility: visible !important;
+  }
+
+  .purchase-print-content,
+  .print-ticket-content {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 2rem;
+    background: #1a1a2e !important;
+    color: #ddd !important;
+    z-index: 99999;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  .purchase-print-overlay {
+    background: none !important;
+    backdrop-filter: none !important;
+  }
+
+  .purchase-print-modal {
+    background: #1a1a2e !important;
+    box-shadow: none !important;
+    border: none !important;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .pp-actions,
+  .top-navigation,
+  .ticket-purchase-container > .back-button,
+  .purchase-content {
+    display: none !important;
+  }
+}

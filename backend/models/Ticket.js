@@ -53,7 +53,20 @@ const ticketSchema = new mongoose.Schema({
     type: String,
     unique: true,
     sparse: true
-  }
+  },
+  fraudScore: {
+    type: Number,
+    min: 0,
+    max: 100,
+    default: 0
+  },
+  fraudDetected: {
+    type: Boolean,
+    default: false
+  },
+  fraudReasons: [{
+    type: String
+  }]
 }, {
   timestamps: true
 });

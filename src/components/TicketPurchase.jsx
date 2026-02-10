@@ -15,6 +15,7 @@ function TicketPurchase({ event, onBack, onSuccess }) {
   });
   const [loading, setLoading] = useState(false);
   const [priceLoading, setPriceLoading] = useState(true);
+  const [purchasedTicket, setPurchasedTicket] = useState(null);
 
   // Fetch dynamic prices for all categories
   useEffect(() => {
@@ -147,8 +148,18 @@ function TicketPurchase({ event, onBack, onSuccess }) {
       );
 
       setLoading(false);
-      alert(`🎉 Purchase successful!\n\nBooking Reference: ${response.data.bookingReference || response.data._id}\nTicket Type: ${selectedCategory?.name?.toUpperCase() || 'STANDARD'}\nQuantity: ${formData.quantity}\nTotal: ₹${(response.data.ticket?.totalAmount || calculateTotal()).toFixed(2)}`);
-      onSuccess();
+      setPurchasedTicket({
+        ...response.data.ticket,
+        eventName: event.name,
+        eventVenue: event.venue,
+        eventImage: event.image,
+        eventCategory: event.category,
+        eventStartDate: event.startDate,
+        eventEndDate: event.endDate,
+        categoryName: selectedCategory?.name || 'standard',
+        customerName: formData.customerName,
+        customerEmail: formData.customerEmail,
+      });
     } catch (error) {
       setLoading(false);
       console.error('Purchase error:', error);
@@ -158,6 +169,15 @@ function TicketPurchase({ event, onBack, onSuccess }) {
   };
 
   const hasCategories = event.ticketCategories && event.ticketCategories.length > 0;
+
+  const handleClosePurchasedTicket = () => {
+    setPurchasedTicket(null);
+    onSuccess();
+  };
+
+  const handlePrintPurchasedTicket = () => {
+    window.print();
+  };
 
   return (
     <div className="ticket-purchase-container bg-white dark:bg-gray-900 text-gray-900 dark:text-white min-h-screen">
@@ -340,6 +360,155 @@ function TicketPurchase({ event, onBack, onSuccess }) {
           </form>
         </div>
       </div>
+
+      {/* Purchased Ticket Modal */}
+      {purchasedTicket && (
+        <div className="purchase-print-overlay" onClick={handleClosePurchasedTicket}>
+          <div className="purchase-print-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="purchase-print-content" id="printable-purchase-ticket">
+              {/* Header */}
+              <div className="pp-header">
+                <div className="pp-brand">
+                  <span className="pp-brand-icon">🎫</span>
+                  <span className="pp-brand-name">TicketHub</span>
+                </div>
+                <div className="pp-badge">E-TICKET</div>
+              </div>
+
+              {/* Success Banner */}
+              <div className="pp-success-banner">
+                <span className="pp-success-icon">✅</span>
+                <span>Payment Successful!</span>
+              </div>
+
+              {/* Event Image */}
+              {purchasedTicket.eventImage && (
+                <div className="pp-event-image">
+                  <img
+                    src={purchasedTicket.eventImage}
+                    alt={purchasedTicket.eventName}
+                    onError={(e) => (e.target.style.display = 'none')}
+                  />
+                </div>
+              )}
+
+              {/* Event Info */}
+              <div className="pp-event-info">
+                <h2 className="pp-event-name">{purchasedTicket.eventName}</h2>
+                <div className="pp-event-details">
+                  {purchasedTicket.eventVenue && (
+                    <div className="pp-row">
+                      <span className="pp-label">📍 Venue</span>
+                      <span className="pp-value">{purchasedTicket.eventVenue}</span>
+                    </div>
+                  )}
+                  {purchasedTicket.eventStartDate && (
+                    <div className="pp-row">
+                      <span className="pp-label">📅 Date</span>
+                      <span className="pp-value">
+                        {new Date(purchasedTicket.eventStartDate).toLocaleDateString('en-US', {
+                          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+                        })}
+                        {purchasedTicket.eventEndDate && purchasedTicket.eventEndDate !== purchasedTicket.eventStartDate &&
+                          ` — ${new Date(purchasedTicket.eventEndDate).toLocaleDateString('en-US', {
+                            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+                          })}`}
+                      </span>
+                    </div>
+                  )}
+                  {purchasedTicket.eventCategory && (
+                    <div className="pp-row">
+                      <span className="pp-label">🎭 Category</span>
+                      <span className="pp-value">
+                        {purchasedTicket.eventCategory.charAt(0).toUpperCase() + purchasedTicket.eventCategory.slice(1)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div className="pp-divider"></div>
+
+              {/* Ticket Details */}
+              <div className="pp-detail-grid">
+                <div className="pp-detail-box">
+                  <span className="pp-box-label">Booking Reference</span>
+                  <span className="pp-box-value pp-ref">
+                    {purchasedTicket.bookingReference || purchasedTicket._id}
+                  </span>
+                </div>
+                <div className="pp-detail-box">
+                  <span className="pp-box-label">Ticket Type</span>
+                  <span className="pp-box-value">
+                    {purchasedTicket.categoryName?.toUpperCase() || 'STANDARD'}
+                  </span>
+                </div>
+                <div className="pp-detail-box">
+                  <span className="pp-box-label">Quantity</span>
+                  <span className="pp-box-value">{purchasedTicket.quantity}</span>
+                </div>
+                <div className="pp-detail-box">
+                  <span className="pp-box-label">Price per Ticket</span>
+                  <span className="pp-box-value">
+                    ₹{purchasedTicket.price?.toFixed(2) || (purchasedTicket.totalAmount / purchasedTicket.quantity).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Total */}
+              <div className="pp-total-section">
+                <div className="pp-total-row">
+                  <span>Total Amount Paid</span>
+                  <span className="pp-total-amount">₹{purchasedTicket.totalAmount?.toFixed(2)}</span>
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div className="pp-divider"></div>
+
+              {/* Customer Info */}
+              <div className="pp-customer-info">
+                <div className="pp-row">
+                  <span className="pp-label">👤 Name</span>
+                  <span className="pp-value">{purchasedTicket.customerName || user?.name}</span>
+                </div>
+                <div className="pp-row">
+                  <span className="pp-label">📧 Email</span>
+                  <span className="pp-value">{purchasedTicket.customerEmail || user?.email}</span>
+                </div>
+                <div className="pp-row">
+                  <span className="pp-label">📅 Purchased</span>
+                  <span className="pp-value">
+                    {new Date(purchasedTicket.purchaseDate || Date.now()).toLocaleString('en-US', {
+                      year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                    })}
+                  </span>
+                </div>
+                <div className="pp-row">
+                  <span className="pp-label">✅ Status</span>
+                  <span className="pp-value pp-confirmed">CONFIRMED</span>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="pp-footer">
+                <p>This is a computer-generated ticket. No signature required.</p>
+                <p>Transaction ID: {purchasedTicket._id}</p>
+              </div>
+            </div>
+
+            <div className="pp-actions">
+              <button className="pp-print-btn" onClick={handlePrintPurchasedTicket}>
+                🖨️ Print / Save as PDF
+              </button>
+              <button className="pp-done-btn" onClick={handleClosePurchasedTicket}>
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

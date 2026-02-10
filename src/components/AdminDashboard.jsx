@@ -11,6 +11,7 @@ function AdminDashboard() {
   const [stats, setStats] = useState(null);
   const [events, setEvents] = useState([]);
   const [tickets, setTickets] = useState([]);
+  const [fraudAnalytics, setFraudAnalytics] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showEventForm, setShowEventForm] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
@@ -28,6 +29,8 @@ function AdminDashboard() {
       fetchEvents();
     } else if (view === 'tickets') {
       fetchTickets();
+    } else if (view === 'fraud') {
+      fetchFraudAnalytics();
     }
   }, [view]);
 
@@ -65,6 +68,19 @@ function AdminDashboard() {
     } catch (error) {
       console.error('Error fetching tickets:', error);
       alert('Failed to fetch tickets');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchFraudAnalytics = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`${API_URL}/admin/fraud-analytics`, getAuthHeaders());
+      setFraudAnalytics(response.data.fraudAnalytics);
+    } catch (error) {
+      console.error('Error fetching fraud analytics:', error);
+      alert('Failed to fetch fraud analytics');
     } finally {
       setLoading(false);
     }
@@ -143,6 +159,12 @@ function AdminDashboard() {
           onClick={() => setView('tickets')}
         >
           🎟️ Ticket Buyers
+        </button>
+        <button 
+          className={view === 'fraud' ? 'active' : ''} 
+          onClick={() => setView('fraud')}
+        >
+          🚨 Fraud Analytics
         </button>
       </nav>
 
@@ -260,7 +282,16 @@ function AdminDashboard() {
                         <tr key={event._id}>
                           <td><strong>{event.name}</strong></td>
                           <td>{event.venue}</td>
-                          <td>{formatDate(event.eventDate)}</td>
+                          <td>
+                            {event.startDate
+                              ? (() => {
+                                  const fmt = { month: 'short', day: 'numeric', year: 'numeric' };
+                                  const start = new Date(event.startDate).toLocaleDateString('en-US', fmt);
+                                  const end = event.endDate ? new Date(event.endDate).toLocaleDateString('en-US', fmt) : null;
+                                  return end && end !== start ? `${start} - ${end}` : start;
+                                })()
+                              : 'N/A'}
+                          </td>
                           <td>{event.capacity}</td>
                           <td>{event.ticketsSold}</td>
                           <td>₹{event.baseRevenue?.toFixed(2) || '0.00'}</td>
@@ -371,6 +402,138 @@ function AdminDashboard() {
               <div className="summary-card">
                 <span className="label">Unique Buyers</span>
                 <span className="value">{new Set(tickets.map(t => t.buyerEmail)).size}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {view === 'fraud' && fraudAnalytics && (
+          <div className="fraud-view">
+            <h2>🚨 Fraud Risk Analytics</h2>
+            
+            {/* Fraud Summary Cards */}
+            <div className="fraud-summary-grid">
+              <div className="fraud-card">
+                <div className="card-icon">👥</div>
+                <div className="card-content">
+                  <h4>Total Users</h4>
+                  <p className="card-value">{fraudAnalytics.summary.totalUsers}</p>
+                </div>
+              </div>
+              
+              <div className="fraud-card high-risk">
+                <div className="card-icon">🔴</div>
+                <div className="card-content">
+                  <h4>High Risk Users</h4>
+                  <p className="card-value">{fraudAnalytics.summary.highRiskUsers}</p>
+                </div>
+              </div>
+              
+              <div className="fraud-card medium-risk">
+                <div className="card-icon">🟡</div>
+                <div className="card-content">
+                  <h4>Medium Risk Users</h4>
+                  <p className="card-value">{fraudAnalytics.summary.mediumRiskUsers}</p>
+                </div>
+              </div>
+              
+              <div className="fraud-card low-risk">
+                <div className="card-icon">🟢</div>
+                <div className="card-content">
+                  <h4>Low Risk Users</h4>
+                  <p className="card-value">{fraudAnalytics.summary.lowRiskUsers}</p>
+                </div>
+              </div>
+              
+              <div className="fraud-card">
+                <div className="card-icon">📊</div>
+                <div className="card-content">
+                  <h4>Avg Fraud Score</h4>
+                  <p className="card-value">{fraudAnalytics.summary.avgFraudScore}</p>
+                </div>
+              </div>
+              
+              <div className="fraud-card">
+                <div className="card-icon">⚠️</div>
+                <div className="card-content">
+                  <h4>Suspicious Activity Rate</h4>
+                  <p className="card-value">{fraudAnalytics.summary.suspiciousActivityRate}%</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Timeline Chart */}
+            {fraudAnalytics.timeline && fraudAnalytics.timeline.length > 0 && (
+              <div className="fraud-timeline">
+                <h3>Fraud Timeline (Last 30 Days)</h3>
+                <div className="timeline-chart">
+                  {fraudAnalytics.timeline.map((day, idx) => (
+                    <div key={idx} className="timeline-bar">
+                      <div className="bar-container">
+                        {day.high > 0 && <div className="bar-segment high-risk" style={{height: `${(day.high / day.total) * 100}%`}} title={`High Risk: ${day.high}`}></div>}
+                        {day.medium > 0 && <div className="bar-segment medium-risk" style={{height: `${(day.medium / day.total) * 100}%`}} title={`Medium Risk: ${day.medium}`}></div>}
+                        {day.low > 0 && <div className="bar-segment low-risk" style={{height: `${(day.low / day.total) * 100}%`}} title={`Low Risk: ${day.low}`}></div>}
+                      </div>
+                      <span className="bar-date">{new Date(day.date).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="timeline-legend">
+                  <div><span className="legend-color high-risk"></span> High Risk</div>
+                  <div><span className="legend-color medium-risk"></span> Medium Risk</div>
+                  <div><span className="legend-color low-risk"></span> Low Risk</div>
+                </div>
+              </div>
+            )}
+
+            {/* User Fraud Risk Ranking Table */}
+            <div className="fraud-user-rankings">
+              <h3>User Fraud Risk Rankings (Top 50)</h3>
+              <div className="fraud-table-container">
+                <table className="fraud-ranking-table">
+                  <thead>
+                    <tr>
+                      <th>Risk Level</th>
+                      <th>User Name</th>
+                      <th>Email</th>
+                      <th>Fraud Score</th>
+                      <th>Total Purchases</th>
+                      <th>Total Tickets</th>
+                      <th>Avg Qty/Purchase</th>
+                      <th>Total Spent</th>
+                      <th>Flagged Reasons</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {fraudAnalytics.userRankings.map((user, idx) => (
+                      <tr key={idx} className={`risk-${user.riskLevel}`}>
+                        <td>
+                          <span className={`risk-badge ${user.riskLevel}`}>
+                            {user.riskLevel.toUpperCase()}
+                          </span>
+                        </td>
+                        <td className="user-name">{user.userName}</td>
+                        <td className="user-email">{user.userEmail}</td>
+                        <td className="fraud-score">{user.fraudScore}</td>
+                        <td>{user.totalPurchases}</td>
+                        <td>{user.totalTickets}</td>
+                        <td>{user.avgTicketsPerPurchase.toFixed(1)}</td>
+                        <td className="total-spent">₹{user.totalSpent.toFixed(2)}</td>
+                        <td className="flags">
+                          {user.flaggedReasons.length > 0 ? (
+                            <div className="flag-list">
+                              {user.flaggedReasons.map((reason, i) => (
+                                <div key={i} className="flag-item">{reason}</div>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="no-flags">No flags</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>

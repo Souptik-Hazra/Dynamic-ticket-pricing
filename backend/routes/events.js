@@ -26,6 +26,9 @@ const getDayOfWeek = (date) => {
 // @access  Public
 router.get('/', async (req, res) => {
   try {
+      // Auto-update event statuses based on current date
+      await Event.updateEventStatuses();
+      
       const events = await Event.find().sort({ startDate: 1 });
     
     // Remove maxPrice from public response (admin-only field)

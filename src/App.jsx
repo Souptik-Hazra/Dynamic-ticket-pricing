@@ -8,8 +8,10 @@ import AdminDashboard from './components/AdminDashboard';
 import EventList from './components/EventList';
 import Analytics from './components/Analytics';
 import TicketPurchase from './components/TicketPurchase';
+import Subscription from './components/Subscription';
 import { API_URL } from './config/api';
 import './App.css';
+import './components/NavBadge.css';
 import UserProfile from "./components/UserProfile.jsx";
 
 function AppContent() {
@@ -114,6 +116,16 @@ function AppContent() {
           ) : (
             <div className="nav-user">
               <span className="user-name">{user?.name}</span>
+               {user?.subscription && user.subscription.isActive && user.subscription.plan !== 'none' && (
+                  <span className="nav-subscription-badge">
+                      {user.subscription.plan === '7_days' ? 'WEEKLY' :
+                       user.subscription.plan === '30_days' ? 'MONTHLY' :
+                       user.subscription.plan === '3_months' ? 'QUARTERLY' :
+                       user.subscription.plan === '6_months' ? 'BIANNUAL' :
+                       user.subscription.plan === '1_year' ? 'ANNUAL' : 'MEMBER'}
+                  </span>
+               )}
+              <button onClick={() => setView('subscription')} className="nav-profile-btn">Membership</button>
               <button onClick={() => setView('profile')} className="nav-profile-btn">Profile</button>
               <button onClick={logout} className="nav-logout-btn">Logout</button>
             </div>
@@ -183,6 +195,10 @@ function AppContent() {
 
       {view === 'profile' && isAuthenticated && (
         <UserProfile />
+      )}
+
+      {view === 'subscription' && isAuthenticated && (
+        <Subscription />
       )}
     </div>
   );

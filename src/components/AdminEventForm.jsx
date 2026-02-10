@@ -15,7 +15,7 @@ function AdminEventForm({ event, onClose }) {
     image: 'https://via.placeholder.com/400x250',
     status: 'upcoming',
     venueTier: 2,
-    artistTier: 3,
+    artistTier: 0,
     isHoliday: false
   });
   
@@ -383,6 +383,7 @@ function AdminEventForm({ event, onClose }) {
                 onChange={handleChange}
                 disabled={loading}
               >
+                <option value={0}>No Artist / N/A</option>
                 <option value={1}>Local</option>
                 <option value={2}>Regional</option>
                 <option value={3}>National</option>

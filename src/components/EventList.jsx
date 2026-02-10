@@ -85,12 +85,12 @@ function EventList({ events, onUpdatePrice, onSelectEvent, onRefresh }) {
                     <span>{event.venue}</span>
                   </div>
                   <div className="detail-item">
-                    <span className="label">📅 Date:</span>
-                    <span>
-                      {formatDateTime(event.startDate) && formatDateTime(event.endDate)
-                        ? `${formatDateTime(event.startDate)} to ${formatDateTime(event.endDate)}`
-                        : formatDateTime(event.startDate) || formatDateTime(event.endDate) || 'Date not set'}
-                    </span>
+                    <span className="label">📅 Start:</span>
+                    <span>{formatDateTime(event.startDate) || 'N/A'}</span>
+                  </div>
+                  <div className="detail-item">
+                    <span className="label">📅 End:</span>
+                    <span>{formatDateTime(event.endDate) || 'N/A'}</span>
                   </div>
                   {/* Removed Days Until display */}
                   <div className="detail-item">
