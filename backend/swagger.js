@@ -1,7 +1,7 @@
 const swaggerJsdoc = require('swagger-jsdoc');
 
 const options = {
-  definition: {
+  swaggerDefinition: {
     openapi: '3.0.0',
     info: {
       title: 'Dynamic Ticket Pricing API',
@@ -163,7 +163,7 @@ All prices are in Indian Rupees (₹ INR).
       { name: 'Admin', description: 'Admin-only endpoints' }
     ]
   },
-  apis: ['./routes/*.js', './swagger-docs.js']
+  apis: ['./routes/admin.js', './routes/analytics.js', './routes/auth.js', './routes/events.js', './routes/mlModel.js', './routes/subscription.js', './routes/tickets.js', './swagger-docs.js']
 };
 
 const specs = swaggerJsdoc(options);
