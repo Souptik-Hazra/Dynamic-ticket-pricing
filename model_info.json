@@ -1,0 +1,74 @@
+{
+  "modelVersion": "v2.0.20260222",
+  "modelType": "VotingRegressor (RF + GB + ET + Ridge + XGB)",
+  "features": [
+    "demand",
+    "capacity",
+    "days_until_event",
+    "event_duration_days",
+    "event_popularity",
+    "competitor_price",
+    "historical_sales",
+    "season",
+    "day_of_week",
+    "hour_of_day",
+    "is_weekend",
+    "is_holiday",
+    "venue_tier",
+    "artist_tier"
+  ],
+  "numFeatures": 14,
+  "trainScore": 0.9926944358757379,
+  "testScore": 0.9165012321638918,
+  "trainMAE": 33.309061077586044,
+  "testMAE": 99.59912001673706,
+  "trainRMSE": 48.876877618150594,
+  "testRMSE": 165.8886545585782,
+  "cvMean": 0.9208592676199236,
+  "cvStd": 0.007794402036856483,
+  "parameters": {
+    "ensemble_models": [
+      "RandomForest",
+      "GradientBoosting",
+      "ExtraTrees",
+      "Ridge",
+      "XGBoost"
+    ],
+    "weights": [
+      0.25,
+      0.25,
+      0.25,
+      0.15,
+      0.1
+    ],
+    "n_samples": 15000,
+    "rf_n_estimators": 250,
+    "gb_n_estimators": 200,
+    "et_n_estimators": 200
+  },
+  "featureImportance": {
+    "artist_tier": 0.34853171442844644,
+    "capacity": 0.17981936874885526,
+    "event_popularity": 0.08242505219894557,
+    "demand": 0.07872033688648686,
+    "days_until_event": 0.07463203740218628,
+    "is_holiday": 0.04086674932046179,
+    "competitor_price": 0.04025771763265541,
+    "event_duration_days": 0.040061647430487166,
+    "historical_sales": 0.027177068926928713,
+    "venue_tier": 0.026091416820550162,
+    "hour_of_day": 0.018613803293511085,
+    "season": 0.01724723915777538,
+    "day_of_week": 0.01723779923870525,
+    "is_weekend": 0.008318048514004682
+  },
+  "metadata": {
+    "trainedAt": "2026-02-22T00:28:41.013446",
+    "currency": "INR",
+    "priceRange": {
+      "min": 50,
+      "max": 50000
+    },
+    "market": "India"
+  }
+}

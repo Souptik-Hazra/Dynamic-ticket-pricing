@@ -47,3 +47,4 @@ tmp/
 test-results/
 *.orig
 ml-model/model.pkl
+*.pkl
