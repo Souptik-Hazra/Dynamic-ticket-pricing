@@ -1,0 +1,39 @@
+[{
+  "_id": {
+    "$oid": "696b21d21d152a31560b79c2"
+  },
+  "modelVersion": "v20260117_110841",
+  "modelType": "RandomForestRegressor",
+  "features": [
+    "demand",
+    "capacity",
+    "days_until_event",
+    "event_popularity",
+    "competitor_price",
+    "historical_sales",
+    "season",
+    "day_of_week"
+  ],
+  "trainScore": 0.9913,
+  "testScore": 0.9318,
+  "parameters": {
+    "nEstimators": 100,
+    "randomState": 42,
+    "nSamples": 5000
+  },
+  "isActive": true,
+  "metadata": {
+    "samplePrediction": 156.19,
+    "trainedAt": "2026-01-17T11:08:41"
+  },
+  "trainedAt": {
+    "$date": "2026-01-17T05:44:50.565Z"
+  },
+  "createdAt": {
+    "$date": "2026-01-17T05:44:50.566Z"
+  },
+  "updatedAt": {
+    "$date": "2026-01-17T05:44:50.566Z"
+  },
+  "__v": 0
+}]

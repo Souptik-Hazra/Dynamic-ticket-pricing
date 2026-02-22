@@ -1,0 +1,52 @@
+[{
+  "_id": {
+    "$oid": "6999eb1c818dd115abba165a"
+  },
+  "name": "Admin 1",
+  "email": "admin@cf.com",
+  "password": "$2a$10$4p5VeQBxQ559MBCjGDT37uZS8hh/cLBt85M0NZYgrKZqiD6010jqK",
+  "role": "admin",
+  "isActive": true,
+  "icon": "",
+  "city": "",
+  "subscription": {
+    "plan": "1_year",
+    "startDate": {
+      "$date": "2026-02-21T17:32:16.617Z"
+    },
+    "endDate": {
+      "$date": "2027-02-21T17:32:16.617Z"
+    },
+    "isActive": true
+  },
+  "createdAt": {
+    "$date": "2026-02-21T17:27:56.713Z"
+  },
+  "__v": 0,
+  "lastLogin": {
+    "$date": "2026-02-21T18:54:56.072Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6999f48df39711a3359c409b"
+  },
+  "name": "Test User",
+  "email": "test@example.com",
+  "password": "$2a$10$VRKwMSjNrtmX3PzNkwRDLeIBtWzf0aARIL6T5PBRUij3CxbokCdIK",
+  "role": "user",
+  "isActive": true,
+  "icon": "",
+  "city": "",
+  "subscription": {
+    "plan": "none",
+    "isActive": false
+  },
+  "createdAt": {
+    "$date": "2026-02-21T18:08:13.870Z"
+  },
+  "__v": 0,
+  "lastLogin": {
+    "$date": "2026-02-21T18:10:49.894Z"
+  }
+}]
