@@ -1,6 +1,8 @@
+
 import { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import axios from 'axios';
+import { API_URL } from '../config/api';
 import './PriceHistoryChart.css';
 
 const PriceHistoryChart = ({ eventId, eventName }) => {
@@ -18,7 +20,7 @@ const PriceHistoryChart = ({ eventId, eventName }) => {
   const fetchPriceHistory = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`http://localhost:3001/api/analytics/price-history/${eventId}?range=${timeRange}`);
+      const response = await axios.get(`${API_URL}/analytics/price-history/${eventId}?range=${timeRange}`);
       
       // Format data for chart
       const formattedData = response.data.map(item => ({

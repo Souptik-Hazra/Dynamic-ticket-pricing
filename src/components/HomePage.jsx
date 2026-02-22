@@ -1,5 +1,7 @@
+
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_URL } from '../config/api';
 import './HomePage.css';
 
 const HomePage = ({ onNavigate }) => {
@@ -14,7 +16,7 @@ const HomePage = ({ onNavigate }) => {
 
   const fetchEvents = async () => {
     try {
-      const response = await axios.get('http://localhost:3001/api/events');
+      const response = await axios.get(`${API_URL}/events`);
       setEvents(response.data);
     } catch (error) {
       console.error('Error fetching events:', error);
