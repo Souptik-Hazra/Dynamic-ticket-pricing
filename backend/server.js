@@ -3,8 +3,6 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const axios = require('axios');
-const swaggerUi = require('swagger-ui-express');
-const swaggerSpecs = require('./swagger');
 
 // Load environment variables
 dotenv.config();
@@ -128,18 +126,6 @@ mongoose.connect(MONGODB_URI)
 })
 .catch(err => console.error('❌ MongoDB connection error:', err));
 
-// ==================== SWAGGER API DOCS ====================
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, {
-  customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: 'Dynamic Ticket Pricing API',
-  customfavIcon: '/favicon.ico'
-}));
-
-// Serve swagger spec as JSON
-app.get('/api-docs.json', (req, res) => {
-  res.setHeader('Content-Type', 'application/json');
-  res.send(swaggerSpecs);
-});
 
 // ==================== ROUTES ====================
 
@@ -181,6 +167,5 @@ const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📊 API: http://localhost:${PORT}/api`);
-  console.log(`📚 API Docs: http://localhost:${PORT}/api-docs`);
 });
 
