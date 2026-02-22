@@ -74,10 +74,16 @@ setInterval(() => {
   }
 }, 300000);
 
+
 // 3. CORS with robust origin check
+// Set ALLOWED_ORIGINS in your .env or Render dashboard, e.g.:
+// ALLOWED_ORIGINS=https://dynamic-ticket-pricing-mulq.vercel.app,https://your-other-frontend.com
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
-  : ['http://localhost:5173'];
+  : [
+      'http://localhost:5173',
+      'https://dynamic-ticket-pricing-mulq.vercel.app' // Add your deployed frontend here
+    ];
 
 const corsOptions = {
   origin: function (origin, callback) {
