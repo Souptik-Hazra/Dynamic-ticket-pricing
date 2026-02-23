@@ -1,0 +1,13 @@
+@startuml
+[*] --> Draft
+Draft --> Published : Publish
+Published --> Active : Start Date Reached
+Active --> SoldOut : All Tickets Sold
+Active --> Cancelled : Cancel Event
+Active --> Completed : End Date Reached
+SoldOut --> Completed : End Date Reached
+Published --> Cancelled : Cancel Event
+Draft --> Cancelled : Cancel Event
+Cancelled --> Archived : Archive Event
+Completed --> Archived : Archive Event
+@enduml

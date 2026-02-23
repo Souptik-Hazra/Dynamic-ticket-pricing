@@ -1,0 +1,33 @@
+@startuml
+title Ticket State Diagram
+skinparam state {
+	BackgroundColor #FDF6E3
+	BorderColor #657b83
+	ArrowColor #268bd2
+	FontName Arial
+}
+
+state "Ticket" as Ticket {
+	[*] --> Available : createTicket()
+	Available --> Reserved : reserveTicket()
+	Reserved --> Purchased : purchaseTicket()
+	Reserved --> Available : cancelReservation()
+	Purchased --> Cancelled : cancelTicket()
+	Purchased --> Refunded : processRefund()
+	Purchased --> Expired : eventPassed()
+	Available --> Removed : eventCancelled()
+	Cancelled --> Removed : removeRecord()
+	Refunded --> Removed : removeRecord()
+	Expired --> Removed : archiveOrRemove()
+	Removed --> [*] : (end)
+}
+
+note right of Available : Ticket is available for reservation or purchase
+note right of Reserved : Ticket is reserved for a user
+note right of Purchased : Ticket has been purchased
+note right of Cancelled : Ticket was cancelled
+note right of Refunded : Ticket was refunded
+note right of Expired : Event has passed
+note right of Removed : Ticket record is deleted or archived
+
+@enduml
