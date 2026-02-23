@@ -9,19 +9,18 @@ const { protect } = require('../middleware/auth');
 router.post('/upgrade', protect, async (req, res) => {
   try {
     const { plan } = req.body; // '7_days', '30_days', '3_months', '6_months', '1_year'
-    
     if (!['7_days', '30_days', '3_months', '6_months', '1_year'].includes(plan)) {
       return res.status(400).json({ error: 'Invalid plan type' });
     }
-
     const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-
+    if (user.role === 'admin') {
+      return res.status(403).json({ error: 'Admins cannot subscribe to membership plans.' });
+    }
     const startDate = new Date();
     let endDate = new Date(startDate);
-
     switch (plan) {
       case '7_days':
         endDate.setDate(startDate.getDate() + 7);
@@ -39,22 +38,18 @@ router.post('/upgrade', protect, async (req, res) => {
         endDate.setFullYear(startDate.getFullYear() + 1);
         break;
     }
-
     user.subscription = {
       plan: plan,
       startDate: startDate,
       endDate: endDate,
       isActive: true
     };
-
     await user.save();
-
     res.json({ 
       success: true, 
       message: `Successfully subscribed to ${plan} plan`,
       subscription: user.subscription 
     });
-
   } catch (error) {
     console.error('Subscription error:', error);
     res.status(500).json({ error: 'Server error processing subscription' });
