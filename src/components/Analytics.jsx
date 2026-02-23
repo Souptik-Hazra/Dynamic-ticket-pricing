@@ -191,4 +191,13 @@ function Analytics() {
   );
 }
 
-export default Analytics;
+  import Footer from './Footer';
+
+  export default function AnalyticsWrapper(props) {
+    return (
+      <>
+        <Analytics {...props} />
+        <Footer />
+      </>
+    );
+  }

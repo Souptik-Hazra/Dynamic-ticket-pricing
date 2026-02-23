@@ -6,6 +6,10 @@ const priceHistorySchema = new mongoose.Schema({
     ref: 'Event',
     required: true
   },
+  categoryName: {
+    type: String,
+    required: true
+  },
   price: {
     type: Number,
     required: true

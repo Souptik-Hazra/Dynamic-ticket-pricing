@@ -139,4 +139,13 @@ function EventList({ events, onUpdatePrice, onSelectEvent, onRefresh }) {
   );
 }
 
-export default EventList;
+  import Footer from './Footer';
+
+  export default function EventListWrapper(props) {
+    return (
+      <>
+        <EventList {...props} />
+        <Footer />
+      </>
+    );
+  }

@@ -163,4 +163,13 @@ const HomePage = ({ onNavigate }) => {
   );
 };
 
-export default HomePage;
+  import Footer from './Footer';
+
+  export default function HomePageWrapper(props) {
+    return (
+      <>
+        <HomePage {...props} />
+        <Footer />
+      </>
+    );
+  }

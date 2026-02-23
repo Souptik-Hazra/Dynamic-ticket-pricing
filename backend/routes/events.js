@@ -234,21 +234,43 @@ router.get('/:id/price', async (req, res) => {
     await event.save();
 
     // Save to price history
-    const priceHistory = new PriceHistory({
-      event: event._id,
-      price: predictedPrice,
-      demand: demand,
-      occupancyRate: occupancyRate,
-      daysUntilEvent: daysUntilEvent,
-      factors: {
-        eventPopularity: event.eventPopularity,
-        competitorPrice: features.competitor_price,
-        historicalSales: historicalSales,
-        season: features.season,
-        dayOfWeek: features.day_of_week
+      if (event.ticketCategories && event.ticketCategories.length > 0) {
+        for (const category of event.ticketCategories) {
+          const priceHistory = new PriceHistory({
+            event: event._id,
+            categoryName: category.name,
+            price: category.price,
+            demand: demand,
+            occupancyRate: occupancyRate,
+            daysUntilEvent: daysUntilEvent,
+            factors: {
+              eventPopularity: event.eventPopularity,
+              competitorPrice: features.competitor_price,
+              historicalSales: historicalSales,
+              season: features.season,
+              dayOfWeek: features.day_of_week
+            }
+          });
+          await priceHistory.save();
+        }
+      } else {
+        const priceHistory = new PriceHistory({
+          event: event._id,
+          categoryName: 'standard',
+          price: predictedPrice,
+          demand: demand,
+          occupancyRate: occupancyRate,
+          daysUntilEvent: daysUntilEvent,
+          factors: {
+            eventPopularity: event.eventPopularity,
+            competitorPrice: features.competitor_price,
+            historicalSales: historicalSales,
+            season: features.season,
+            dayOfWeek: features.day_of_week
+          }
+        });
+        await priceHistory.save();
       }
-    });
-    await priceHistory.save();
 
     // Log prediction
     const predictionLog = new PredictionLog({
@@ -301,6 +323,26 @@ router.get('/:id/price-history', async (req, res) => {
       .sort({ timestamp: -1 })
       .limit(100);
     res.json(priceHistory);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+// @route   GET /api/analytics/price-history/:eventId
+// @desc    Get price history for an event (all categories)
+// @access  Admin
+const PriceHistory = require('../models/PriceHistory');
+router.get('/analytics/price-history/:eventId', async (req, res) => {
+  try {
+    const eventId = req.params.eventId;
+    const range = req.query.range || '7d';
+    // Calculate date range
+    let startDate = new Date();
+    if (range === '24h') startDate.setDate(startDate.getDate() - 1);
+    else if (range === '7d') startDate.setDate(startDate.getDate() - 7);
+    else if (range === '30d') startDate.setDate(startDate.getDate() - 30);
+    // Fetch price history for event
+    const history = await PriceHistory.find({ event: eventId, timestamp: { $gte: startDate } }).sort({ timestamp: 1 });
+    res.json(history);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
