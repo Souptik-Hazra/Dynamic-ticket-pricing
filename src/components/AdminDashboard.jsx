@@ -162,24 +162,13 @@ function AdminDashboard() {
         >
           🚨 Fraud Analytics
         </button>
-          <button
-            className={view === 'priceHistory' ? 'active' : ''}
-            onClick={() => setView('priceHistory')}
-          >
-            💹 Price History
-          </button>
+          // ...existing code...
       </nav>
 
       <main className="admin-content">
         {loading && <div className="loading">Loading...</div>}
 
-          {view === 'priceHistory' && (
-            <div className="price-history-view">
-              <h2>💹 Price History (All Events & Categories)</h2>
-              {/* TODO: Replace with actual chart component and category color legend */}
-              <p>Select an event to view price history by category. Chart and legend will appear here.</p>
-            </div>
-          )}
+        // ...existing code...
 
         {view === 'stats' && stats && (
           <div className="stats-view">

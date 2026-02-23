@@ -202,7 +202,8 @@
 .category-card.sold-out {
   opacity: 0.5;
   cursor: not-allowed;
-  background: #f0f0f0;
+  background: #dc3545;
+  color: #fff;
 }
 
 .category-header {

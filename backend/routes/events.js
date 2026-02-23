@@ -330,7 +330,7 @@ router.get('/:id/price-history', async (req, res) => {
 // @route   GET /api/analytics/price-history/:eventId
 // @desc    Get price history for an event (all categories)
 // @access  Admin
-const PriceHistory = require('../models/PriceHistory');
+
 router.get('/analytics/price-history/:eventId', async (req, res) => {
   try {
     const eventId = req.params.eventId;
