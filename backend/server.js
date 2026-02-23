@@ -80,16 +80,17 @@ setInterval(() => {
 // ALLOWED_ORIGINS=https://dynamic-ticket-pricing-mulq.vercel.app,https://your-other-frontend.com
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
-  : [
-      'http://localhost:5173',
-      'https://dynamic-ticket-pricing-mulq.vercel.app' // Add your deployed frontend here
-    ];
+  : [/^http:\/\/localhost:\d+$/]; // Allow any localhost port for development
 
 const corsOptions = {
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps, curl, etc.)
     if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) {
+    if (
+      allowedOrigins.some(o =>
+        typeof o === 'string' ? o === origin : o instanceof RegExp && o.test(origin)
+      )
+    ) {
       return callback(null, true);
     } else {
       return callback(new Error('Not allowed by CORS'));
