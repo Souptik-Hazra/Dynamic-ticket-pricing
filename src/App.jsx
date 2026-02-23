@@ -125,7 +125,9 @@ function AppContent() {
                        user.subscription.plan === '1_year' ? 'ANNUAL' : 'MEMBER'}
                   </span>
                )}
-              <button onClick={() => setView('subscription')} className="nav-profile-btn">Membership</button>
+              {!isAdmin() && (
+                <button onClick={() => setView('subscription')} className="nav-profile-btn">Membership</button>
+              )}
               <button onClick={() => setView('profile')} className="nav-profile-btn">Profile</button>
               <button onClick={logout} className="nav-logout-btn">Logout</button>
             </div>
