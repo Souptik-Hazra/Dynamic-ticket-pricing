@@ -1,57 +1,74 @@
-@startuml
+@startuml Sequence diagram
 
-' Participant colors
+actor Admin
 actor User #LightBlue
 participant "Frontend" as FE #LightGreen
 participant "Backend" as BE #LightYellow
-participant "ML API" as ML #LightPink
+participant "ML" as ML #LightPink
 participant "MongoDB" as DB #LightGray
 participant "WebSocket Service" as WS #LightSalmon
 
+' --- Admin Event Creation ---
+Admin -> FE: Fill event form
+FE -> BE: POST /admin/events
+BE -> DB: Insert new event
+DB --> BE: Insert result
+BE --> FE: Success/failure
+FE --> Admin: Show confirmation
+
+
+' --- Real-time Price Update ---
 User -> FE : Select event, category, quantity
 FE -> BE : POST /api/tickets
-
 activate BE #Yellow
-
 BE -> DB : Event.findById(eventId)
 DB --> BE : Event details
-
 note right of BE #aaffaa
 Calculate:
 - occupancyRate
 - daysUntilEvent
 - popularity
 end note
-
 BE -> ML : POST /predict
 ML --> BE : predicted_price, confidence
-
 note right of BE #ffecb3
 Apply gradual pricing formula
 (finalPrice = base + dynamicFactor)
 end note
-
 BE -> DB : Check & reserve seats
 DB --> BE : Seats reserved
-
 group Create Ticket & Logs #E0E0E0
     BE -> DB : Ticket.create()
     BE -> DB : Update event stats
     BE -> DB : PredictionLog.create()
     BE -> DB : PriceHistory.create()
 end
-
 note right of BE #b3e5fc
 Invalidate cache (event + tickets)
 end note
-
 BE --> FE : 201 Created (ticket + price)
 deactivate BE
-
 FE --> User : Show confirmation
-
 BE -> WS : emit('priceUpdate')
 WS --> FE : priceUpdate event
 FE --> User : Update UI price
 
+
+' --- Ticket Purchase ---
+User -> FE: Select event, buy ticket
+FE -> BE: POST /purchase
+BE -> ML: Predict price/fraud
+ML --> BE: Prediction result
+BE -> DB: Create ticket, log purchase
+DB --> BE: Confirmation
+BE --> FE: Purchase result
+FE --> User: Show ticket/confirmation
+
+' --- User Login ---
+User -> FE: Enter credentials
+FE -> BE: POST /login
+BE -> DB: Query user
+DB --> BE: User data
+BE --> FE: Auth result (success/fail)
+FE --> User: Show dashboard or error
 @enduml

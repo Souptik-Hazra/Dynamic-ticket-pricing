@@ -83,7 +83,7 @@ function AppContent() {
       <div className="nav-container">
         <div className="nav-brand" onClick={() => setView('home')}>
           <span className="brand-icon">🎫</span>
-          <span className="brand-name">TicketHub</span>
+          <span className="brand-name">FanFeverTickets</span>
         </div>
         <div className="nav-links">
           <button onClick={() => setView('home')} className={view === 'home' ? 'active' : ''}>

@@ -370,7 +370,7 @@ function TicketPurchase({ event, onBack, onSuccess }) {
               <div className="pp-header">
                 <div className="pp-brand">
                   <span className="pp-brand-icon">🎫</span>
-                  <span className="pp-brand-name">TicketHub</span>
+                  <span className="pp-brand-name">FanFeverTickets</span>
                 </div>
                 <div className="pp-badge">E-TICKET</div>
               </div>
