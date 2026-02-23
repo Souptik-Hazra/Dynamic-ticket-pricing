@@ -13,7 +13,7 @@
     "start": "vite",
     "electron:dev": "vite build && npx electron .",
     "electron:serve": "npx electron .",
-    "package": "electron-packager . MyApp"
+    "package": "electron-builder"
   },
   "dependencies": {
     "axios": "^1.13.2",
@@ -28,14 +28,18 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
     "electron": "^40.6.0",
-    "electron-packager": "^17.1.2",
+    "electron-builder": "^22.14.13",
     "eslint": "^10.0.1",
-    "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
     "vite": "^7.2.4"
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "build": {
+    "productName": "FanFeverTickets",
+    "compression": "maximum",
+    "icon": "icon.ico"
   }
 }
