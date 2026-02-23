@@ -1,6 +1,7 @@
 {
   "name": "dynamic-ticket-pricing",
   "private": true,
+  "main": "electron-main.cjs",
   "version": "1.0.0",
   "type": "module",
   "description": "Dynamic Ticket Pricing System with ML-powered price predictions",
@@ -9,7 +10,10 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "start": "vite"
+    "start": "vite",
+    "electron:dev": "vite build && npx electron .",
+    "electron:serve": "npx electron .",
+    "package": "electron-packager . MyApp"
   },
   "dependencies": {
     "axios": "^1.13.2",
@@ -23,7 +27,9 @@
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
-    "eslint": "^9.39.1",
+    "electron": "^40.6.0",
+    "electron-packager": "^15.4.0",
+    "eslint": "^10.0.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",

@@ -338,7 +338,7 @@ const UserProfile = () => {
               <div className="print-ticket-header">
                 <div className="print-ticket-brand">
                   <span className="print-brand-icon">🎫</span>
-                  <span className="print-brand-name">TicketHub</span>
+                  <span className="print-brand-name">FanFeverTickets</span>
                 </div>
                 <div className="print-ticket-title">E-TICKET</div>
               </div>

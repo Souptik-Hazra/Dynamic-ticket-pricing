@@ -1,0 +1,14 @@
+@startuml
+[*] --> Unregistered
+Unregistered --> Registered : Signup
+Registered --> EmailVerificationPending : Register
+EmailVerificationPending --> Verified : Email Verified
+EmailVerificationPending --> Registered : Resend Verification
+Verified --> LoggedIn : Login
+LoggedIn --> LoggedOut : Logout
+LoggedIn --> Suspended : Suspended by Admin
+Suspended --> LoggedOut : Logout
+LoggedOut --> LoggedIn : Login
+Verified --> PasswordResetRequested : Forgot Password
+PasswordResetRequested --> Verified : Password Reset Success
+@enduml

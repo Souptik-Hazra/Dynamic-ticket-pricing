@@ -134,10 +134,6 @@ function AdminDashboard() {
       <header className="admin-header">
         <div className="admin-header-content">
           <h1>🎫 Admin Dashboard</h1>
-          <div className="admin-user-info">
-            <span>👤 {user?.name} ({user?.role})</span>
-            <button className="logout-btn" onClick={logout}>Logout</button>
-          </div>
         </div>
       </header>
 
