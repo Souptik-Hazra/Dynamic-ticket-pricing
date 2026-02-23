@@ -44,20 +44,20 @@ const HomePage = ({ onNavigate }) => {
       <section className="hero-section">
         <div className="hero-overlay"></div>
         <div className="hero-content">
-          <h1 className="hero-title">Discover Amazing Events</h1>
-          <p className="hero-subtitle">Book your tickets with dynamic pricing - Best deals guaranteed!</p>
-          <div className="hero-search">
-            <input
-              type="text"
-              placeholder="Search for events, artists, venues..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="search-input"
-            />
-            <button className="search-button">
-              <i className="search-icon">🔍</i> Search
-            </button>
-          </div>
+            <h1 className="hero-title gradient-text">Welcome to Dynamic Ticket Pricing!</h1>
+            <p className="hero-subtitle">Experience AI-powered pricing for concerts, sports, theater, and more.</p>
+            <div className="hero-search modern-search">
+              <input
+                type="text"
+                placeholder="Search for events, artists, venues..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="search-input"
+              />
+              <button className="search-button">
+                <i className="search-icon">🔍</i> Search
+              </button>
+            </div>
         </div>
       </section>
 
