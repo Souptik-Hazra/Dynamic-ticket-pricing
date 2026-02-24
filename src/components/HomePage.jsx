@@ -16,7 +16,7 @@ const HomePage = ({ onNavigate }) => {
 
   const fetchEvents = async () => {
     try {
-      const response = await axios.get(`${API_URL}/events`);
+      const response = await axios.get(`${API_URL}/api/events`);
       setEvents(response.data);
     } catch (error) {
       console.error('Error fetching events:', error);
