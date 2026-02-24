@@ -42,7 +42,7 @@ function AppContent() {
 
   const handleUpdatePrice = async (eventId) => {
     try {
-      const response = await axios.get(`${API_URL}/events/${eventId}/price`);
+      const response = await axios.get(`${API_URL}/api/events/${eventId}/price`);
       alert(`New dynamic price: ₹${response.data.current_price.toFixed(2)}`);
       fetchEvents(); // Refresh events
     } catch (error) {
