@@ -22,7 +22,7 @@ function TicketPurchase({ event, onBack, onSuccess }) {
     const fetchDynamicPrices = async () => {
       try {
         setPriceLoading(true);
-        const response = await axios.get(`${API_URL}/events/${event._id}/dynamic-prices`);
+        const response = await axios.get(`${API_URL}/api/events/${event._id}/dynamic-prices`);
         if (response.data.prices) {
           setDynamicPrices(response.data.prices);
         }

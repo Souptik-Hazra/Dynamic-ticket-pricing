@@ -22,6 +22,9 @@ const ticketRoutes = require('./routes/tickets');
 const analyticsRoutes = require('./routes/analytics');
 const eventRoutes = require('./routes/events');
 
+
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpecs = require('./swagger.js');
 const app = express();
 
 // Security Middleware
@@ -151,6 +154,10 @@ app.use('/api/tickets', ticketRoutes);
 
 // Analytics routes
 app.use('/api/analytics', analyticsRoutes);
+
+
+// Swagger UI
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 
 // Health check
 app.get('/api/health', async (req, res) => {
