@@ -9,24 +9,24 @@ export const ENDPOINTS = {
   SIGNUP: '/auth/signup',
   
   // Events
-  EVENTS: '/events',
-  EVENT_BY_ID: (id) => `/events/${id}`,
+  EVENTS: '/api/events',
+  EVENT_BY_ID: (id) => `/api/events/${id}`,
   
   // Tickets
-  TICKETS: '/tickets',
-  USER_TICKETS: '/tickets/user',
-  PURCHASE_TICKET: '/tickets/purchase',
+  TICKETS: '/api/tickets',
+  USER_TICKETS: '/api/tickets/user',
+  PURCHASE_TICKET: '/api/tickets/purchase',
   
   // Admin
-  ADMIN_EVENTS: '/admin/events',
-  ADMIN_EVENT_BY_ID: (id) => `/admin/events/${id}`,
-  ADMIN_USERS: '/admin/users',
+  ADMIN_EVENTS: '/api/admin/events',
+  ADMIN_EVENT_BY_ID: (id) => `/api/admin/events/${id}`,
+  ADMIN_USERS: '/api/admin/users',
   
   // Analytics
-  ANALYTICS: '/analytics',
+  ANALYTICS: '/api/analytics',
   
   // Price Prediction
-  PREDICT_PRICE: '/predict-price'
+  PREDICT_PRICE: '/api/predict-price'
 };
 
 export default API_URL;
