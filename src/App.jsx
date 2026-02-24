@@ -30,7 +30,7 @@ function AppContent() {
   const fetchEvents = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_URL}/api/events`);
+      const response = await axios.get(`${API_URL}/events`);
       setEvents(response.data);
     } catch (error) {
       console.error('Error fetching events:', error);
@@ -42,7 +42,7 @@ function AppContent() {
 
   const handleUpdatePrice = async (eventId) => {
     try {
-      const response = await axios.get(`${API_URL}/api/events/${eventId}/price`);
+      const response = await axios.get(`${API_URL}/events/${eventId}/price`);
       alert(`New dynamic price: ₹${response.data.current_price.toFixed(2)}`);
       fetchEvents(); // Refresh events
     } catch (error) {

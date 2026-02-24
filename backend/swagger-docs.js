@@ -30,10 +30,8 @@
  *     responses:
  *       201:
  *         description: User registered successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/AuthResponse'
+ *         schema:
+ *           $ref: '#/definitions/AuthResponse'
  *       400:
  *         description: Invalid input or user already exists
  *
@@ -59,10 +57,8 @@
  *     responses:
  *       200:
  *         description: Login successful
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/AuthResponse'
+ *         schema:
+ *           $ref: '#/definitions/AuthResponse'
  *       401:
  *         description: Invalid credentials
  *
@@ -75,12 +71,10 @@
  *     responses:
  *       200:
  *         description: User profile
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/User'
+ *         schema:
+ *           $ref: '#/definitions/User'
  *       401:
- *         $ref: '#/components/responses/UnauthorizedError'
+ *         $ref: '#/definitions/UnauthorizedError'
  */
 
 /**
@@ -111,12 +105,10 @@
  *     responses:
  *       200:
  *         description: List of events
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Event'
+ *         schema:
+ *           type: array
+ *           items:
+ *             $ref: '#/definitions/Event'
  *
  *   post:
  *     summary: Create a new event (Admin only)
@@ -132,12 +124,10 @@
  *     responses:
  *       201:
  *         description: Event created successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Event'
+ *         schema:
+ *           $ref: '#/definitions/Event'
  *       401:
- *         $ref: '#/components/responses/UnauthorizedError'
+ *         $ref: '#/definitions/UnauthorizedError'
  *       403:
  *         description: Admin access required
  *
@@ -155,12 +145,10 @@
  *     responses:
  *       200:
  *         description: Event details
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Event'
+ *         schema:
+ *           $ref: '#/definitions/Event'
  *       404:
- *         $ref: '#/components/responses/NotFoundError'
+ *         $ref: '#/definitions/NotFoundError'
  *
  *   put:
  *     summary: Update event (Admin only)
@@ -183,7 +171,7 @@
  *       200:
  *         description: Event updated
  *       404:
- *         $ref: '#/components/responses/NotFoundError'
+ *         $ref: '#/definitions/NotFoundError'
  *
  *   delete:
  *     summary: Delete event (Admin only)
@@ -200,7 +188,7 @@
  *       200:
  *         description: Event deleted
  *       404:
- *         $ref: '#/components/responses/NotFoundError'
+ *         $ref: '#/definitions/NotFoundError'
  */
 
 /**
@@ -214,12 +202,10 @@
  *     responses:
  *       200:
  *         description: List of user's tickets
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Ticket'
+ *         schema:
+ *           type: array
+ *           items:
+ *             $ref: '#/definitions/Ticket'
  *
  *   post:
  *     summary: Purchase tickets
@@ -247,14 +233,12 @@
  *     responses:
  *       201:
  *         description: Tickets purchased successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Ticket'
+ *         schema:
+ *           $ref: '#/definitions/Ticket'
  *       400:
  *         description: Not enough seats available
  *       401:
- *         $ref: '#/components/responses/UnauthorizedError'
+ *         $ref: '#/definitions/UnauthorizedError'
  *
  * /api/tickets/{id}/cancel:
  *   put:
@@ -272,7 +256,7 @@
  *       200:
  *         description: Ticket cancelled and refund processed
  *       404:
- *         $ref: '#/components/responses/NotFoundError'
+ *         $ref: '#/definitions/NotFoundError'
  */
 
 /**
@@ -335,10 +319,8 @@
  *     responses:
  *       200:
  *         description: Price prediction
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/PricePrediction'
+ *         schema:
+ *           $ref: '#/definitions/PricePrediction'
  *
  * /api/ml/health:
  *   get:
@@ -347,20 +329,8 @@
  *     responses:
  *       200:
  *         description: ML model is healthy
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: string
- *                   example: healthy
- *                 model_version:
- *                   type: string
- *                   example: v20240117_130152
- *                 accuracy:
- *                   type: number
- *                   example: 0.9142
+ *         schema:
+ *           $ref: '#/definitions/MLHealth'
  */
 
 /**
@@ -374,28 +344,8 @@
  *     responses:
  *       200:
  *         description: Dashboard analytics data
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 totalRevenue:
- *                   type: number
- *                 totalTicketsSold:
- *                   type: integer
- *                 activeEvents:
- *                   type: integer
- *                 averagePrice:
- *                   type: number
- *                 revenueByDay:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       date:
- *                         type: string
- *                       revenue:
- *                         type: number
+ *         schema:
+ *           $ref: '#/definitions/DashboardAnalytics'
  *
  * /api/analytics/price-history/{eventId}:
  *   get:
@@ -416,20 +366,8 @@
  *     responses:
  *       200:
  *         description: Price history data
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   timestamp:
- *                     type: string
- *                     format: date-time
- *                   price:
- *                     type: number
- *                   demand:
- *                     type: number
+ *         schema:
+ *           $ref: '#/definitions/PriceHistory'
  */
 
 /**
@@ -443,12 +381,8 @@
  *     responses:
  *       200:
  *         description: List of all users
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/User'
+ *         schema:
+ *           $ref: '#/definitions/User'
  *       403:
  *         description: Admin access required
  *
@@ -461,19 +395,8 @@
  *     responses:
  *       200:
  *         description: System statistics
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 totalUsers:
- *                   type: integer
- *                 totalEvents:
- *                   type: integer
- *                 totalRevenue:
- *                   type: number
- *                 mlModelAccuracy:
- *                   type: number
+ *         schema:
+ *           $ref: '#/definitions/SystemStats'
  */
 
 // This file contains only Swagger documentation comments
