@@ -44,7 +44,8 @@ router.get('/', async (req, res) => {
     });
     
     res.json(publicEvents);
-  } catch (error) {
+  } 
+  catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
