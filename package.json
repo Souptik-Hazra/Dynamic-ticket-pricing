@@ -13,7 +13,8 @@
     "start": "vite",
     "electron:dev": "vite build && npx electron .",
     "electron:serve": "npx electron .",
-    "package": "electron-builder"
+    "package": "electron-builder",
+    "build-and-package": "npm run build && npm run package"
   },
   "dependencies": {
     "axios": "^1.13.2",
@@ -40,6 +41,11 @@
   "build": {
     "productName": "FanFeverTickets",
     "compression": "maximum",
-    "icon": "icon.ico"
+    "icon": "icon.ico",
+    "files": [
+      "dist/**/*",
+      "electron-main.cjs",
+      "backend/**/*"
+    ]
   }
 }
