@@ -28,8 +28,12 @@ const swaggerSpecs = require('./swagger.js');
 const app = express();
 
 // Security Middleware
-// 1. Security Headers
+// 1. Security Headers (strict CSP for all except Swagger UI)
 app.use((req, res, next) => {
+  // Relax CSP for Swagger UI only
+  if (req.path.startsWith('/api/docs')) {
+    return next();
+  }
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-XSS-Protection', '1; mode=block');

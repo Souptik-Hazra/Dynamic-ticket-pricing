@@ -1,171 +1,176 @@
+
 const swaggerJsdoc = require('swagger-jsdoc');
 
 const options = {
   swaggerDefinition: {
-    openapi: '3.0.0',
+    swagger: '2.0',
     info: {
       title: 'Dynamic Ticket Pricing API',
       version: '1.0.0',
-      description: `
-# Dynamic Ticket Pricing API
-
-A comprehensive API for managing dynamic ticket pricing using machine learning.
-
-## Features
-- 🎫 Event Management
-- 💰 Dynamic Pricing with ML
-- 🔐 JWT Authentication
-- 📊 Analytics & Reporting
-- 🎟️ Ticket Booking System
-
-## Authentication
-Most endpoints require a JWT token. Include it in the Authorization header:
-\`\`\`
-Authorization: Bearer <your-token>
-\`\`\`
-
-## Currency
-All prices are in Indian Rupees (₹ INR).
-      `,
-      contact: {
-        name: 'API Support',
-        email: 'support@dynamicticketpricing.com'
-      },
-      license: {
-        name: 'MIT',
-        url: 'https://opensource.org/licenses/MIT'
-      }
+      description: 'API for dynamic ticket pricing, event management, and analytics.'
     },
-    servers: [
-      {
-        url: 'http://localhost:3001',
-        description: 'Development server'
-      },
-      {
-        url: 'https://api.dynamicticketpricing.com',
-        description: 'Production server'
-      }
-    ],
-    components: {
-      securitySchemes: {
-        bearerAuth: {
-          type: 'http',
-          scheme: 'bearer',
-          bearerFormat: 'JWT',
-          description: 'Enter your JWT token'
+    host: 'localhost:3001',
+    basePath: '/api',
+    schemes: ['http', 'https'],
+    definitions: {
+      AuthResponse: {
+        type: 'object',
+        properties: {
+          token: { type: 'string', example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' },
+          user: { $ref: '#/definitions/User' }
         }
       },
-      schemas: {
-        User: {
-          type: 'object',
-          properties: {
-            _id: { type: 'string', example: '507f1f77bcf86cd799439011' },
-            name: { type: 'string', example: 'John Doe' },
-            email: { type: 'string', format: 'email', example: 'john@example.com' },
-            isAdmin: { type: 'boolean', default: false },
-            createdAt: { type: 'string', format: 'date-time' }
-          }
-        },
-        Event: {
-          type: 'object',
-          required: ['title', 'description', 'date', 'location', 'basePrice', 'totalSeats'],
-          properties: {
-            _id: { type: 'string', example: '507f1f77bcf86cd799439011' },
-            title: { type: 'string', example: 'Music Concert 2024' },
-            description: { type: 'string', example: 'An amazing music concert' },
-            date: { type: 'string', format: 'date-time' },
-            location: { type: 'string', example: 'Mumbai Stadium' },
-            category: { 
-              type: 'string', 
-              enum: ['concert', 'sports', 'theater', 'conference', 'festival'],
-              example: 'concert'
-            },
-            basePrice: { type: 'number', example: 500 },
-            currentPrice: { type: 'number', example: 650 },
-            totalSeats: { type: 'integer', example: 1000 },
-            availableSeats: { type: 'integer', example: 750 },
-            image: { type: 'string', example: 'https://example.com/image.jpg' }
-          }
-        },
-        Ticket: {
-          type: 'object',
-          properties: {
-            _id: { type: 'string' },
-            user: { type: 'string', description: 'User ID' },
-            event: { type: 'string', description: 'Event ID' },
-            quantity: { type: 'integer', minimum: 1 },
-            pricePerTicket: { type: 'number' },
-            totalPrice: { type: 'number' },
-            status: { 
-              type: 'string', 
-              enum: ['pending', 'confirmed', 'cancelled'],
-              default: 'confirmed'
-            },
-            purchasedAt: { type: 'string', format: 'date-time' }
-          }
-        },
-        PricePrediction: {
-          type: 'object',
-          properties: {
-            predicted_price: { type: 'number', example: 650.50 },
-            confidence: { type: 'number', example: 0.85 },
-            currency: { type: 'string', example: 'INR' },
-            factors: {
+      User: {
+        type: 'object',
+        properties: {
+          _id: { type: 'string', example: '507f1f77bcf86cd799439011' },
+          name: { type: 'string', example: 'Admin 1' },
+          email: { type: 'string', format: 'email', example: 'admin@cf.com' },
+          password: { type: 'string', example: '$2a$10$4p5VeQBxQ559MBCjGDT37uZS8hh/cLBt85M0NZYgrKZqiD6010jqK' },
+          role: { type: 'string', example: 'admin' },
+          isActive: { type: 'boolean', example: true },
+          icon: { type: 'string', example: '' },
+          city: { type: 'string', example: '' },
+          subscription: { type: 'object' },
+          createdAt: { type: 'string', format: 'date-time', example: '2026-02-21T17:27:56.713+00:00' },
+          __v: { type: 'integer', example: 0 },
+          lastLogin: { type: 'string', format: 'date-time', example: '2026-02-21T18:54:56.072+00:00' }
+        }
+      },
+      Event: {
+        type: 'object',
+        properties: {
+          _id: { type: 'string', example: '696b493dcbd8a2ade0c7bbb3' },
+          name: { type: 'string', example: 'Garba Night' },
+          description: { type: 'string', example: 'Garba' },
+          venue: { type: 'string', example: 'SJT Ground' },
+          date: { type: 'string', format: 'date-time', example: '2026-01-29T16:01:00.000Z' },
+          ticketCategories: {
+            type: 'array',
+            items: {
               type: 'object',
               properties: {
-                demand_impact: { type: 'string', example: 'high' },
-                time_factor: { type: 'string', example: 'moderate' },
-                competitor_influence: { type: 'string', example: 'low' }
+                name: { type: 'string', example: 'standard' },
+                price: { type: 'number', example: 100 },
+                maxPrice: { type: 'number', example: 300 },
+                seats: { type: 'integer', example: 198 },
+                availableSeats: { type: 'integer', example: 0 },
+                _id: { type: 'string', example: '6973b9eb5f21a2ce11845c39' }
               }
             }
-          }
-        },
-        Error: {
-          type: 'object',
-          properties: {
-            message: { type: 'string', example: 'An error occurred' },
-            error: { type: 'string' }
-          }
-        },
-        AuthResponse: {
-          type: 'object',
-          properties: {
-            token: { type: 'string', example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' },
-            user: { $ref: '#/components/schemas/User' }
-          }
+          },
+          popularity: { type: 'integer', example: 5 },
+          eventPopularity: { type: 'integer', example: 1 },
+          historicalDemand: { type: 'number', example: 0.5 },
+          category: { type: 'string', example: 'festival' },
+          image: { type: 'string', example: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRPa7X0ewafG3cjsMOrgOkAeX1Z1JmT-lPhWQ&s' },
+          ticketsSold: { type: 'integer', example: 259 },
+          totalSales: { type: 'number', example: 0 },
+          totalRevenue: { type: 'number', example: 118531.71 },
+          status: { type: 'string', example: 'completed' },
+          eventDate: { type: 'string', format: 'date-time', example: '2026-01-30T08:31:00.000Z' },
+          capacity: { type: 'integer', example: 259 },
+          totalCapacity: { type: 'integer', example: 254 },
+          availableTickets: { type: 'integer', example: 0 },
+          basePrice: { type: 'number', example: 100 },
+          ticketPrice: { type: 'number', example: 100 },
+          currentPrice: { type: 'number', example: 281.3 },
+          createdAt: { type: 'string', format: 'date-time', example: '2026-01-17T08:33:01.948Z' },
+          updatedAt: { type: 'string', format: 'date-time', example: '2026-02-09T13:57:43.270Z' },
+          __v: { type: 'integer', example: 0 },
+          endDate: { type: 'string', format: 'date-time', example: '2026-02-07T18:11:00.000Z' },
+          startDate: { type: 'string', format: 'date-time', example: '2026-01-05T18:11:00.000Z' }
         }
       },
-      responses: {
-        UnauthorizedError: {
-          description: 'Access token is missing or invalid',
-          content: {
-            'application/json': {
-              schema: { $ref: '#/components/schemas/Error' }
+      Ticket: {
+        type: 'object',
+        properties: {
+          _id: { type: 'string', example: '696b953adf0b3cbca2f5ef14' },
+          eventId: { type: 'string', example: '696b493dcbd8a2ade0c7bbb3' },
+          userId: { type: 'string', example: '696b1f8d204a11c58c72c32c' },
+          customerName: { type: 'string', example: 'Admin User' },
+          customerEmail: { type: 'string', example: 'admin@test.com' },
+          quantity: { type: 'integer', example: 195 },
+          price: { type: 'number', example: 154 },
+          totalAmount: { type: 'number', example: 30030 },
+          purchaseDate: { type: 'string', format: 'date-time', example: '2026-01-17T13:57:14.948Z' },
+          categoryName: { type: 'string', example: 'standard' },
+          ticketType: { type: 'string', example: 'standard' },
+          status: { type: 'string', example: 'confirmed' },
+          bookingReference: { type: 'string', example: 'TKT-1768658234948-FT9PC8PCH' },
+          createdAt: { type: 'string', format: 'date-time', example: '2026-01-17T13:57:14.960Z' },
+          updatedAt: { type: 'string', format: 'date-time', example: '2026-01-17T13:57:14.960Z' },
+          __v: { type: 'integer', example: 0 }
+        }
+      },
+      PricePrediction: {
+        type: 'object',
+        properties: {
+          _id: { type: 'string', example: '696b3f8ddef52da7551c6b1d' },
+          event: { type: 'string', example: '696b2c1b04e73ff71cd9d80e' },
+          inputFeatures: {
+            type: 'object',
+            properties: {
+              demand: { type: 'number', example: 100 },
+              capacity: { type: 'number', example: 160 },
+              daysUntilEvent: { type: 'integer', example: 13 },
+              eventPopularity: { type: 'number', example: 0.7 },
+              competitorPrice: { type: 'number', example: 14.4 },
+              historicalSales: { type: 'number', example: 0 },
+              season: { type: 'integer', example: 1 },
+              dayOfWeek: { type: 'integer', example: 5 }
             }
-          }
-        },
-        NotFoundError: {
-          description: 'The specified resource was not found',
-          content: {
-            'application/json': {
-              schema: { $ref: '#/components/schemas/Error' }
+          },
+          predictedPrice: { type: 'number', example: 69.07 },
+          priceRange: {
+            type: 'object',
+            properties: {
+              min: { type: 'number', example: 63.54 },
+              max: { type: 'number', example: 74.6 }
             }
-          }
+          },
+          confidence: { type: 'number', example: 0.95 },
+          modelVersion: { type: 'string', example: 'v20260117_130152' },
+          timestamp: { type: 'string', format: 'date-time', example: '2026-01-17T07:51:41.086Z' },
+          createdAt: { type: 'string', format: 'date-time', example: '2026-01-17T07:51:41.087Z' },
+          updatedAt: { type: 'string', format: 'date-time', example: '2026-01-17T07:51:41.087Z' },
+          __v: { type: 'integer', example: 0 }
+        }
+      },
+      Error: {
+        type: 'object',
+        properties: {
+          message: { type: 'string', example: 'An error occurred' },
+          error: { type: 'string' }
+        }
+      },
+      UnauthorizedError: {
+        type: 'object',
+        properties: {
+          message: { type: 'string', example: 'Access token is missing or invalid' },
+          error: { type: 'string' }
+        }
+      },
+      NotFoundError: {
+        type: 'object',
+        properties: {
+          message: { type: 'string', example: 'The specified resource was not found' },
+          error: { type: 'string' }
         }
       }
     },
-    tags: [
-      { name: 'Authentication', description: 'User registration and login' },
-      { name: 'Events', description: 'Event management endpoints' },
-      { name: 'Tickets', description: 'Ticket booking and management' },
-      { name: 'ML Model', description: 'Machine learning price prediction' },
-      { name: 'Analytics', description: 'Analytics and reporting' },
-      { name: 'Admin', description: 'Admin-only endpoints' }
-    ]
   },
-  apis: ['./routes/admin.js', './routes/analytics.js', './routes/auth.js', './routes/events.js', './routes/mlModel.js', './routes/subscription.js', './routes/tickets.js', './swagger-docs.js']
+  apis: [
+    './routes/admin.js',
+    './routes/analytics.js',
+    './routes/auth.js',
+    './routes/events.js',
+    './routes/mlModel.js',
+    './routes/subscription.js',
+    './routes/tickets.js',
+    './swagger-docs.js'
+  ]
 };
 
 const specs = swaggerJsdoc(options);
-
 module.exports = specs;
