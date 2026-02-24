@@ -82,24 +82,7 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
   : [/^http:\/\/localhost:\d+$/]; // Allow any localhost port for development
 
-const corsOptions = {
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps, curl, etc.)
-    if (!origin) return callback(null, true);
-    if (
-      allowedOrigins.some(o =>
-        typeof o === 'string' ? o === origin : o instanceof RegExp && o.test(origin)
-      )
-    ) {
-      return callback(null, true);
-    } else {
-      return callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-  optionsSuccessStatus: 200
-};
-app.use(cors(corsOptions));
+app.use(cors());
 
 // 4. Body parsing with size limits (prevent large payload attacks)
 app.use(express.json({ limit: '10mb' }));
