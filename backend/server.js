@@ -156,8 +156,11 @@ app.use('/api/tickets', ticketRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
 
-// Swagger UI
-app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
+// Swagger UI with relaxed CSP for docs only
+app.use('/api/docs', (req, res, next) => {
+  res.setHeader('Content-Security-Policy', "default-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; script-src 'self' 'unsafe-inline';");
+  next();
+}, swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 
 // Health check
 app.get('/api/health', async (req, res) => {
