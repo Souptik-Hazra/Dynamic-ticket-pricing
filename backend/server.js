@@ -27,20 +27,7 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerSpecs = require('./swagger.js');
 const app = express();
 
-// Security Middleware
-// 1. Security Headers (strict CSP for all except Swagger UI)
-app.use((req, res, next) => {
-  // Relax CSP for Swagger UI only
-  if (req.path.startsWith('/api/docs')) {
-    return next();
-  }
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
-  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-  res.setHeader('Content-Security-Policy', "default-src 'self'");
-  next();
-});
+// Security Middleware removed for full project openness
 
 // 2. Rate Limiting (simple in-memory implementation)
 const requestCounts = new Map();

@@ -1,7 +1,7 @@
 const WebSocket = require('ws');
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this-in-production';
+const JWT_SECRET = process.env.JWT_SECRET || 'default_secret';
 
 class WebSocketService {
   constructor(server) {
