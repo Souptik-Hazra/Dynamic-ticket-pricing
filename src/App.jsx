@@ -30,7 +30,7 @@ function AppContent() {
   const fetchEvents = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_URL}/events`);
+      const response = await axios.get(`${API_URL}/api/events`);
       setEvents(response.data);
     } catch (error) {
       console.error('Error fetching events:', error);
