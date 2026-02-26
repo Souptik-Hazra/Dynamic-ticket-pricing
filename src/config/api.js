@@ -9,8 +9,8 @@ export const ENDPOINTS = {
   SIGNUP: '/auth/signup',
   
   // Events
-  EVENTS: '/events',
-  EVENT_BY_ID: (id) => `/events/${id}`,
+  EVENTS: '/api/events',
+  EVENT_BY_ID: (id) => `/api/events/${id}`,
   
   // Tickets
   TICKETS: '/tickets',
