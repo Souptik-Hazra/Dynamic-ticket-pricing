@@ -1,6 +1,58 @@
 const nodemailer = require('nodemailer');
 
 class EmailService {
+    async sendOTPEmail(userEmail, otp) {
+      if (!this.isConfigured) {
+        console.log('📧 OTP email would be sent to:', userEmail);
+        console.log('   OTP:', otp);
+        return { success: true, simulated: true };
+      }
+
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: #667eea; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+            .otp-box { background: white; border: 2px dashed #667eea; padding: 20px; margin: 20px 0; border-radius: 10px; font-size: 28px; letter-spacing: 4px; text-align: center; }
+            .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Email Verification</h1>
+              <p>Enter the OTP below to verify your email address</p>
+            </div>
+            <div class="content">
+              <div class="otp-box">${otp}</div>
+              <p>This OTP is valid for 10 minutes.</p>
+            </div>
+            <div class="footer">
+              <p>Dynamic Ticket Pricing System</p>
+              <p>This is an automated message. Please do not reply.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+
+      try {
+        await this.transporter.sendMail({
+          from: `"Dynamic Tickets" <${this.fromEmail}>`,
+          to: userEmail,
+          subject: `Email Verification OTP`,
+          html: html
+        });
+        return { success: true };
+      } catch (error) {
+        console.error('Email send error:', error);
+        return { success: false, error: error.message };
+      }
+    }
   constructor() {
     // Configure transporter (using Gmail as example)
     // For production, use proper SMTP service like SendGrid, AWS SES, etc.
@@ -73,6 +125,17 @@ class EmailService {
                 <span>Venue:</span>
                 <span>${venue}</span>
               </div>
+                    from: \`"Dynamic Tickets" <\${this.fromEmail}>\`,
+                    to: userEmail,
+                    subject: \`Email Verification OTP\`,
+                    html: html
+                  });
+                  return { success: true };
+                } catch (error) {
+                  console.error('Email send error:', error);
+                  return { success: false, error: error.message };
+                }
+              }
               
               <div class="detail-row">
                 <span>Ticket Type:</span>
@@ -122,79 +185,12 @@ class EmailService {
     }
   }
 
-  async sendPriceDropAlert(userEmail, eventDetails) {
-    if (!this.isConfigured) {
-      console.log('📧 Price drop alert would be sent to:', userEmail);
-      return { success: true, simulated: true };
-    }
 
-    const { eventName, oldPrice, newPrice, percentageDrop } = eventDetails;
-
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <style>
-          body { font-family: Arial, sans-serif; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: #28a745; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-          .price-compare { display: flex; justify-content: space-around; padding: 20px; }
-          .old-price { color: #999; text-decoration: line-through; font-size: 24px; }
-          .new-price { color: #28a745; font-size: 32px; font-weight: bold; }
-          .savings { background: #28a745; color: white; padding: 10px 20px; border-radius: 20px; display: inline-block; }
-          .btn { display: inline-block; background: #28a745; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>💰 Price Drop Alert!</h1>
-          </div>
-          <div class="content">
-            <h2>${eventName}</h2>
-            <p>Good news! The price has dropped on an event you're interested in.</p>
-            
-            <div class="price-compare">
-              <div>
-                <p>Was</p>
-                <span class="old-price">₹${oldPrice.toFixed(2)}</span>
-              </div>
-              <div>
-                <p>Now</p>
-                <span class="new-price">₹${newPrice.toFixed(2)}</span>
-              </div>
-            </div>
-            
-            <center>
-              <span class="savings">Save ${percentageDrop}%!</span>
-              <br><br>
-              <a href="#" class="btn">Book Now</a>
-            </center>
-          </div>
-        </div>
-      </body>
-      </html>
-    `;
-
-    try {
-      await this.transporter.sendMail({
-        from: `"Dynamic Tickets" <${this.fromEmail}>`,
-        to: userEmail,
-        subject: `💰 Price Drop: ${eventName} - Save ${percentageDrop}%!`,
-        html: html
-      });
-      
-      return { success: true };
-    } catch (error) {
-      console.error('Email send error:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  async sendWelcomeEmail(userEmail, userName) {
+  async sendWelcomeEmail(userEmail, userName, password) {
     if (!this.isConfigured) {
       console.log('📧 Welcome email would be sent to:', userEmail);
+      console.log('   Username:', userName);
+      console.log('   Password:', password);
       return { success: true, simulated: true };
     }
 
@@ -208,6 +204,7 @@ class EmailService {
           .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px; text-align: center; border-radius: 10px 10px 0 0; }
           .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
           .feature { padding: 15px; margin: 10px 0; background: white; border-radius: 5px; }
+          .credentials { background: #fffbe6; border: 1px solid #ffe066; padding: 20px; margin: 20px 0; border-radius: 10px; font-size: 18px; }
           .btn { display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; }
         </style>
       </head>
@@ -219,12 +216,14 @@ class EmailService {
           <div class="content">
             <h2>Hi ${userName}!</h2>
             <p>Thank you for joining Dynamic Ticket Pricing. Here's what you can do:</p>
-            
+            <div class="credentials">
+              <strong>Your login credentials:</strong><br>
+              Username: <b>${userName}</b><br>
+              Password: <b>${password}</b>
+            </div>
             <div class="feature">✨ <strong>Smart Pricing</strong> - Get the best prices with AI-powered dynamic pricing</div>
-            <div class="feature">🔔 <strong>Price Alerts</strong> - Get notified when prices drop</div>
             <div class="feature">📊 <strong>Analytics</strong> - Track price trends and make informed decisions</div>
             <div class="feature">⚡ <strong>Instant Booking</strong> - Secure your tickets in seconds</div>
-            
             <center>
               <a href="#" class="btn">Browse Events</a>
             </center>
@@ -241,7 +240,6 @@ class EmailService {
         subject: `Welcome to Dynamic Tickets, ${userName}! 🎉`,
         html: html
       });
-      
       return { success: true };
     } catch (error) {
       console.error('Email send error:', error);

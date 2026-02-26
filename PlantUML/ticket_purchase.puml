@@ -1,0 +1,43 @@
+@startuml
+skinparam sequenceParticipantBorderColor #2dcea9
+skinparam sequenceParticipantBackgroundColor #D6EAF8
+skinparam sequenceParticipantFontColor #154360
+skinparam sequenceParticipantFontSize 14
+skinparam ArrowColor #2874A6
+skinparam ArrowFontColor #1B2631
+skinparam ArrowFontSize 13
+skinparam sequenceMessageBoxColor #D6EAF8
+skinparam sequenceMessageBoxFontColor #154360
+skinparam sequenceMessageBoxFontSize 13
+skinparam sequenceLifeLineBackgroundColor #ff0303
+skinparam sequenceLifeLineBorderColor #c12e2e
+
+actor Customer
+participant "EventList" as UI
+participant "TicketService"
+participant "Ticket"
+participant "PaymentService"
+participant "Payment"
+participant "Database"
+
+Customer -> UI : Browse events
+UI -> TicketService : selectEvent(eventId)
+TicketService -> Ticket : checkAvailability(eventId)
+Ticket -> Database : query tickets
+Database --> Ticket : ticket info
+Ticket --> TicketService : available tickets
+TicketService --> UI : Show available tickets
+Customer -> UI : Select ticket, purchase
+UI -> PaymentService : initiatePayment(ticketInfo, paymentDetails)
+PaymentService -> Payment : new Payment(paymentDetails)
+Payment -> Database : save()
+Database --> Payment : Payment confirmed
+Payment --> PaymentService : Payment instance
+PaymentService -> TicketService : confirmPurchase(ticketInfo)
+TicketService -> Ticket : update status (sold)
+Ticket -> Database : update ticket
+Database --> Ticket : updated
+Ticket --> TicketService : confirmation
+TicketService --> UI : Show purchase confirmation
+UI --> Customer : Show ticket and receipt
+@enduml

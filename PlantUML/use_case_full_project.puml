@@ -1,0 +1,125 @@
+@startuml
+left to right direction
+left to right direction
+
+skinparam shadowing false
+skinparam usecaseBorderColor #2E86C1
+skinparam usecaseBackgroundColor #D6EAF8
+skinparam actorBorderColor #2874A6
+skinparam actorFontColor #154360
+skinparam usecaseFontColor #154360
+skinparam usecaseFontSize 14
+
+left to right direction
+actor Customer
+actor Admin
+actor "Database" as DB
+actor "ML Service" as ML
+
+rectangle "Dynamic Ticket Pricing System" {
+rectangle "Dynamic Ticket Pricing System" {
+
+    (Register) as UC1
+    (Login) as UC2
+    (Browse Events) as UC3
+    (Purchase Ticket) as UC4
+    (View Ticket) as UC5
+    (Request Refund) as UC6
+    (Subscribe) as UC7
+    (View Price History) as UC8
+    (Receive Notifications) as UC9
+    (Make Payment) as UC10
+    (Receive Confirmation) as UC11
+
+    (Create Event) as UA1
+    (Edit Event) as UA2
+    (Delete Event) as UA3
+    (View Analytics) as UA4
+    (Manage Users) as UA5
+    (Manage ML Model) as UA6
+    (View Prediction Logs) as UA7
+    (Refund Ticket) as UA8
+    (Send Notification) as UA9
+
+    (Store User Data) as UD1
+    (Store Event Data) as UD2
+    (Store Ticket Data) as UD3
+    (Store Payment Data) as UD4
+    (Store Price History) as UD5
+    (Store Prediction Logs) as UD6
+
+    (Predict Price) as UM1
+    (Detect Fraud) as UM2
+    (Analyze Demand) as UM3
+    (Log Prediction) as UM4
+}
+
+
+Customer -left- UC1
+Customer -left- UC2
+Customer -left- UC3
+Customer -left- UC4
+Customer -left- UC5
+Customer -left- UC6
+Customer -left- UC7
+Customer -left- UC8
+Customer -left- UC9
+
+Customer -down- UC1
+Customer -down- UC2
+Customer -down- UC3
+Customer -down- UC4
+Customer -down- UC5
+Customer -down- UC6
+Customer -down- UC7
+Customer -down- UC8
+Customer -down- UC9
+
+Admin -right- UA1
+Admin -right- UA2
+Admin -right- UA3
+Admin -right- UA4
+Admin -right- UA5
+Admin -right- UA6
+Admin -right- UA7
+Admin -right- UA8
+Admin -right- UA9
+Admin -down- UA1
+Admin -down- UA2
+Admin -down- UA3
+Admin -down- UA4
+Admin -down- UA5
+Admin -down- UA6
+Admin -down- UA7
+Admin -down- UA8
+Admin -down- UA9
+Admin -down- UC2
+
+DB -right- UD1
+DB -right- UD2
+DB -right- UD3
+DB -right- UD4
+DB -right- UD5
+DB -right- UD6
+DB -down- UD1
+DB -down- UD2
+DB -down- UD3
+DB -down- UD4
+DB -down- UD5
+DB -down- UD6
+
+ML -right- UM1
+ML -right- UM2
+ML -right- UM3
+ML -right- UM4
+ML -down- UM1
+ML -down- UM2
+ML -down- UM3
+ML -down- UM4
+
+' ================= INCLUDE =================
+UC4 .> UC10 : <<include>>
+UC4 .> UC11 : <<include>>
+UC7 .> UC10 : <<include>>
+
+@enduml

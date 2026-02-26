@@ -1,0 +1,18 @@
+@startuml
+actor Admin
+participant "AdminDashboard" as UI
+participant "EventService"
+participant "Event"
+participant "Database"
+
+Admin -> UI : Login
+UI -> Admin : Show dashboard
+Admin -> UI : Create event (form submit)
+UI -> EventService : createEvent(eventData)
+EventService -> Event : new Event(eventData)
+Event -> Database : save()
+Database --> Event : Event created
+Event --> EventService : Event instance
+EventService --> UI : Success/confirmation
+UI --> Admin : Show event created
+@enduml
