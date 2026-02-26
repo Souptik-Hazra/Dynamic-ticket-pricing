@@ -1,0 +1,76 @@
+@startuml
+left to right direction
+skinparam componentBorderColor #2E86C1
+skinparam componentBackgroundColor #D6EAF8
+skinparam nodeBorderColor #2874A6
+skinparam nodeBackgroundColor #F8F9F9
+skinparam interfaceBackgroundColor #D6EAF8
+skinparam interfaceBorderColor #2E86C1
+skinparam componentFontColor #154360
+skinparam componentFontSize 15
+
+node "User Browser" {
+  [React Frontend]
+}
+
+node "Server" {
+  [Express Backend]
+  [Admin Dashboard]
+  [API Router]
+}
+
+node "ML Service" {
+  [ML API]
+  [Price Prediction Model]
+  [Fraud Detection Model]
+}
+
+database "MongoDB" as DB
+queue "RabbitMQ" as MQ
+component "Redis Cache" as Redis
+
+node "User Browser" {
+  [React Frontend]
+}
+node "Server" {
+  [Express Backend]
+  [Admin Dashboard]
+  [API Router]
+  [Auth Service]
+  [Event Service]
+  [Ticket Service]
+  [Analytics Service]
+  [Notification Service]
+  [Subscription Service]
+  [Monitoring Service]
+  [Concurrency Service]
+}
+node "ML Service" {
+  [ML API]
+  [Price Prediction Model]
+  [Fraud Detection Model]
+  [Demand Forecast Model]
+}
+database "MongoDB" as DB
+queue "RabbitMQ" as MQ
+component "Redis Cache" as Redis
+component "Email Service" as Email
+component "WebSocket Service" as WebSocket
+component "Payment Gateway" as Payment
+[React Frontend] --> [Express Backend] : REST API (Axios)
+[Express Backend] --> DB : MongoDB Driver
+[Express Backend] --> Redis : Cache Layer
+[Express Backend] --> MQ : Async Messaging
+[Express Backend] --> [ML API] : HTTP (Price Prediction)
+[Express Backend] --> [ML API] : HTTP (Fraud Detection)
+[Express Backend] --> [ML API] : HTTP (Demand Forecast)
+[Express Backend] --> Email : Send Notifications
+[Express Backend] --> WebSocket : Real-time Updates
+[Express Backend] --> Payment : Payment Processing
+[Admin Dashboard] --> [Express Backend] : Admin API
+[ML API] --> [Price Prediction Model]
+[ML API] --> [Fraud Detection Model]
+[ML API] --> [Demand Forecast Model]
+[Monitoring Service] --> [Express Backend] : Health/Stats
+
+@enduml

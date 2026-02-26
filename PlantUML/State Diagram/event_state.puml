@@ -1,5 +1,12 @@
 @startuml
+
+skinparam shadowing false
+skinparam stateBackgroundColor #D6EAF8
+skinparam stateBorderColor #2E86C1
+skinparam stateFontColor #154360
+
 [*] --> Draft
+
 Draft --> Published : Publish
 Published --> Active : Start Date Reached
 Active --> SoldOut : All Tickets Sold
@@ -10,4 +17,5 @@ Published --> Cancelled : Cancel Event
 Draft --> Cancelled : Cancel Event
 Cancelled --> Archived : Archive Event
 Completed --> Archived : Archive Event
+
 @enduml

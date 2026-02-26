@@ -1,0 +1,182 @@
+@startuml
+
+
+skinparam shadowing false
+skinparam linetype ortho
+skinparam classAttributeIconSize 0
+skinparam nodesep 200
+skinparam ranksep 200
+skinparam padding 0
+skinparam classFontSize 16
+skinparam classAttributeFontSize 15
+skinparam classMethodFontSize 15
+skinparam classBorderThickness 2
+skinparam classBackgroundColor #F8F9F9
+skinparam classBorderColor #2E86C1
+skinparam ArrowColor #2874A6
+skinparam ArrowThickness 2
+skinparam ArrowFontSize 14
+
+class Event {
+    +String name
+    +String description
+    +String venue
+    +Date startDate
+    +Date endDate
+    +TicketCategory[] ticketCategories
+    +Number capacity
+    +Number ticketsSold
+    +String status
+    --
+    +updateEventStatuses()
+    +create()
+    +edit()
+    +delete()
+    +getStats()
+}
+class TicketCategory {
+    +String name
+    +Number price
+    +Number seats
+}
+class Ticket {
+    +Event event
+    +User user
+    +Number quantity
+    +Number price
+    +Date purchaseDate
+    +String status
+    --
+    +generateBookingReference()
+    +purchase()
+    +refund()
+    +cancel()
+}
+class VIPTicket {
+}
+class StandardTicket {
+}
+class PremiumTicket {
+}
+class BalconyTicket {
+}
+class EconomyTicket {
+}
+TicketCategory <|-- Ticket : Ticket category
+Ticket <|-- VIPTicket
+Ticket <|-- StandardTicket
+Ticket <|-- PremiumTicket
+Ticket <|-- BalconyTicket
+Ticket <|-- EconomyTicket
+Event "1" o-- "1..*" TicketCategory : Event categories
+Event "1" o-- "1..*" Ticket : Event tickets
+Event "1" o-- "0..*" PriceHistory : Event price history
+Event "1" o-- "0..*" PredictionLog : Event predictions
+MLModel "1" o-- "0..*" PredictionLog : Model predictions
+PredictionLog "*" o-- "1" Event : For event
+PredictionLog "*" o-- "1" MLModel : For model
+Admin ..> Event : Manage events
+Admin ..> Ticket : Manage tickets
+Admin ..> PriceHistory : View prices
+Admin ..> PredictionLog : View predictions
+
+' Payment and subclasses
+class Payment {
+    +String paymentId
+    +Ticket ticket
+    +Number amount
+    +String method
+    +Date paymentDate
+    +String status
+    --
+    +process()
+    +refund()
+    +verify()
+}
+Payment "1" o-- "1" Ticket
+Payment <|-- CreditCardPayment
+Payment <|-- PayPalPayment
+Payment <|-- UpiPayment
+
+class User {
+    +String name
+    +String email
+    +String role
+    +Subscription subscription
+    --
+    +comparePassword()
+    +register()
+    +login()
+    +updateProfile()
+}
+class Customer {
+    +String icon
+    +String city
+    +Date birthdate
+    +Date createdAt
+    +Date lastLogin
+    +Boolean isActive
+    +Subscription subscription
+}
+User <|-- Customer : "Customer user"
+Customer "1" o-- "0..*" Ticket : "Customer tickets"
+Customer "1" o-- "0..1" Subscription : "Customer subscription"
+class Admin {
+    +createEvent()
+    +editEvent()
+    +deleteEvent()
+    +viewStats()
+    +viewTickets()
+    +viewFraudAnalytics()
+    +manageUsers()
+    +manageMLModel()
+}
+User <|-- Admin : "Admin is a specialized user"
+
+class Subscription {
+    +String plan
+    +Date startDate
+    +Date endDate
+    +Boolean isActive
+    --
+    +activate()
+    +cancel()
+    +renew()
+}
+Subscription <|-- MonthlySubscription : "Monthly plan"
+Subscription <|-- AnnualSubscription : "Annual plan"
+Subscription <|-- TrialSubscription : "Trial plan"
+class MLModel {
+    +String modelVersion
+    +String modelType
+    +Date trainedAt
+    --
+    +get_model_info()
+    +train()
+    +predict()
+    +update()
+class MonthlySubscription {
+}
+class AnnualSubscription {
+}
+class TrialSubscription {
+}
+class PredictionLog {
+    +Event event
+    +MLModel model
+    +Number predictedPrice
+    +Date timestamp
+    --
+    +logPrediction()
+    +getAccuracy()
+}
+class PriceHistory {
+    +Event event
+    +String categoryName
+    +Number price
+    +Date timestamp
+    --
+    +logPrice()
+    +getHistory()
+}
+@enduml
