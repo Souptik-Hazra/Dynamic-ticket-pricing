@@ -3,6 +3,7 @@ const router = express.Router();
 const Event = require('../models/Event');
 const Ticket = require('../models/Ticket');
 const { protect, admin } = require('../middleware/auth');
+const fraudThresholds = require('../constants/fraudThresholds');
 
 // @route   GET /api/admin/events
 // @desc    Get all events (admin view with full details)
@@ -55,11 +56,12 @@ router.get('/events', protect, admin, async (req, res) => {
     
     res.json({
       success: true,
-      count: eventsWithMetrics.length,
-      events: eventsWithMetrics
+      message: 'Events retrieved successfully',
+      data: { events: eventsWithMetrics, count: eventsWithMetrics.length }
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Fetch events error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch events' });
   }
 });
 
@@ -68,8 +70,7 @@ router.get('/events', protect, admin, async (req, res) => {
 // @access  Private/Admin
 router.post('/events', protect, admin, async (req, res) => {
   try {
-    console.log('📝 Creating event with data:', req.body);
-    
+
     // Validate required fields
     if (!req.body.ticketPrice || req.body.ticketPrice <= 0) {
       return res.status(400).json({ error: 'Valid ticket price is required' });
@@ -96,17 +97,15 @@ router.post('/events', protect, admin, async (req, res) => {
     
     // Create the event
     const event = await Event.create(req.body);
-    
-    console.log('✅ Event created successfully:', event._id);
-    
+
     res.status(201).json({
       success: true,
       message: 'Event created successfully',
-      event
+      data: event
     });
   } catch (error) {
     console.error('❌ Event creation error:', error);
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ success: false, message: error.message });
   }
 });
 
@@ -115,8 +114,7 @@ router.post('/events', protect, admin, async (req, res) => {
 // @access  Private/Admin
 router.put('/events/:id', protect, admin, async (req, res) => {
   try {
-    console.log('📝 Updating event with data:', req.body);
-    
+
     // Get existing event
     const existingEvent = await Event.findById(req.params.id);
     if (!existingEvent) {
@@ -140,16 +138,14 @@ router.put('/events/:id', protect, admin, async (req, res) => {
       { new: true, runValidators: true }
     );
 
-    console.log('✅ Event updated successfully:', event._id);
-
     res.json({
       success: true,
       message: 'Event updated successfully',
-      event
+      data: event
     });
   } catch (error) {
     console.error('❌ Event update error:', error);
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ success: false, message: error.message });
   }
 });
 
@@ -166,10 +162,11 @@ router.delete('/events/:id', protect, admin, async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Event deleted successfully'
+      message: 'Event deleted successfully',
+      data: null
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, message: 'Failed to delete event' });
   }
 });
 
@@ -212,7 +209,8 @@ router.get('/stats', protect, admin, async (req, res) => {
 
     res.json({
       success: true,
-      stats: {
+      message: 'Dashboard statistics retrieved',
+      data: {
         totalEvents,
         totalUsers,
         totalTickets,
@@ -222,7 +220,7 @@ router.get('/stats', protect, admin, async (req, res) => {
     });
   } catch (error) {
     console.error('Stats error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, message: 'Failed to fetch statistics' });
   }
 });
 
@@ -240,26 +238,29 @@ router.get('/tickets', protect, admin, async (req, res) => {
 
     res.json({
       success: true,
-      count: tickets.length,
-      tickets: tickets.map(ticket => ({
-        _id: ticket._id,
-        bookingReference: ticket.bookingReference,
-        eventName: ticket.eventId?.name || 'Unknown Event',
-        eventVenue: ticket.eventId?.venue || '',
-        eventDate: ticket.eventId?.date,
-        buyerName: ticket.customerName || ticket.userId?.name || 'Unknown',
-        buyerEmail: ticket.customerEmail || ticket.userId?.email || 'Unknown',
-        categoryName: ticket.categoryName || 'standard',
-        quantity: ticket.quantity,
-        pricePerTicket: ticket.price,
-        totalAmount: ticket.totalAmount,
-        status: ticket.status,
-        purchaseDate: ticket.purchaseDate
-      }))
+      message: 'Tickets retrieved successfully',
+      data: {
+        tickets: tickets.map(ticket => ({
+          _id: ticket._id,
+          bookingReference: ticket.bookingReference,
+          eventName: ticket.eventId?.name || 'Unknown Event',
+          eventVenue: ticket.eventId?.venue || '',
+          eventDate: ticket.eventId?.date,
+          buyerName: ticket.customerName || ticket.userId?.name || 'Unknown',
+          buyerEmail: ticket.customerEmail || ticket.userId?.email || 'Unknown',
+          categoryName: ticket.categoryName || 'standard',
+          quantity: ticket.quantity,
+          pricePerTicket: ticket.price,
+          totalAmount: ticket.totalAmount,
+          status: ticket.status,
+          purchaseDate: ticket.purchaseDate
+        })),
+        count: tickets.length
+      }
     });
   } catch (error) {
     console.error('Tickets fetch error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, message: 'Failed to fetch tickets' });
   }
 });
 
@@ -322,52 +323,52 @@ router.get('/fraud-analytics', protect, admin, async (req, res) => {
       let fraudScore = 0;
       const flagged = [];
 
-      // Indicator 1: Bulk purchases (15+ tickets at once)
-      if (user.maxTicketsInOne >= 15) {
-        fraudScore += 35;
+      // Indicator 1: Bulk purchases
+      if (user.maxTicketsInOne >= fraudThresholds.BULK_PURCHASE_THRESHOLD) {
+        fraudScore += fraudThresholds.BULK_PURCHASE_SCORE;
         flagged.push(`Bulk purchase detected (${user.maxTicketsInOne} tickets)`);
-      } else if (user.maxTicketsInOne >= 10) {
-        fraudScore += 20;
+      } else if (user.maxTicketsInOne >= fraudThresholds.HIGH_QUANTITY_THRESHOLD) {
+        fraudScore += fraudThresholds.HIGH_QUANTITY_SCORE;
         flagged.push(`High quantity purchase (${user.maxTicketsInOne} tickets)`);
       }
 
       // Indicator 2: Multiple purchases in short time (purchase frequency)
-      if (user.totalPurchases > 5) {
-        fraudScore += 25;
+      if (user.totalPurchases > fraudThresholds.HIGH_PURCHASE_FREQUENCY_THRESHOLD) {
+        fraudScore += fraudThresholds.HIGH_PURCHASE_FREQUENCY_SCORE;
         flagged.push(`High purchase frequency (${user.totalPurchases} purchases)`);
-      } else if (user.totalPurchases > 3) {
-        fraudScore += 15;
+      } else if (user.totalPurchases > fraudThresholds.FREQUENT_PURCHASER_THRESHOLD) {
+        fraudScore += fraudThresholds.FREQUENT_PURCHASER_SCORE;
         flagged.push(`Frequent purchaser (${user.totalPurchases} purchases)`);
       }
 
       // Indicator 3: Average tickets per purchase
       user.avgTicketsPerPurchase = user.totalTickets / user.totalPurchases;
-      if (user.avgTicketsPerPurchase > 10) {
-        fraudScore += 20;
+      if (user.avgTicketsPerPurchase > fraudThresholds.AVG_TICKETS_THRESHOLD) {
+        fraudScore += fraudThresholds.AVG_TICKETS_SCORE;
         flagged.push(`High avg tickets per purchase (${user.avgTicketsPerPurchase.toFixed(1)} avg)`);
       }
 
-      // Indicator 4: Calculate purchase velocity (purchases in last 7 days)
-      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      // Indicator 4: Calculate purchase velocity
+      const sevenDaysAgo = new Date(Date.now() - fraudThresholds.VELOCITY_WINDOW_DAYS * 24 * 60 * 60 * 1000);
       const recentPurchases = user.purchases.filter(p => new Date(p.date) > sevenDaysAgo).length;
-      if (recentPurchases >= 3) {
-        fraudScore += 15;
-        flagged.push(`Rapid purchases (${recentPurchases} in last 7 days)`);
+      if (recentPurchases >= fraudThresholds.RAPID_PURCHASES_THRESHOLD) {
+        fraudScore += fraudThresholds.RAPID_PURCHASES_SCORE;
+        flagged.push(`Rapid purchases (${recentPurchases} in last ${fraudThresholds.VELOCITY_WINDOW_DAYS} days)`);
       }
 
       // Indicator 5: High total spending spike
-      if (user.totalSpent > 50000) {
-        fraudScore += 10;
+      if (user.totalSpent > fraudThresholds.HIGH_SPENDING_THRESHOLD) {
+        fraudScore += fraudThresholds.HIGH_SPENDING_SCORE;
         flagged.push(`High total spending (₹${user.totalSpent.toFixed(0)})`);
       }
 
       // Calculate final fraud score and risk level
-      user.fraudScore = Math.min(100, fraudScore);
+      user.fraudScore = Math.min(fraudThresholds.MAX_FRAUD_SCORE, fraudScore);
       user.flaggedReasons = flagged;
 
-      if (user.fraudScore >= 60) {
+      if (user.fraudScore >= fraudThresholds.HIGH_RISK_THRESHOLD) {
         user.riskLevel = 'high';
-      } else if (user.fraudScore >= 35) {
+      } else if (user.fraudScore >= fraudThresholds.MEDIUM_RISK_THRESHOLD) {
         user.riskLevel = 'medium';
       } else {
         user.riskLevel = 'low';
@@ -380,14 +381,15 @@ router.get('/fraud-analytics', protect, admin, async (req, res) => {
     const mediumRiskUsers = allUsers.filter(u => u.riskLevel === 'medium').length;
     const avgFraudScore = allUsers.reduce((sum, u) => sum + u.fraudScore, 0) / allUsers.length || 0;
 
-    // Get timeline data (last 30 days of purchases for chart)
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    // Get timeline data (last N days of purchases for chart)
+    const timelineWindowDays = fraudThresholds.TIMELINE_DAYS;
+    const timelineStart = new Date(Date.now() - timelineWindowDays * 24 * 60 * 60 * 1000);
     const timelineData = {};
 
     Object.values(userFraudMap).forEach(user => {
       user.purchases.forEach(purchase => {
         const purchaseDate = new Date(purchase.date);
-        if (purchaseDate > thirtyDaysAgo) {
+        if (purchaseDate > timelineStart) {
           const dateStr = purchaseDate.toISOString().split('T')[0];
           if (!timelineData[dateStr]) {
             timelineData[dateStr] = { low: 0, medium: 0, high: 0, total: 0 };
@@ -405,7 +407,8 @@ router.get('/fraud-analytics', protect, admin, async (req, res) => {
 
     res.json({
       success: true,
-      fraudAnalytics: {
+      message: 'Fraud analytics retrieved successfully',
+      data: {
         summary: {
           totalUsers: allUsers.length,
           highRiskUsers,
@@ -416,13 +419,13 @@ router.get('/fraud-analytics', protect, admin, async (req, res) => {
         },
         userRankings: allUsers
           .sort((a, b) => b.fraudScore - a.fraudScore)
-          .slice(0, 50), // Top 50 risky users
+          .slice(0, fraudThresholds.TOP_RISKY_USERS_LIMIT),
         timeline
       }
     });
   } catch (error) {
     console.error('Fraud analytics error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, message: 'Failed to fetch fraud analytics' });
   }
 });
 

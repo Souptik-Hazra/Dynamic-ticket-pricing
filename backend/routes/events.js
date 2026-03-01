@@ -9,7 +9,11 @@ router.get('/', async (req, res) => {
   try {
       const events = await Event.find().sort({ date: 1 });
     
-    res.json(events);
+    res.json({
+      success: true,
+      message: 'Events retrieved successfully',
+      data: events
+    });
   } 
   catch (error) {
     res.status(500).json({ error: error.message });
@@ -28,9 +32,13 @@ router.get('/:id/dynamic-prices', async (req, res) => {
 
     // Return the standard ticket price
     res.json({
-      eventId: event._id,
-      prices: {
-        standard: event.ticketPrice
+      success: true,
+      message: 'Dynamic prices retrieved successfully',
+      data: {
+        eventId: event._id,
+        prices: {
+          standard: event.ticketPrice
+        }
       }
     });
   } catch (error) {
@@ -49,7 +57,11 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Event not found' });
     }
     
-    res.json(event);
+    res.json({
+      success: true,
+      message: 'Event retrieved successfully',
+      data: event
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -62,7 +74,11 @@ router.post('/', async (req, res) => {
   try {
     const event = new Event(req.body);
     await event.save();
-    res.status(201).json(event);
+    res.status(201).json({
+      success: true,
+      message: 'Event created successfully',
+      data: event
+    });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -81,7 +97,11 @@ router.put('/:id', async (req, res) => {
     if (!event) {
       return res.status(404).json({ error: 'Event not found' });
     }
-    res.json(event);
+    res.json({
+      success: true,
+      message: 'Event updated successfully',
+      data: event
+    });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -96,7 +116,11 @@ router.delete('/:id', async (req, res) => {
     if (!event) {
       return res.status(404).json({ error: 'Event not found' });
     }
-    res.json({ message: 'Event deleted successfully' });
+    res.json({
+      success: true,
+      message: 'Event deleted successfully',
+      data: null
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -113,9 +137,13 @@ router.get('/:id/price', async (req, res) => {
     }
 
     res.json({
-      event_id: event._id,
-      event_name: event.name,
-      price: event.ticketPrice
+      success: true,
+      message: 'Event price retrieved successfully',
+      data: {
+        event_id: event._id,
+        event_name: event.name,
+        price: event.ticketPrice
+      }
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

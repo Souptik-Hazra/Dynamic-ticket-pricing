@@ -33,7 +33,8 @@ const UserProfile = () => {
       const response = await axios.get(`${API_URL}/tickets`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setTickets(Array.isArray(response.data) ? response.data : []);
+      const ticketsData = response.data.data || response.data;
+      setTickets(Array.isArray(ticketsData) ? ticketsData : []);
     } catch (err) {
       console.error("Error fetching tickets:", err);
     } finally {

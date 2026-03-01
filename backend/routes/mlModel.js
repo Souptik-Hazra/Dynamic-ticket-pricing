@@ -32,7 +32,7 @@ router.post('/predict-price', protect, admin, async (req, res) => {
 
     // Validate input
     if (!demand || !capacity) {
-      return res.status(400).json({ error: 'Missing required fields: demand, capacity' });
+      return res.status(400).json({ success: false, message: 'Missing required fields: demand, capacity' });
     }
 
     // Call Python ML API
@@ -82,7 +82,8 @@ router.post('/predict-price', protect, admin, async (req, res) => {
 
     res.json({
       success: true,
-      prediction: {
+      message: 'Price prediction completed successfully',
+      data: {
         predictedPrice: response.data.predicted_price,
         priceRange: response.data.price_range,
         confidence: response.data.confidence,
@@ -122,11 +123,11 @@ router.post('/batch-predict', protect, admin, async (req, res) => {
     const { scenarios } = req.body;
 
     if (!Array.isArray(scenarios) || scenarios.length === 0) {
-      return res.status(400).json({ error: 'Invalid scenarios provided' });
+      return res.status(400).json({ success: false, message: 'Invalid scenarios provided' });
     }
 
     if (scenarios.length > 100) {
-      return res.status(400).json({ error: 'Maximum 100 scenarios allowed' });
+      return res.status(400).json({ success: false, message: 'Maximum 100 scenarios allowed' });
     }
 
     // Call Python ML API
@@ -152,9 +153,12 @@ router.post('/batch-predict', protect, admin, async (req, res) => {
 
     res.json({
       success: true,
-      predictions: response.data.predictions,
-      count: response.data.count,
-      timestamp: new Date()
+      message: 'Batch predictions completed successfully',
+      data: {
+        predictions: response.data.predictions,
+        count: response.data.count,
+        timestamp: new Date()
+      }
     });
   } catch (error) {
     console.error('Batch prediction error:', error.message);
@@ -184,7 +188,8 @@ router.get('/prediction-history/:eventId', protect, admin, async (req, res) => {
 
     res.json({
       success: true,
-      predictionHistory: predictions
+      message: 'Prediction history retrieved successfully',
+      data: predictions
     });
   } catch (error) {
     console.error('Prediction history error:', error);
@@ -201,13 +206,17 @@ router.get('/health', async (req, res) => {
     
     res.json({
       success: true,
-      mlApiStatus: response.data,
-      backendTime: new Date()
+      message: 'ML API is healthy',
+      data: {
+        mlApiStatus: response.data,
+        backendTime: new Date()
+      }
     });
   } catch (error) {
+    console.error('ML API health check error:', error);
     res.status(503).json({
       success: false,
-      error: 'ML API is not responding',
+      message: 'ML API is not responding',
       details: error.message,
       mlApiUrl: ML_API_URL
     });

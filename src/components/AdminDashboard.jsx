@@ -38,7 +38,7 @@ function AdminDashboard() {
     try {
       setLoading(true);
       const response = await axios.get(`${API_URL}/admin/stats`, getAuthHeaders());
-      setStats(response.data.stats);
+      setStats(response.data.data || response.data.stats || response.data);
     } catch (error) {
       console.error('Error fetching stats:', error);
       alert('Failed to fetch statistics');
@@ -51,7 +51,7 @@ function AdminDashboard() {
     try {
       setLoading(true);
       const response = await axios.get(`${API_URL}/admin/events`, getAuthHeaders());
-      setEvents(response.data.events);
+      setEvents(response.data.data?.events || response.data.events || []);
     } catch (error) {
       console.error('Error fetching events:', error);
       alert('Failed to fetch events');
@@ -64,7 +64,7 @@ function AdminDashboard() {
     try {
       setLoading(true);
       const response = await axios.get(`${API_URL}/admin/tickets`, getAuthHeaders());
-      setTickets(response.data.tickets);
+      setTickets(response.data.data?.tickets || response.data.tickets || []);
     } catch (error) {
       console.error('Error fetching tickets:', error);
       alert('Failed to fetch tickets');
@@ -77,7 +77,7 @@ function AdminDashboard() {
     try {
       setLoading(true);
       const response = await axios.get(`${API_URL}/admin/fraud-analytics`, getAuthHeaders());
-      setFraudAnalytics(response.data.fraudAnalytics);
+      setFraudAnalytics(response.data.data || response.data.fraudAnalytics || response.data);
     } catch (error) {
       console.error('Error fetching fraud analytics:', error);
       alert('Failed to fetch fraud analytics');

@@ -3,6 +3,12 @@ import './EventList.css';
 import AutoPriceUpdater from './AutoPriceUpdater';
 
 function EventList({ events, onUpdatePrice, onSelectEvent, onRefresh }) {
+  const [brokenImages, setBrokenImages] = React.useState(new Set());
+
+  const handleImageError = (eventId) => {
+    setBrokenImages(prev => new Set([...prev, eventId]));
+  };
+
   const formatDateTime = (date) => {
     if (!date) return '';
     const d = new Date(date);
@@ -68,7 +74,15 @@ function EventList({ events, onUpdatePrice, onSelectEvent, onRefresh }) {
           {events.map(event => (
             <div key={event._id} className="event-card">
               <div className="event-image">
-                <img src={event.image} alt="" />
+                {!brokenImages.has(event._id) ? (
+                  <img 
+                    src={event.image} 
+                    alt="" 
+                    onError={() => handleImageError(event._id)}
+                  />
+                ) : (
+                  <div className="image-fallback">🎬</div>
+                )}
                 <span className="event-category-badge">{event.category}</span>
                 <span className="event-image-title">{event.name}</span>
                 <span className={`event-status ${event.status}`}>

@@ -18,15 +18,21 @@ export const AuthProvider = ({ children }) => {
   // Configure axios for sessions
   useEffect(() => {
     axios.defaults.withCredentials = true;
-    loadUser();
+    // Delay loadUser to prevent double-call in StrictMode and allow initial render
+    const loadTimer = setTimeout(loadUser, 100);
+    return () => clearTimeout(loadTimer);
   }, []);
 
   // Load user data
   const loadUser = async () => {
     try {
-      const response = await axios.get(`${API_URL}/auth/me`);
-      setUser(response.data.user);
+      const response = await axios.get(`${API_URL}/auth/me`, {
+        timeout: 5000  // 5 second timeout
+      });
+      setUser(response.data.data || response.data.user);
     } catch (error) {
+      // Silently fail - backend not running or session expired
+      // Don't log anything to keep console clean during dev
       setUser(null);
     }
   };
@@ -35,12 +41,12 @@ export const AuthProvider = ({ children }) => {
   const signup = async (name, email, password) => {
     try {
       const response = await axios.post(`${API_URL}/auth/signup`, { name, email, password });
-      setUser(response.data.user);
+      setUser(response.data.data || response.data.user);
       return { success: true };
     } catch (error) {
       return {
         success: false,
-        error: error.response?.data?.error || 'Signup failed'
+        error: error.response?.data?.error || error.response?.data?.message || 'Signup failed'
       };
     }
   };
@@ -49,12 +55,12 @@ export const AuthProvider = ({ children }) => {
   const signin = async (email, password) => {
     try {
       const response = await axios.post(`${API_URL}/auth/signin`, { email, password });
-      setUser(response.data.user);
+      setUser(response.data.data || response.data.user);
       return { success: true };
     } catch (error) {
       return {
         success: false,
-        error: error.response?.data?.error || 'Login failed'
+        error: error.response?.data?.error || error.response?.data?.message || 'Login failed'
       };
     }
   };
@@ -64,7 +70,7 @@ export const AuthProvider = ({ children }) => {
     try {
       await axios.post(`${API_URL}/auth/logout`);
     } catch (err) {
-      console.error('Logout error:', err);
+      // Silently fail logout errors
     }
     setUser(null);
   };
@@ -72,8 +78,9 @@ export const AuthProvider = ({ children }) => {
   // Update profile
   const updateProfile = async (profileData) => {
     const response = await axios.put(`${API_URL}/auth/update-profile`, profileData);
-    setUser(response.data.user);
-    return response.data.user;
+    const userData = response.data.data || response.data.user;
+    setUser(userData);
+    return userData;
   };
 
   const value = {

@@ -55,14 +55,23 @@ const eventSchema = new mongoose.Schema({
   },
   createdAt: {
     type: Date,
-    default: Date.now
+    default: Date.now,
+    immutable: true  // Prevent modification after creation
   },
   updatedAt: {
     type: Date,
     default: Date.now
   }
 }, {
-  timestamps: true
+  timestamps: false  // Manage manually
+});
+
+// Auto-update updatedAt on every save
+eventSchema.pre('save', function(next) {
+  if (!this.isNew) {  // Only update if not a new document
+    this.updatedAt = Date.now();
+  }
+  next();
 });
 
 // Auto-update status based on current date

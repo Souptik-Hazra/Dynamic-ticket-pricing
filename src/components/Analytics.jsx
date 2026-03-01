@@ -18,7 +18,7 @@ function Analytics() {
     try {
       setLoading(true);
       const response = await axios.get(`${API_URL}/analytics`);
-      setAnalytics(response.data);
+      setAnalytics(response.data.data || response.data);
     } catch (error) {
       console.error('Error fetching analytics:', error);
     } finally {

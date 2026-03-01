@@ -47,11 +47,14 @@ router.get('/', async (req, res) => {
 
     res.json({
       success: true,
-      totalEvents,
-      upcomingEvents,
-      totalTicketsSold: stats.totalTickets,
-      totalRevenue: stats.totalRevenue,
-      topEvents: eventRevenue
+      message: 'Analytics retrieved successfully',
+      data: {
+        totalEvents,
+        upcomingEvents,
+        totalTicketsSold: stats.totalTickets,
+        totalRevenue: stats.totalRevenue,
+        topEvents: eventRevenue
+      }
     });
   } catch (error) {
     console.error('Analytics error:', error);

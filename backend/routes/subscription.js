@@ -10,14 +10,14 @@ router.post('/upgrade', protect, async (req, res) => {
   try {
     const { plan } = req.body; // '7_days', '30_days', '3_months', '6_months', '1_year'
     if (!['7_days', '30_days', '3_months', '6_months', '1_year'].includes(plan)) {
-      return res.status(400).json({ error: 'Invalid plan type' });
+      return res.status(400).json({ success: false, message: 'Invalid plan type' });
     }
     const user = await User.findById(req.user.id);
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ success: false, message: 'User not found' });
     }
     if (user.role === 'admin') {
-      return res.status(403).json({ error: 'Admins cannot subscribe to membership plans.' });
+      return res.status(403).json({ success: false, message: 'Admins cannot subscribe to membership plans.' });
     }
     const startDate = new Date();
     let endDate = new Date(startDate);
@@ -48,7 +48,7 @@ router.post('/upgrade', protect, async (req, res) => {
     res.json({ 
       success: true, 
       message: `Successfully subscribed to ${plan} plan`,
-      subscription: user.subscription 
+      data: user.subscription
     });
   } catch (error) {
     console.error('Subscription error:', error);
@@ -62,7 +62,7 @@ router.post('/upgrade', protect, async (req, res) => {
 router.get('/status', protect, async (req, res) => {
     try {
         const user = await User.findById(req.user.id);
-        if(!user) return res.status(404).json({error: "User not found"});
+        if(!user) return res.status(404).json({ success: false, message: 'User not found' });
 
         // Check expiry
         if (user.subscription && user.subscription.isActive && user.subscription.endDate) {
@@ -73,7 +73,9 @@ router.get('/status', protect, async (req, res) => {
         }
 
         res.json({
-            subscription: user.subscription
+            success: true,
+            message: 'Subscription status retrieved successfully',
+            data: user.subscription
         });
     } catch (err) {
         console.error(err);

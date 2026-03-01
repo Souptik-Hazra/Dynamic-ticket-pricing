@@ -9,9 +9,8 @@ const initRedis = async () => {
       url: process.env.REDIS_URL || 'redis://localhost:6379'
     });
     
-    redisClient.on('error', (err) => console.error('❌ Redis error:', err.message));
+    redisClient.on('error', (err) => console.warn('Redis error:', err.message));
     await redisClient.connect();
-    console.log('✅ Redis locks connected');
   } catch (err) {
     console.error('❌ Redis required but not available:', err.message);
     throw err;

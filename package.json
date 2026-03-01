@@ -14,14 +14,13 @@
     "electron:dev": "vite build && npx electron .",
     "electron:serve": "npx electron .",
     "package": "electron-builder",
-    "build-and-package": "npm run build && npm run package"
+    "build-and-package": "npm run build && npm run package && npm run clean-build",
+    "clean-build": "powershell -Command \"Remove-Item -Path '.\\dist\\*.blockmap' -Force -ErrorAction SilentlyContinue; Remove-Item -Path '.\\dist\\latest.yml' -Force -ErrorAction SilentlyContinue; Remove-Item -Path '.\\dist\\builder-*.yaml' -Force -ErrorAction SilentlyContinue; Remove-Item -Path '.\\dist\\builder-debug.yml' -Force -ErrorAction SilentlyContinue; Remove-Item -Path '.\\dist\\win-unpacked' -Recurse -Force -ErrorAction SilentlyContinue; Write-Host 'Build cleaned - only .exe and web assets remaining'\""
   },
   "dependencies": {
     "axios": "^1.13.2",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "react-router-dom": "^6.30.3",
-    "recharts": "^2.15.4"
+    "react-dom": "^19.2.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
@@ -46,6 +45,27 @@
       "dist/**/*",
       "electron-main.cjs",
       "backend/**/*"
-    ]
+    ],
+    "directories": {
+      "buildResources": ".",
+      "output": "dist"
+    },
+    "nsis": {
+      "oneClick": true,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "publish": null
   }
 }

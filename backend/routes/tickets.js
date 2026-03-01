@@ -26,10 +26,14 @@ router.get('/', protect, async (req, res) => {
     // Cache for 5 minutes
     await cacheService.set(cacheKey, tickets, 300);
     
-    res.json(tickets);
+    res.json({
+      success: true,
+      message: 'Tickets retrieved successfully',
+      data: tickets
+    });
   } catch (error) {
-    console.error('Error fetching tickets:', error);
-    res.status(500).json({ error: 'Server error' });
+    console.error('Fetch tickets error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch tickets' });
   }
 });
 
@@ -39,18 +43,22 @@ router.get('/:id', protect, async (req, res) => {
     const ticket = await Ticket.findById(req.params.id).populate('eventId');
     
     if (!ticket) {
-      return res.status(404).json({ error: 'Ticket not found' });
+      return res.status(404).json({ success: false, message: 'Ticket not found' });
     }
 
     // Check ownership
     if (ticket.userId.toString() !== req.user.id && req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Access denied' });
+      return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
-    res.json(ticket);
+    res.json({
+      success: true,
+      message: 'Ticket retrieved successfully',
+      data: ticket
+    });
   } catch (error) {
-    console.error('Error fetching ticket:', error);
-    res.status(500).json({ error: 'Server error' });
+    console.error('Fetch ticket error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch ticket' });
   }
 });
 
@@ -104,8 +112,9 @@ router.post('/', protect, async (req, res) => {
       });
 
       res.status(201).json({
+        success: true,
         message: 'Ticket purchased successfully',
-        ticket
+        data: ticket
       });
 
     } catch (txnError) {
@@ -222,7 +231,7 @@ router.delete('/:id', protect, async (req, res) => {
       }
     );
 
-    res.json({ message: 'Ticket cancelled successfully' });
+    res.json({ success: true, message: 'Ticket cancelled successfully', data: null });
   } catch (error) {
     console.error('Error cancelling ticket:', error);
     res.status(500).json({ message: 'Server error' });
@@ -255,15 +264,16 @@ router.get('/stats/overview', protect, async (req, res) => {
     ]);
 
     const result = {
-      stats,
-      timestamp: new Date()
+      success: true,
+      message: 'Ticket statistics retrieved',
+      data: { stats, timestamp: new Date() }
     };
 
     await cacheService.set(cacheKey, result, 600); // Cache for 10 minutes
     res.json(result);
   } catch (error) {
     console.error('Error fetching ticket stats:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 

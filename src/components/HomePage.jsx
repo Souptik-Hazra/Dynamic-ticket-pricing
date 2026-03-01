@@ -17,7 +17,7 @@ const HomePage = ({ onNavigate }) => {
   const fetchEvents = async () => {
     try {
       const response = await axios.get(`${API_URL}/events`);
-      setEvents(response.data);
+      setEvents(response.data.data || response.data);
     } catch (error) {
       console.error('Error fetching events:', error);
     } finally {
@@ -48,13 +48,15 @@ const HomePage = ({ onNavigate }) => {
             <p className="hero-subtitle">Experience AI-powered pricing for concerts, sports, theater, and more.</p>
             <div className="hero-search modern-search">
               <input
+                id="event-search"
+                name="eventSearch"
                 type="text"
                 placeholder="Search for events, artists, venues..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="search-input"
               />
-              <button className="search-button">
+              <button name="searchEvents" className="search-button">
                 <i className="search-icon">🔍</i> Search
               </button>
             </div>

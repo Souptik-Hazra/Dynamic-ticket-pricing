@@ -32,7 +32,7 @@ function AppContent() {
     try {
       setLoading(true);
       const response = await axios.get(`${API_URL}/events`);
-      setEvents(response.data);
+      setEvents(response.data.data || response.data);
     } catch (error) {
       console.error('Error fetching events:', error);
       alert('Failed to fetch events');
