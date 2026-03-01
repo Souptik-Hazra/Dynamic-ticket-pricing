@@ -6,6 +6,14 @@
   margin: 0.75rem 0;
 }
 
+@media (max-width: 768px) {
+  .auto-price-updater {
+    padding: 0.6rem 0.8rem;
+    margin: 0.5rem 0;
+    border-radius: 8px;
+  }
+}
+
 .updater-header {
   display: flex;
   align-items: center;
@@ -35,6 +43,12 @@
   flex-wrap: wrap;
   gap: 0.5rem;
   justify-content: flex-start;
+}
+
+@media (max-width: 768px) {
+  .prices-row {
+    gap: 0.4rem;
+  }
 }
 
 .price-tag {

@@ -5,6 +5,13 @@
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
 }
 
+@media (max-width: 768px) {
+  .ticket-purchase-container {
+    padding: 1rem;
+    border-radius: 8px;
+  }
+}
+
 .back-button {
   padding: 0.75rem 1.5rem;
   background: #f0f0f0;
@@ -16,6 +23,15 @@
   cursor: pointer;
   margin-bottom: 2rem;
   transition: all 0.3s ease;
+}
+
+@media (max-width: 768px) {
+  .back-button {
+    padding: 0.65rem 1rem;
+    font-size: 0.9rem;
+    min-height: 44px;
+    width: 100%;
+  }
 }
 
 .back-button:hover {
@@ -30,10 +46,25 @@
   margin-top: 2rem;
 }
 
+@media (max-width: 768px) {
+  .purchase-content {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    margin-top: 1rem;
+  }
+}
+
 .event-summary {
   background: #f8f9fa;
   padding: 2rem;
   border-radius: 12px;
+}
+
+@media (max-width: 768px) {
+  .event-summary {
+    padding: 1rem;
+    border-radius: 8px;
+  }
 }
 
 .event-summary img {
@@ -175,6 +206,13 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 1rem;
+}
+
+@media (max-width: 768px) {
+  .categories-grid {
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 0.75rem;
+  }
 }
 
 .category-card {

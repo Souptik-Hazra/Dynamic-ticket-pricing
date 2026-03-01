@@ -5,8 +5,11 @@ import numpy as np
 import os
 import json
 from datetime import datetime
+from dotenv import load_dotenv
 from fraud_detector import check_fraud
-from peak_hour_detector import detect_peak_hours, predict_event_demand
+
+# Load environment variables from root .env
+load_dotenv(os.path.join(os.path.dirname(__file__), '../.env'))
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -349,20 +352,7 @@ def batch_check_fraud():
 
 # ==================== PEAK HOUR DETECTION ROUTES ====================
 
-@app.route('/peak-hours/predict', methods=['GET'])
-def predict_peak_hours():
-    """Get peak hour predictions"""
-    try:
-        peak_data = detect_peak_hours()
-        
-        return jsonify({
-            'success': True,
-            'peak_hours': peak_data,
-            'timestamp': datetime.now().isoformat()
-        })
-    
-    except Exception as e:
-        return jsonify({'error': str(e)}), 400
+
 
 @app.route('/peak-hours/event-demand', methods=['POST'])
 def predict_event_demand_route():

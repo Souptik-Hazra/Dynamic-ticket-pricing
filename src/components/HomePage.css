@@ -9,6 +9,12 @@
   overflow: hidden;
 }
 
+@media (max-width: 768px) {
+  .hero-section {
+    height: 400px;
+  }
+}
+
 .hero-overlay {
   position: absolute;
   top: 0;
@@ -42,11 +48,24 @@
   animation: fadeInUp 0.8s ease-out;
 }
 
+@media (max-width: 768px) {
+  .hero-title {
+    font-size: 2rem;
+  }
+}
+
 .hero-subtitle {
   font-size: 1.5rem;
   margin-bottom: 2.5rem;
   opacity: 0.95;
   animation: fadeInUp 1s ease-out;
+}
+
+@media (max-width: 768px) {
+  .hero-subtitle {
+    font-size: 1rem;
+    margin-bottom: 1.5rem;
+  }
 }
 
 .hero-search {
@@ -57,6 +76,14 @@
   animation: fadeInUp 1.2s ease-out;
 }
 
+@media (max-width: 768px) {
+  .hero-search {
+    flex-direction: column;
+    gap: 0.75rem;
+    width: 100%;
+  }
+}
+
 .search-input {
   flex: 1;
   padding: 1rem 1.5rem;
@@ -65,6 +92,13 @@
   font-size: 1rem;
   outline: none;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+@media (max-width: 768px) {
+  .search-input {
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+  }
 }
 
 .search-button {
@@ -81,6 +115,14 @@
   gap: 0.5rem;
   transition: all 0.3s ease;
   box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+}
+
+@media (max-width: 768px) {
+  .search-button {
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+    min-height: 44px;
+  }
 }
 
 .search-button:hover {

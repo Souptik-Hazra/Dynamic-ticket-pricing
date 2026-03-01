@@ -5,11 +5,24 @@
     color: #e0e0e0;
 }
 
+@media (max-width: 768px) {
+    .subscription-container {
+        padding: 1rem;
+    }
+}
+
 .subscription-container h2 {
     text-align: center;
     margin-bottom: 2rem;
     color: #111;
     font-size: 2.5rem;
+}
+
+@media (max-width: 768px) {
+    .subscription-container h2 {
+        font-size: 1.8rem;
+        margin-bottom: 1rem;
+    }
 }
 
 .current-status {
@@ -40,6 +53,13 @@
     gap: 2rem;
 }
 
+@media (max-width: 768px) {
+    .plans-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+}
+
 .plan-card {
     background: #1e1e2e;
     border-radius: 12px;
@@ -50,6 +70,13 @@
     transition: transform 0.3s ease, box-shadow 0.3s ease;
     position: relative;
     overflow: hidden;
+}
+
+@media (max-width: 768px) {
+    .plan-card {
+        padding: 1.5rem;
+        border-radius: 8px;
+    }
 }
 
 .plan-card:hover {
@@ -87,6 +114,12 @@
     margin: 0 0 1rem 0;
     color: #fff;
     font-size: 1.5rem;
+}
+
+@media (max-width: 768px) {
+    .plan-header h3 {
+        font-size: 1.2rem;
+    }
 }
 
 .plan-price {
@@ -136,6 +169,13 @@
     cursor: pointer;
     transition: background 0.2s ease;
     margin-top: auto;
+}
+
+@media (max-width: 768px) {
+    .subscribe-btn {
+        padding: 0.75rem;
+        min-height: 44px;
+    }
 }
 
 .subscribe-btn:hover {

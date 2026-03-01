@@ -1,8 +1,14 @@
 const mongoose = require('mongoose');
+const dotenv = require('dotenv');
+const path = require('path');
+
+// Load environment variables from root .env
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 async function resetTickets() {
   try {
-    await mongoose.connect('mongodb://localhost:27017/dynamic-ticket-pricing');
+    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/dynamic-ticket-pricing';
+    await mongoose.connect(mongoUri);
     console.log('Connected to MongoDB');
 
     // Delete all tickets

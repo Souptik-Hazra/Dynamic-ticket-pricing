@@ -5,11 +5,25 @@
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
 }
 
+@media (max-width: 768px) {
+  .analytics-container {
+    padding: 1rem;
+    border-radius: 8px;
+  }
+}
+
 .analytics-container h2 {
   color: #333;
   font-size: 2rem;
   margin-bottom: 2rem;
   text-align: center;
+}
+
+@media (max-width: 768px) {
+  .analytics-container h2 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+  }
 }
 
 .analytics-grid {
@@ -80,6 +94,14 @@
   color: white;
 }
 
+@media (max-width: 768px) {
+  .peak-hours-section {
+    padding: 1.5rem;
+    border-radius: 12px;
+    margin-top: 2rem;
+  }
+}
+
 .peak-hours-section h2 {
   color: white;
   font-size: 1.8rem;
@@ -92,6 +114,13 @@
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 1.5rem;
   margin-bottom: 2.5rem;
+}
+
+@media (max-width: 768px) {
+  .peak-summary-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
 }
 
 .peak-card {
