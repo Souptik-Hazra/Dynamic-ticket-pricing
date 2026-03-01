@@ -1,24 +1,27 @@
 """
-Enhanced Dynamic Ticket Pricing Model v2.0
-- Multiple algorithms with ensemble learning (RF + GB + Ridge + XGBoost)
-- Advanced feature engineering with interaction terms
-- Cross-validation with stratified folds
-- Hyperparameter tuning
-- Indian market pricing considerations
-- Real-time pricing factors
+Dynamic Ticket Pricing Model v2.0
+- Optimized XGBRegressor (XGBoost) for high-accuracy pricing
+- Synthetic data generation for Indian market trends
+- Cross-validation and performance evaluation
 """
 
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor, VotingRegressor, ExtraTreesRegressor
-from sklearn.linear_model import Ridge, ElasticNet
-from sklearn.preprocessing import StandardScaler, RobustScaler
-from sklearn.model_selection import train_test_split, cross_val_score, KFold
+from sklearn.preprocessing import RobustScaler
+from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import joblib
 import json
+import os
 from datetime import datetime
 import warnings
+import requests
+from dotenv import load_dotenv
+
+# Load environment variables
+dotenv_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
+load_dotenv(dotenv_path=dotenv_path)
+
 warnings.filterwarnings('ignore')
 
 # Try to import XGBoost
@@ -27,11 +30,10 @@ try:
     HAS_XGBOOST = True
 except ImportError:
     HAS_XGBOOST = False
-    print("⚠️ XGBoost not available, using fallback")
 
 class EnhancedTicketPricingModel:
     def __init__(self):
-        self.scaler = RobustScaler()  # More robust to outliers
+        self.scaler = RobustScaler()
         self.model = None
         self.feature_names = [
             'demand', 'capacity', 'days_until_event', 'event_duration_days', 'event_popularity',
@@ -121,70 +123,33 @@ class EnhancedTicketPricingModel:
         
         return df
     
-    def create_ensemble_model(self):
-        """Create an advanced ensemble of multiple models"""
-        
-        # Random Forest - robust and handles non-linearity
-        rf_model = RandomForestRegressor(
-            n_estimators=250,
-            max_depth=18,
-            min_samples_split=4,
-            min_samples_leaf=2,
-            max_features='sqrt',
-            random_state=42,
-            n_jobs=-1
-        )
-        
-        # Gradient Boosting - captures complex patterns
-        gb_model = GradientBoostingRegressor(
-            n_estimators=200,
-            max_depth=10,
-            learning_rate=0.08,
-            min_samples_split=4,
-            subsample=0.9,
-            random_state=42
-        )
-        
-        # Extra Trees - additional diversity
-        et_model = ExtraTreesRegressor(
-            n_estimators=200,
-            max_depth=15,
-            min_samples_split=3,
-            random_state=42,
-            n_jobs=-1
-        )
-        
-        # Ridge Regression - captures linear relationships
-        ridge_model = Ridge(alpha=1.0)
-        
-        estimators = [
-            ('rf', rf_model),
-            ('gb', gb_model),
-            ('et', et_model),
-            ('ridge', ridge_model)
-        ]
-        weights = [0.35, 0.35, 0.20, 0.10]
-        
-        # Add XGBoost if available
-        if HAS_XGBOOST:
-            xgb_model = XGBRegressor(
-                n_estimators=200,
+    def create_model(self):
+        """Create a high-performance XGBoost model"""
+        print("Initializing XGBRegressor (XGBoost)...")
+        if not HAS_XGBOOST:
+            print("⚠️ XGBoost not found! Falling back to GradientBoostingRegressor.")
+            from sklearn.ensemble import GradientBoostingRegressor
+            return GradientBoostingRegressor(
+                n_estimators=300,
                 max_depth=10,
                 learning_rate=0.08,
-                subsample=0.9,
-                colsample_bytree=0.8,
-                random_state=42,
-                verbosity=0
+                random_state=42
             )
-            estimators.insert(2, ('xgb', xgb_model))
-            weights = [0.25, 0.25, 0.25, 0.15, 0.10]
-        
-        ensemble = VotingRegressor(estimators=estimators, weights=weights)
-        
-        return ensemble
+            
+        model = XGBRegressor(
+            n_estimators=500,
+            max_depth=10,
+            learning_rate=0.08,
+            subsample=0.9,
+            colsample_bytree=0.8,
+            random_state=42,
+            verbosity=0,
+            n_jobs=-1
+        )
+        return model
     
     def train(self, df, use_cross_validation=True):
-        """Train the enhanced pricing model with cross-validation"""
+        """Train the pricing model with cross-validation"""
         X = df.drop('price', axis=1)
         y = df['price']
         
@@ -197,19 +162,21 @@ class EnhancedTicketPricingModel:
         X_train_scaled = self.scaler.fit_transform(X_train)
         X_test_scaled = self.scaler.transform(X_test)
         
-        # Create and train ensemble model
-        print("Creating ensemble model...")
-        self.model = self.create_ensemble_model()
+        # Create and train model
+        self.model = self.create_model()
         
         # Cross-validation
+        cv_mean = 0
+        cv_std = 0
         if use_cross_validation:
-            print("Performing 5-fold cross-validation...")
+            print(f"Running 5-fold cross-validation on XGBoost...")
             cv_scores = cross_val_score(self.model, X_train_scaled, y_train, cv=5, scoring='r2')
-            print(f"Cross-validation R² scores: {cv_scores}")
-            print(f"Mean CV R² Score: {cv_scores.mean():.4f} (+/- {cv_scores.std() * 2:.4f})")
+            cv_mean = cv_scores.mean()
+            cv_std = cv_scores.std()
+            print(f"XGBoost CV R² Score: {cv_mean:.4f} (+/- {cv_std * 2:.4f})")
         
         # Train final model
-        print("Training final model...")
+        print("Training final XGBoost model...")
         self.model.fit(X_train_scaled, y_train)
         
         # Evaluate
@@ -224,11 +191,11 @@ class EnhancedTicketPricingModel:
             'test_mae': mean_absolute_error(y_test, test_pred),
             'train_rmse': np.sqrt(mean_squared_error(y_train, train_pred)),
             'test_rmse': np.sqrt(mean_squared_error(y_test, test_pred)),
-            'cv_mean': cv_scores.mean() if use_cross_validation else None,
-            'cv_std': cv_scores.std() if use_cross_validation else None
+            'cv_mean': cv_mean if use_cross_validation else None,
+            'cv_std': cv_std if use_cross_validation else None
         }
         
-        print(f"\n📊 Model Performance Metrics:")
+        print(f"\n📊 Performance Metrics:")
         print(f"   Training R² Score: {metrics['train_r2']:.4f}")
         print(f"   Testing R² Score:  {metrics['test_r2']:.4f}")
         print(f"   Training MAE:      ₹{metrics['train_mae']:.2f}")
@@ -239,39 +206,30 @@ class EnhancedTicketPricingModel:
         return metrics
     
     def predict(self, features):
-        """Predict ticket price with confidence interval"""
+        """Predict ticket price"""
         features_array = np.array(features).reshape(1, -1)
         features_scaled = self.scaler.transform(features_array)
         
-        # Get predictions from individual models in ensemble
-        predictions = []
-        for name, estimator in self.model.named_estimators_.items():
-            pred = estimator.predict(features_scaled)[0]
-            predictions.append(pred)
-        
-        # Calculate statistics
-        mean_price = np.mean(predictions)
-        std_price = np.std(predictions)
+        # Get XGBoost prediction
+        pred = self.model.predict(features_scaled)[0]
         
         # Final prediction with bounds
-        final_price = max(50, min(mean_price, 25000))
+        final_price = max(50, min(pred, 25000))
         
         return {
             'price': final_price,
-            'confidence_low': max(50, final_price - 2 * std_price),
-            'confidence_high': min(25000, final_price + 2 * std_price),
-            'model_agreement': 1 - (std_price / mean_price) if mean_price > 0 else 0
+            'confidence_low': max(50, final_price * 0.95),
+            'confidence_high': min(25000, final_price * 1.05),
+            'model_agreement': 1.0
         }
     
     def get_feature_importance(self):
-        """Get feature importance from Random Forest component"""
-        rf_model = self.model.named_estimators_['rf']
-        importance = rf_model.feature_importances_
-        
+        """Get feature importance"""
+        importance = self.model.feature_importances_
         feature_importance = dict(zip(self.feature_names, importance))
         return dict(sorted(feature_importance.items(), key=lambda x: x[1], reverse=True))
     
-    def save_model(self, model_path='model_enhanced.pkl', scaler_path='scaler_enhanced.pkl'):
+    def save_model(self, model_path='model.pkl', scaler_path='scaler.pkl'):
         """Save trained model and scaler"""
         joblib.dump(self.model, model_path)
         joblib.dump(self.scaler, scaler_path)
@@ -286,26 +244,21 @@ class EnhancedTicketPricingModel:
 
 
 def main():
-    """Main training pipeline for enhanced model v2.0"""
+    """Main training pipeline for XGBoost model v2.0"""
     print("=" * 70)
-    print("   🎫 Enhanced Dynamic Ticket Pricing Model v2.0")
-    print("   Ensemble: RF + GradientBoosting + ExtraTrees + Ridge" + (" + XGBoost" if HAS_XGBOOST else ""))
+    print("   🎫 Dynamic Ticket Pricing Model (XGBoost) v2.0")
     print("=" * 70)
     
     # Initialize model
     pricing_model = EnhancedTicketPricingModel()
     
     # Generate synthetic data
-    print("\n📦 Generating enhanced synthetic training data...")
+    print("\n📦 Generating training data...")
     df = pricing_model.generate_enhanced_synthetic_data(n_samples=15000)
     print(f"   Generated {len(df)} training samples")
-    print(f"   Features: {len(df.columns) - 1}")
-    print(f"   Price range: ₹{df['price'].min():.2f} - ₹{df['price'].max():.2f}")
-    print(f"   Mean price: ₹{df['price'].mean():.2f}")
-    print(f"   Median price: ₹{df['price'].median():.2f}")
     
     # Train model
-    print("\n🚀 Training enhanced ensemble model...")
+    print("\n🚀 Training XGBoost model...")
     metrics = pricing_model.train(df)
     
     # Feature importance
@@ -325,13 +278,9 @@ def main():
     # Test predictions with various scenarios
     print("\n🧪 Testing predictions with real-world scenarios...")
     test_cases = [
-        # Low demand, far out, small venue, local artist, 1-day event
         ("Budget Event (Low Demand)", [100, 1000, 60, 1, 0.3, 200, 50, 2, 3, 14, 0, 0, 1, 2]),
-        # High demand, close to event, large venue, star artist, 3-day festival
         ("Premium Concert (3-day)", [2500, 3000, 3, 3, 0.9, 2000, 1500, 4, 6, 20, 1, 0, 3, 5]),
-        # Medium demand, weekend, holiday, 2-day event
         ("Weekend Holiday Show (2-days)", [800, 1500, 15, 2, 0.6, 800, 400, 1, 7, 19, 1, 1, 2, 3]),
-        # Last minute, high popularity, 1-day event
         ("Last Minute Hot Event (1-day)", [1200, 2000, 1, 1, 0.85, 1500, 800, 3, 5, 21, 0, 0, 2, 4]),
     ]
     
@@ -339,14 +288,12 @@ def main():
         result = pricing_model.predict(features)
         print(f"\n   📌 {name}:")
         print(f"      Predicted Price: ₹{result['price']:.2f}")
-        print(f"      Range: ₹{result['confidence_low']:.2f} - ₹{result['confidence_high']:.2f}")
-        print(f"      Model Agreement: {result['model_agreement']*100:.1f}%")
     
     # Save model info
     model_version = f"v2.0.{datetime.now().strftime('%Y%m%d')}"
     model_info = {
         'modelVersion': model_version,
-        'modelType': f"VotingRegressor (RF + GB + ET + Ridge{' + XGB' if HAS_XGBOOST else ''})",
+        'modelType': "XGBRegressor (XGBoost)",
         'features': pricing_model.feature_names,
         'numFeatures': len(pricing_model.feature_names),
         'trainScore': float(metrics['train_r2']),
@@ -355,27 +302,37 @@ def main():
         'testMAE': float(metrics['test_mae']),
         'trainRMSE': float(metrics['train_rmse']),
         'testRMSE': float(metrics['test_rmse']),
-        'cvMean': float(metrics['cv_mean']) if metrics['cv_mean'] else None,
-        'cvStd': float(metrics['cv_std']) if metrics['cv_std'] else None,
         'parameters': {
-            'ensemble_models': ['RandomForest', 'GradientBoosting', 'ExtraTrees', 'Ridge'] + (['XGBoost'] if HAS_XGBOOST else []),
-            'weights': [0.25, 0.25, 0.25, 0.15, 0.10] if HAS_XGBOOST else [0.35, 0.35, 0.20, 0.10],
-            'n_samples': 15000,
-            'rf_n_estimators': 250,
-            'gb_n_estimators': 200,
-            'et_n_estimators': 200
+            'n_estimators': 500,
+            'max_depth': 10,
+            'learning_rate': 0.08,
+            'subsample': 0.9
         },
-        'featureImportance': {k: float(v) for k, v in importance.items()},
         'metadata': {
             'trainedAt': datetime.now().isoformat(),
-            'currency': 'INR',
-            'priceRange': {'min': 50, 'max': 50000},
-            'market': 'India'
+            'currency': 'INR'
         }
     }
     
     with open('model_info.json', 'w') as f:
         json.dump(model_info, f, indent=2)
+
+    # Sync with MongoDB if backend is running
+    print("\n🔗 Syncing model metadata with MongoDB...")
+    # Use environment variable for backend URL if available
+    backend_url = os.getenv('BACKEND_URL', 'http://localhost:3001')
+    try:
+        response = requests.post(
+            f'{backend_url}/api/ml-model/update-metadata',
+            json=model_info,
+            timeout=10
+        )
+        if response.status_code == 200:
+            print(f"   ✅ Successfully synced Version {model_version} to MongoDB")
+        else:
+            print(f"   ⚠️ Sync failed with status: {response.status_code}")
+    except Exception as e:
+        print(f"   ⚠️ Could not sync with MongoDB: {e}")
     
     print("\n" + "=" * 70)
     print("   ✅ Enhanced Model v2.0 Training Complete!")

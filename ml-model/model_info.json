@@ -1,5 +1,5 @@
 {
-  "modelVersion": "v2.0.20260209",
+  "modelVersion": "v2.0.20260301",
   "modelType": "VotingRegressor (RF + GB + ET + Ridge + XGB)",
   "features": [
     "demand",
@@ -21,11 +21,11 @@
   "trainScore": 0.9926944358757379,
   "testScore": 0.9165012321638918,
   "trainMAE": 33.309061077586044,
-  "testMAE": 99.59912001673705,
+  "testMAE": 99.59912001673706,
   "trainRMSE": 48.876877618150594,
   "testRMSE": 165.8886545585782,
-  "cvMean": 0.9208592676199234,
-  "cvStd": 0.0077944020368565315,
+  "cvMean": 0.9208592676199236,
+  "cvStd": 0.007794402036856521,
   "parameters": {
     "ensemble_models": [
       "RandomForest",
@@ -63,7 +63,7 @@
     "is_weekend": 0.008318048514004682
   },
   "metadata": {
-    "trainedAt": "2026-02-09T21:40:08.053206",
+    "trainedAt": "2026-03-01T14:55:51.115584",
     "currency": "INR",
     "priceRange": {
       "min": 50,
