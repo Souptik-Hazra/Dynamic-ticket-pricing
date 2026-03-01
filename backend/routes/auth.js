@@ -79,15 +79,16 @@ router.post('/signup', async (req, res) => {
 
     console.log('✅ User created successfully:', user._id);
 
-    // Generate token
-    const token = generateToken(user._id);
+    await user.save();
 
-    console.log('✅ Token generated, sending response');
+    // Store user ID in session
+    req.session.userId = user._id;
+
+    console.log('✅ User created and session established');
 
     res.status(201).json({
       success: true,
       message: 'User registered successfully',
-      token,
       user: {
         id: user._id,
         name: user.name,
@@ -136,18 +137,18 @@ router.post('/signin', async (req, res) => {
     user.lastLogin = Date.now();
     await user.save();
 
-    // Generate token
-    const token = generateToken(user._id);
+    // Store user ID in session
+    req.session.userId = user._id;
 
     res.json({
       success: true,
       message: 'Login successful',
-      token,
       user: {
         id: user._id,
         name: user.name,
         email: user.email,
-        role: user.role
+        role: user.role,
+        subscription: user.subscription?.plan || 'free'
       }
     });
   } catch (error) {
@@ -182,6 +183,19 @@ router.get('/me', protect, async (req, res) => {
     console.error('Get user error:', error);
     res.status(401).json({ error: 'Not authorized' });
   }
+});
+
+// @route   POST /api/auth/logout
+// @desc    Logout user
+// @access  Public
+router.post('/logout', (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      return res.status(500).json({ error: 'Could not log out, please try again' });
+    }
+    res.clearCookie('connect.sid'); // default express-session cookie name
+    res.json({ success: true, message: 'Logged out successfully' });
+  });
 });
 
 module.exports = router;

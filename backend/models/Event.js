@@ -127,7 +127,7 @@ const eventSchema = new mongoose.Schema({
   },
   image: {
     type: String,
-    default: 'https://via.placeholder.com/400x250'
+    default: 'https://c8.alamy.com/comp/2CA3WX9/event-word-and-splashs-2CA3WX9.jpg'
   },
   ticketsSold: {
     type: Number,

@@ -1,4 +1,6 @@
 const express = require('express');
+const session = require('express-session');
+const cookieParser = require('cookie-parser');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
@@ -77,7 +79,24 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
   : [/^http:\/\/localhost:\d+$/]; // Allow any localhost port for development
 
-app.use(cors());
+app.use(cors({
+  origin: true, // Reflect request origin
+  credentials: true
+}));
+
+app.use(cookieParser());
+app.use(session({
+  secret: process.env.JWT_SECRET || 'souptik_session_secret',
+  resave: false,
+  saveUninitialized: false,
+  proxy: true, // trust render proxy
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    httpOnly: true,
+    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+  }
+}));
 
 // 4. Body parsing with size limits (prevent large payload attacks)
 app.use(express.json({ limit: '10mb' }));

@@ -15,17 +15,12 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [token, setToken] = useState(localStorage.getItem('token'));
 
-  // Set axios default header
+  // Configure axios for sessions
   useEffect(() => {
-    if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      loadUser();
-    } else {
-      setLoading(false);
-    }
-  }, [token]);
+    axios.defaults.withCredentials = true;
+    loadUser();
+  }, []);
 
   // Load user data
   const loadUser = async () => {
@@ -34,7 +29,7 @@ export const AuthProvider = ({ children }) => {
       setUser(response.data.user);
     } catch (error) {
       console.error('Load user error:', error);
-      logout();
+      setUser(null);
     } finally {
       setLoading(false);
     }
@@ -49,11 +44,7 @@ export const AuthProvider = ({ children }) => {
         password
       });
 
-      const { token, user } = response.data;
-      
-      localStorage.setItem('token', token);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      setToken(token);
+      const { user } = response.data;
       setUser(user);
 
       return { success: true };
@@ -74,11 +65,7 @@ export const AuthProvider = ({ children }) => {
         password
       });
 
-      const { token, user } = response.data;
-      
-      localStorage.setItem('token', token);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      setToken(token);
+      const { user } = response.data;
       setUser(user);
 
       return { success: true };
@@ -92,11 +79,14 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Logout
-  const logout = () => {
-    localStorage.removeItem('token');
-    setToken(null);
-    setUser(null);
-    delete axios.defaults.headers.common['Authorization'];
+  const logout = async () => {
+    try {
+      await axios.post(`${API_URL}/auth/logout`);
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
+      setUser(null);
+    }
   };
 
   // Check if user is admin
