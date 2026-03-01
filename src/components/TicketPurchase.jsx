@@ -8,6 +8,7 @@ function TicketPurchase({ event, onBack, onSuccess }) {
   const { user, isAuthenticated } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [dynamicPrices, setDynamicPrices] = useState({});
+  const [imageError, setImageError] = useState(false);
   const [formData, setFormData] = useState({
     customerName: '',
     customerEmail: '',
@@ -16,6 +17,22 @@ function TicketPurchase({ event, onBack, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [priceLoading, setPriceLoading] = useState(true);
   const [purchasedTicket, setPurchasedTicket] = useState(null);
+
+  const getCategoryEmoji = (category) => {
+    const emojiMap = {
+      concert: '🎵',
+      sports: '⚽',
+      theater: '🎭',
+      conference: '💼',
+      festival: '🎉',
+      comedy: '😂',
+      cinema: '🎬',
+      music: '🎸',
+      dance: '💃',
+      other: '🎪'
+    };
+    return emojiMap[category?.toLowerCase()] || '🎪';
+  };
 
   // Fetch dynamic prices for all categories
   useEffect(() => {
@@ -187,7 +204,17 @@ function TicketPurchase({ event, onBack, onSuccess }) {
 
       <div className="purchase-content">
         <div className="event-summary">
-          <img src={event.image} alt={event.name} />
+          {!imageError && event.image ? (
+            <img 
+              src={event.image} 
+              alt={event.name}
+              onError={() => setImageError(true)}
+            />
+          ) : (
+            <div className="event-summary-emoji">
+              {getCategoryEmoji(event.category)}
+            </div>
+          )}
           <h2>{event.name}</h2>
           <p className="venue">📍 {event.venue}</p>
           <p className="date">

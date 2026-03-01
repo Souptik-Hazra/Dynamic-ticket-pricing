@@ -1,8 +1,30 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './EventList.css';
 import AutoPriceUpdater from './AutoPriceUpdater';
 
 function EventList({ events, onUpdatePrice, onSelectEvent, onRefresh }) {
+  const [failedImages, setFailedImages] = useState(new Set());
+
+  const getCategoryEmoji = (category) => {
+    const emojiMap = {
+      concert: '🎵',
+      sports: '⚽',
+      theater: '🎭',
+      conference: '💼',
+      festival: '🎉',
+      comedy: '😂',
+      cinema: '🎬',
+      music: '🎸',
+      dance: '💃',
+      other: '🎪'
+    };
+    return emojiMap[category?.toLowerCase()] || '🎪';
+  };
+
+  const handleImageError = (eventId) => {
+    setFailedImages(prev => new Set(prev).add(eventId));
+  };
+
   const formatDateTime = (date) => {
     if (!date) return '';
     const d = new Date(date);
@@ -68,7 +90,17 @@ function EventList({ events, onUpdatePrice, onSelectEvent, onRefresh }) {
           {events.map(event => (
             <div key={event._id} className="event-card">
               <div className="event-image">
-                <img src={event.image} alt="" />
+                {!failedImages.has(event._id) && event.image ? (
+                  <img 
+                    src={event.image} 
+                    alt="" 
+                    onError={() => handleImageError(event._id)}
+                  />
+                ) : (
+                  <div className="event-image-emoji">
+                    {getCategoryEmoji(event.category)}
+                  </div>
+                )}
                 <span className="event-category-badge">{event.category}</span>
                 <span className="event-image-title">{event.name}</span>
                 <span className={`event-status ${event.status}`}>

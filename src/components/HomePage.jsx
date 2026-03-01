@@ -9,6 +9,27 @@ const HomePage = ({ onNavigate }) => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [failedImages, setFailedImages] = useState(new Set());
+
+  const getCategoryEmoji = (category) => {
+    const emojiMap = {
+      concert: '🎵',
+      sports: '⚽',
+      theater: '🎭',
+      conference: '💼',
+      festival: '🎉',
+      comedy: '😂',
+      cinema: '🎬',
+      music: '🎸',
+      dance: '💃',
+      other: '🎪'
+    };
+    return emojiMap[category?.toLowerCase()] || '🎪';
+  };
+
+  const handleImageError = (eventId) => {
+    setFailedImages(prev => new Set(prev).add(eventId));
+  };
 
   useEffect(() => {
     fetchEvents();
@@ -92,6 +113,18 @@ const HomePage = ({ onNavigate }) => {
               {filteredEvents.map(event => (
                 <div key={event._id} className="event-card">
                   <div className="event-image">
+                    {!failedImages.has(event._id) && event.image ? (
+                      <img 
+                        src={event.image} 
+                        alt={event.name}
+                        className="event-image-img"
+                        onError={() => handleImageError(event._id)}
+                      />
+                    ) : (
+                      <div className="event-image-emoji">
+                        {getCategoryEmoji(event.category)}
+                      </div>
+                    )}
                     <div className="event-badge">{event.category}</div>
                     <div className={`event-status-badge ${event.status}`}>{event.status}</div>
                     <div className="event-date-badge">

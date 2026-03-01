@@ -27,6 +27,23 @@ function AdminEventForm({ event, onClose }) {
   const [error, setError] = useState('');
   const [imagePreview, setImagePreview] = useState('');
   const [imageSource, setImageSource] = useState('url'); // 'url' or 'upload'
+  const [imageLoadError, setImageLoadError] = useState(false);
+
+  const getCategoryEmoji = (category) => {
+    const emojiMap = {
+      concert: '🎵',
+      sports: '⚽',
+      theater: '🎭',
+      conference: '💼',
+      festival: '🎉',
+      comedy: '😂',
+      cinema: '🎬',
+      music: '🎸',
+      dance: '💃',
+      other: '🎪'
+    };
+    return emojiMap[category?.toLowerCase()] || '🎪';
+  };
 
   useEffect(() => {
     if (event) {
@@ -67,6 +84,9 @@ function AdminEventForm({ event, onClose }) {
       ...prev,
       [name]: value
     }));
+    if (name === 'category') {
+      setImageLoadError(false);
+    }
     setError('');
   };
   
@@ -468,11 +488,17 @@ function AdminEventForm({ event, onClose }) {
             
             {(formData.image || imagePreview) && (
               <div className="image-preview">
-                <img 
-                  src={imagePreview || formData.image} 
-                  alt="Event preview" 
-                  onError={(e) => e.target.src = 'https://via.placeholder.com/400x250?text=Invalid+Image'}
-                />
+                {!imageLoadError ? (
+                  <img 
+                    src={imagePreview || formData.image} 
+                    alt="Event preview" 
+                    onError={() => setImageLoadError(true)}
+                  />
+                ) : (
+                  <div className="image-preview-emoji">
+                    {getCategoryEmoji(formData.category)}
+                  </div>
+                )}
               </div>
             )}
           </div>

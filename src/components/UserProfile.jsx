@@ -7,6 +7,7 @@ import "./UserProfile.css";
 const UserProfile = () => {
   const { user, updateUser } = useAuth();
   const [activeTab, setActiveTab] = useState("profile");
+  const [printEventImageError, setPrintEventImageError] = useState(false);
   const [form, setForm] = useState({
     name: user?.name || "",
     email: user?.email || "",
@@ -20,9 +21,26 @@ const UserProfile = () => {
   const [ticketsLoading, setTicketsLoading] = useState(false);
   const [printTicket, setPrintTicket] = useState(null);
 
+  const getCategoryEmoji = (category) => {
+    const emojiMap = {
+      concert: '🎵',
+      sports: '⚽',
+      theater: '🎭',
+      conference: '💼',
+      festival: '🎉',
+      comedy: '😂',
+      cinema: '🎬',
+      music: '🎸',
+      dance: '💃',
+      other: '🎪'
+    };
+    return emojiMap[category?.toLowerCase()] || '🎪';
+  };
+
   useEffect(() => {
     if (activeTab === "tickets") {
       fetchTickets();
+      setPrintEventImageError(false);
     }
   }, [activeTab]);
 
@@ -344,13 +362,17 @@ const UserProfile = () => {
               </div>
 
               {/* Event Image */}
-              {printTicket.eventId?.image && (
+              {!printEventImageError && printTicket.eventId?.image ? (
                 <div className="print-event-image">
                   <img
                     src={printTicket.eventId.image}
                     alt={printTicket.eventId?.name}
-                    onError={(e) => (e.target.style.display = "none")}
+                    onError={() => setPrintEventImageError(true)}
                   />
+                </div>
+              ) : (
+                <div className="print-event-emoji">
+                  {getCategoryEmoji(printTicket.eventId?.category)}
                 </div>
               )}
 
