@@ -25,26 +25,39 @@ const mlModelRoutes = require('./routes/mlModel');
 
 const app = express();
 
-// CORS
-const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',')
-  : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:3001'];
+// CORS - Support both web (localhost/http) and Electron (file://)
+const corsOptions = {
+  origin: function(origin, callback) {
+    const allowedOrigins = process.env.ALLOWED_ORIGINS
+      ? process.env.ALLOWED_ORIGINS.split(',')
+      : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:3001', 'file://'];
 
-app.use(cors({
-  origin: allowedOrigins,
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin || allowedOrigins.includes(origin) || origin === 'file://') {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
-  optionsSuccessStatus: 200
-}));
+  optionsSuccessStatus: 200,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+app.use(cors(corsOptions));
 
 app.use(cookieParser());
 app.use(session({
+  name: 'fanfever.sid', // Custom cookie name to prevent conflicts
   secret: process.env.SESSION_SECRET || 'souptik_session_secret',
-  resave: false,
-  saveUninitialized: false,
+  resave: true, // Force session to save even if not modified
+  saveUninitialized: true, // Force new but unmodified sessions to be saved
   proxy: true,
+  rolling: true, // Force cookie to be set on every response
   cookie: {
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    secure: false, // Must be false for local http Development
+    sameSite: 'lax',
     httpOnly: true,
     maxAge: 7 * 24 * 60 * 60 * 1000
   }
