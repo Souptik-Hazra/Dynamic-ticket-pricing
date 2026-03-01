@@ -11,12 +11,6 @@ const ticketSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
-  customerName: {
-    type: String
-  },
-  customerEmail: {
-    type: String
-  },
   quantity: {
     type: Number,
     required: true,
@@ -34,16 +28,6 @@ const ticketSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
-  categoryName: {
-    type: String,
-    enum: ['standard', 'vip', 'premium', 'balcony', 'economy'],
-    default: 'standard'
-  },
-  ticketType: {
-    type: String,
-    enum: ['standard', 'vip', 'premium', 'early-bird', 'last-minute', 'balcony', 'economy'],
-    default: 'standard'
-  },
   status: {
     type: String,
     enum: ['confirmed', 'cancelled', 'refunded', 'pending'],
@@ -53,20 +37,7 @@ const ticketSchema = new mongoose.Schema({
     type: String,
     unique: true,
     sparse: true
-  },
-  fraudScore: {
-    type: Number,
-    min: 0,
-    max: 100,
-    default: 0
-  },
-  fraudDetected: {
-    type: Boolean,
-    default: false
-  },
-  fraudReasons: [{
-    type: String
-  }]
+  }
 }, {
   timestamps: true
 });

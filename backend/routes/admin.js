@@ -189,7 +189,7 @@ router.get('/stats', protect, admin, async (req, res) => {
       Ticket.find()
         .sort({ purchaseDate: -1 })
         .limit(10)
-        .populate('eventId', 'name venue eventDate')
+        .populate('eventId', 'name venue date')
         .populate('userId', 'name email')
     ]);
 
@@ -235,7 +235,7 @@ router.get('/tickets', protect, admin, async (req, res) => {
     
     const tickets = await Ticket.find()
       .sort({ purchaseDate: -1 })
-      .populate('eventId', 'name venue eventDate category')
+      .populate('eventId', 'name venue date category')
       .populate('userId', 'name email');
 
     res.json({
@@ -246,7 +246,7 @@ router.get('/tickets', protect, admin, async (req, res) => {
         bookingReference: ticket.bookingReference,
         eventName: ticket.eventId?.name || 'Unknown Event',
         eventVenue: ticket.eventId?.venue || '',
-        eventDate: ticket.eventId?.eventDate,
+        eventDate: ticket.eventId?.date,
         buyerName: ticket.customerName || ticket.userId?.name || 'Unknown',
         buyerEmail: ticket.customerEmail || ticket.userId?.email || 'Unknown',
         categoryName: ticket.categoryName || 'standard',
