@@ -1,5 +1,4 @@
 const amqp = require('amqplib');
-const EventLog = require('../models/EventLog');
 
 let channel = null;
 const QUEUE_NAME = 'ticket_purchases';
@@ -67,16 +66,8 @@ const messageQueueService = {
     };
 
     try {
-      // Save to MongoDB first with pending status
-      const eventLog = await EventLog.create({
-        type: 'TICKET_PURCHASE',
-        status: 'pending',
-        data: message.data
-      });
-
-      // Then publish to RabbitMQ
-      await this.sendMessage({ ...message, eventLogId: eventLog._id });
-      console.log('Ticket purchase event saved and queued:', data.ticketId);
+      await this.sendMessage(message);
+      console.log('Ticket purchase event queued:', data.ticketId);
       return true;
     } catch (err) {
       console.error('Failed to publish ticket purchase:', err.message);
@@ -99,16 +90,8 @@ const messageQueueService = {
     };
 
     try {
-      // Save to MongoDB first with pending status
-      const eventLog = await EventLog.create({
-        type: 'ANALYTICS_EVENT',
-        status: 'pending',
-        data: message.data
-      });
-
-      // Then publish to RabbitMQ
-      await this.sendMessage({ ...message, eventLogId: eventLog._id });
-      console.log('Analytics event saved and queued:', data.type);
+      await this.sendMessage(message);
+      console.log('Analytics event queued:', data.type);
       return true;
     } catch (err) {
       console.error('Failed to publish analytics:', err.message);
@@ -131,48 +114,11 @@ const messageQueueService = {
     };
 
     try {
-      // Save to MongoDB first with pending status
-      const eventLog = await EventLog.create({
-        type: 'NOTIFICATION',
-        status: 'pending',
-        data: message.data
-      });
-
-      // Then publish to RabbitMQ
-      await this.sendMessage({ ...message, eventLogId: eventLog._id });
-      console.log('Notification saved and queued for user:', data.userId);
+      await this.sendMessage(message);
+      console.log('Notification queued for user:', data.userId);
       return true;
     } catch (err) {
       console.error('Failed to publish notification:', err.message);
-      return false;
-    }
-  },
-
-  // Mark event as completed when consumer processes it
-  async markCompleted(eventLogId) {
-    try {
-      await EventLog.findByIdAndUpdate(eventLogId, {
-        status: 'completed',
-        processedAt: new Date()
-      });
-      return true;
-    } catch (err) {
-      console.error('Failed to mark event completed:', err.message);
-      return false;
-    }
-  },
-
-  // Mark event as failed
-  async markFailed(eventLogId, error) {
-    try {
-      await EventLog.findByIdAndUpdate(eventLogId, {
-        status: 'failed',
-        error: error,
-        processedAt: new Date()
-      });
-      return true;
-    } catch (err) {
-      console.error('Failed to mark event failed:', err.message);
       return false;
     }
   }

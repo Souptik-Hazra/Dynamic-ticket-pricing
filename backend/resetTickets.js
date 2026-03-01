@@ -19,24 +19,16 @@ async function resetTickets() {
     const events = await mongoose.connection.db.collection('events').find({}).toArray();
     
     for (const event of events) {
-      if (event.ticketCategories) {
-        const updatedCategories = event.ticketCategories.map(cat => ({
-          ...cat,
-          availableSeats: cat.seats
-        }));
-        
-        await mongoose.connection.db.collection('events').updateOne(
-          { _id: event._id },
-          { 
-            $set: { 
-              ticketCategories: updatedCategories,
-              ticketsSold: 0,
-              availableTickets: updatedCategories.reduce((sum, c) => sum + c.seats, 0),
-              totalRevenue: 0
-            }
+      await mongoose.connection.db.collection('events').updateOne(
+        { _id: event._id },
+        { 
+          $set: { 
+            availableTickets: event.totalCapacity || 0,
+            ticketsSold: 0,
+            totalRevenue: 0
           }
-        );
-      }
+        }
+      );
     }
     
     console.log('Reset', events.length, 'events');

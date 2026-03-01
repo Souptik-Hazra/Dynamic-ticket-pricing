@@ -17,7 +17,6 @@ const initRedis = async () => {
   }
 };
 
-// Simple cache service
 const cacheService = {
   async get(key) {
     if (!redisClient) return null;
@@ -39,7 +38,7 @@ const cacheService = {
     }
   },
 
-  async del(key) {
+  async delete(key) {
     if (!redisClient) return false;
     try {
       await redisClient.del(key);
@@ -53,19 +52,6 @@ const cacheService = {
     if (!redisClient) return false;
     try {
       await redisClient.flushAll();
-      return true;
-    } catch (err) {
-      return false;
-    }
-  },
-
-  async invalidatePattern(pattern) {
-    if (!redisClient) return false;
-    try {
-      const keys = await redisClient.keys(pattern);
-      if (keys.length > 0) {
-        await redisClient.del(keys);
-      }
       return true;
     } catch (err) {
       return false;

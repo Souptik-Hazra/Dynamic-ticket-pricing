@@ -5,7 +5,7 @@ import { API_URL } from "../config/api";
 import "./UserProfile.css";
 
 const UserProfile = () => {
-  const { user, updateUser } = useAuth();
+  const { user, updateProfile } = useAuth();
   const [activeTab, setActiveTab] = useState("profile");
   const [form, setForm] = useState({
     name: user?.name || "",
@@ -52,7 +52,7 @@ const UserProfile = () => {
     try {
       const dataToSend = { ...form };
       if (!dataToSend.password) delete dataToSend.password;
-      await updateUser(dataToSend);
+      await updateProfile(dataToSend);
       setMessage({ text: "Profile updated successfully!", type: "success" });
       setForm((prev) => ({ ...prev, password: "" }));
     } catch (err) {
@@ -364,24 +364,16 @@ const UserProfile = () => {
                       <span className="print-detail-value">{printTicket.eventId.venue}</span>
                     </div>
                   )}
-                  {printTicket.eventId?.startDate && (
+                  {printTicket.eventId?.date && (
                     <div className="print-detail-row">
                       <span className="print-detail-label">📅 Date</span>
                       <span className="print-detail-value">
-                        {new Date(printTicket.eventId.startDate).toLocaleDateString("en-US", {
+                        {new Date(printTicket.eventId.date).toLocaleDateString("en-US", {
                           weekday: "long",
                           year: "numeric",
                           month: "long",
                           day: "numeric",
                         })}
-                        {printTicket.eventId.endDate &&
-                          printTicket.eventId.endDate !== printTicket.eventId.startDate &&
-                          ` — ${new Date(printTicket.eventId.endDate).toLocaleDateString("en-US", {
-                            weekday: "long",
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                          })}`}
                       </span>
                     </div>
                   )}

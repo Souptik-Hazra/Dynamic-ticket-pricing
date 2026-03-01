@@ -9,78 +9,54 @@ const { protect, admin } = require('../middleware/auth');
 // @access  Private/Admin
 router.get('/events', protect, admin, async (req, res) => {
   try {
-    // Auto-update event statuses based on current date
-    await Event.updateEventStatuses();
-    
-    // Single aggregation query: group tickets by eventId and categoryName
-    const ticketAggregation = await Ticket.aggregate([
-      { $match: { status: 'confirmed' } },
+    // Single aggregation pipeline: matches events with ticket sales
+    const eventsWithMetrics = await Event.aggregate([
       {
-        $group: {
-          _id: {
-            eventId: '$eventId',
-            categoryName: '$categoryName'
+        $lookup: {
+          from: 'tickets',
+          localField: '_id',
+          foreignField: 'eventId',
+          as: 'tickets'
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          description: 1,
+          venue: 1,
+          ticketPrice: 1,
+          availableTickets: 1,
+          totalCapacity: 1,
+          date: 1,
+          createdAt: 1,
+          totalRevenue: {
+            $sum: {
+              $cond: [
+                { $eq: ['$tickets.status', 'confirmed'] },
+                '$tickets.totalAmount',
+                0
+              ]
+            }
           },
-          actualRevenue: { $sum: '$totalAmount' },
-          quantity: { $sum: '$quantity' }
+          ticketsSold: {
+            $size: {
+              $filter: {
+                input: '$tickets',
+                as: 'ticket',
+                cond: { $eq: ['$$ticket.status', 'confirmed'] }
+              }
+            }
+          }
         }
-      }
+      },
+      { $sort: { createdAt: -1 } }
     ]);
-    
-    // Organize aggregation results by eventId for quick lookup
-    const revenueByEvent = {};
-    ticketAggregation.forEach(item => {
-      const eventId = item._id.eventId.toString();
-      if (!revenueByEvent[eventId]) {
-        revenueByEvent[eventId] = {
-          actualRevenue: 0,
-          categoryData: {}
-        };
-      }
-      revenueByEvent[eventId].actualRevenue += item.actualRevenue;
-      revenueByEvent[eventId].categoryData[item._id.categoryName] = {
-        quantity: item.quantity,
-        actualRevenue: item.actualRevenue
-      };
-    });
-    
-    // Get all events (minimal query since heavy lifting done in aggregation)
-    const events = await Event.find().sort({ createdAt: -1 });
-    
-    // Combine event data with pre-calculated revenue
-    const eventsWithProfit = events.map(event => {
-      const eventObj = event.toObject();
-      const revData = revenueByEvent[event._id.toString()] || { 
-        actualRevenue: 0, 
-        categoryData: {} 
-      };
-      
-      // Calculate base revenue from categories using aggregated ticket counts
-      let baseRevenue = 0;
-      event.ticketCategories.forEach(category => {
-        const catData = revData.categoryData[category.name];
-        if (catData) {
-          baseRevenue += category.price * catData.quantity;
-        }
-      });
-      
-      // Calculate profit margin
-      const profitAmount = revData.actualRevenue - baseRevenue;
-      const profitPercentage = baseRevenue > 0 ? ((profitAmount / baseRevenue) * 100) : 0;
-      
-      return {
-        ...eventObj,
-        totalRevenue: revData.actualRevenue,
-        baseRevenue: baseRevenue,
-        profitAmount: profitAmount,
-        profitPercentage: profitPercentage
-      };
-    });
     
     res.json({
       success: true,
-      count: eventsWithProfit.length,
-      events: eventsWithProfit
+      count: eventsWithMetrics.length,
+      events: eventsWithMetrics
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -95,40 +71,27 @@ router.post('/events', protect, admin, async (req, res) => {
     console.log('📝 Creating event with data:', req.body);
     
     // Validate required fields
-    if (!req.body.ticketCategories || req.body.ticketCategories.length === 0) {
-      return res.status(400).json({ error: 'At least one ticket category is required' });
+    if (!req.body.ticketPrice || req.body.ticketPrice <= 0) {
+      return res.status(400).json({ error: 'Valid ticket price is required' });
+    }
+    
+    if (!req.body.totalCapacity || req.body.totalCapacity <= 0) {
+      return res.status(400).json({ error: 'Total capacity is required' });
     }
     
     // Validate event date is in the future
-    if (!req.body.startDate) {
-      return res.status(400).json({ error: 'Event start date is required' });
+    if (!req.body.date) {
+      return res.status(400).json({ error: 'Event date is required' });
     }
     
-    const eventDate = new Date(req.body.startDate);
+    const eventDate = new Date(req.body.date);
     if (eventDate <= new Date()) {
       return res.status(400).json({ error: 'Event date must be in the future' });
     }
     
-    // Validate new fields
-    if (req.body.hourOfDay !== undefined) {
-      const hour = parseInt(req.body.hourOfDay);
-      if (hour < 0 || hour > 23) {
-        return res.status(400).json({ error: 'Hour of day must be between 0 and 23' });
-      }
-    }
-    
-    if (req.body.venueTier !== undefined) {
-      const tier = parseInt(req.body.venueTier);
-      if (![1, 2, 3].includes(tier)) {
-        return res.status(400).json({ error: 'Venue tier must be 1 (Small), 2 (Medium), or 3 (Large/Stadium)' });
-      }
-    }
-    
-    if (req.body.artistTier !== undefined) {
-      const tier = parseInt(req.body.artistTier);
-      if (tier < 1 || tier > 5) {
-        return res.status(400).json({ error: 'Artist tier must be between 1 (Local) and 5 (International Superstar)' });
-      }
+    // Set availableTickets to totalCapacity initially
+    if (!req.body.availableTickets) {
+      req.body.availableTickets = req.body.totalCapacity;
     }
     
     // Create the event
@@ -154,57 +117,21 @@ router.put('/events/:id', protect, admin, async (req, res) => {
   try {
     console.log('📝 Updating event with data:', req.body);
     
-    // Validate ticket categories if provided
-    if (req.body.ticketCategories && req.body.ticketCategories.length === 0) {
-      return res.status(400).json({ error: 'At least one ticket category is required' });
-    }
-    
-    // Validate new fields
-    if (req.body.hourOfDay !== undefined) {
-      const hour = parseInt(req.body.hourOfDay);
-      if (hour < 0 || hour > 23) {
-        return res.status(400).json({ error: 'Hour of day must be between 0 and 23' });
-      }
-    }
-    
-    if (req.body.venueTier !== undefined) {
-      const tier = parseInt(req.body.venueTier);
-      if (![1, 2, 3].includes(tier)) {
-        return res.status(400).json({ error: 'Venue tier must be 1 (Small), 2 (Medium), or 3 (Large/Stadium)' });
-      }
-    }
-    
-    if (req.body.artistTier !== undefined) {
-      const tier = parseInt(req.body.artistTier);
-      if (tier < 1 || tier > 5) {
-        return res.status(400).json({ error: 'Artist tier must be between 1 (Local) and 5 (International Superstar)' });
-      }
-    }
-    
-    // Get existing event to preserve sold ticket data
+    // Get existing event
     const existingEvent = await Event.findById(req.params.id);
     if (!existingEvent) {
       return res.status(404).json({ error: 'Event not found' });
     }
     
-    // If updating ticket categories, preserve availableSeats for existing categories
-    if (req.body.ticketCategories) {
-      req.body.ticketCategories = req.body.ticketCategories.map(newCat => {
-        const existingCat = existingEvent.ticketCategories.find(c => c.name === newCat.name);
-        if (existingCat) {
-          // Preserve the sold ticket count
-          const soldTickets = existingCat.seats - existingCat.availableSeats;
-          return {
-            ...newCat,
-            availableSeats: Math.max(0, newCat.seats - soldTickets)
-          };
-        }
-        // New category - availableSeats = seats
-        return {
-          ...newCat,
-          availableSeats: newCat.availableSeats ?? newCat.seats
-        };
-      });
+    // If updating ticket price, ensure it's valid
+    if (req.body.ticketPrice !== undefined && req.body.ticketPrice <= 0) {
+      return res.status(400).json({ error: 'Ticket price must be greater than 0' });
+    }
+    
+    // If updating total capacity, preserve availableTickets properly
+    if (req.body.totalCapacity !== undefined) {
+      const soldTickets = existingEvent.totalCapacity - existingEvent.availableTickets;
+      req.body.availableTickets = Math.max(0, req.body.totalCapacity - soldTickets);
     }
     
     const event = await Event.findByIdAndUpdate(

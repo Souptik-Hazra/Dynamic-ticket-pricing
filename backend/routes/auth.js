@@ -81,8 +81,8 @@ router.post('/signup', async (req, res) => {
 
     await user.save();
 
-    // Store user ID in session
-    req.session.userId = user._id;
+    // Store user in session
+    req.session.user = user.toJSON();
 
     console.log('✅ User created and session established');
 
@@ -137,8 +137,8 @@ router.post('/signin', async (req, res) => {
     user.lastLogin = Date.now();
     await user.save();
 
-    // Store user ID in session
-    req.session.userId = user._id;
+    // Store user in session
+    req.session.user = user.toJSON();
 
     res.json({
       success: true,

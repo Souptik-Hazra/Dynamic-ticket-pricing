@@ -6,47 +6,13 @@ import './TicketPurchase.css';
 
 function TicketPurchase({ event, onBack, onSuccess }) {
   const { user, isAuthenticated } = useAuth();
-  const [selectedCategory, setSelectedCategory] = useState(null);
-  const [dynamicPrices, setDynamicPrices] = useState({});
   const [formData, setFormData] = useState({
     customerName: '',
     customerEmail: '',
     quantity: 1
   });
   const [loading, setLoading] = useState(false);
-  const [priceLoading, setPriceLoading] = useState(true);
   const [purchasedTicket, setPurchasedTicket] = useState(null);
-
-  // Fetch dynamic prices for all categories
-  useEffect(() => {
-    const fetchDynamicPrices = async () => {
-      try {
-        setPriceLoading(true);
-        const response = await axios.get(`${API_URL}/events/${event._id}/dynamic-prices`);
-        if (response.data.prices) {
-          setDynamicPrices(response.data.prices);
-        }
-      } catch (error) {
-        console.log('Using base prices');
-        // Calculate simple dynamic pricing locally as fallback
-        const occupancyRate = event.ticketsSold / event.capacity;
-        let multiplier = 1 + (occupancyRate * 0.5);
-        multiplier = Math.max(0.9, Math.min(2.0, multiplier));
-        
-        const prices = {};
-        if (event.ticketCategories) {
-          event.ticketCategories.forEach(cat => {
-            prices[cat.name] = Math.round(cat.price * multiplier * 100) / 100;
-          });
-        }
-        setDynamicPrices(prices);
-      } finally {
-        setPriceLoading(false);
-      }
-    };
-    
-    fetchDynamicPrices();
-  }, [event]);
 
   // Pre-fill user data if logged in
   useEffect(() => {
@@ -59,13 +25,6 @@ function TicketPurchase({ event, onBack, onSuccess }) {
     }
   }, [user]);
 
-  // Select first category by default
-  useEffect(() => {
-    if (event.ticketCategories && event.ticketCategories.length > 0) {
-      setSelectedCategory(event.ticketCategories[0]);
-    }
-  }, [event]);
-
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -74,34 +33,12 @@ function TicketPurchase({ event, onBack, onSuccess }) {
     }));
   };
 
-  const handleCategorySelect = (category) => {
-    setSelectedCategory(category);
-    // Reset quantity if it exceeds available seats
-    if (formData.quantity > category.availableSeats) {
-      setFormData(prev => ({ ...prev, quantity: Math.min(prev.quantity, category.availableSeats) }));
-    }
-  };
-
   const getPrice = () => {
-    if (selectedCategory) {
-      // Use dynamic price if available, otherwise use base price
-      return dynamicPrices[selectedCategory.name] || selectedCategory.price;
-    }
-    return event.currentPrice || event.basePrice || 0;
-  };
-
-  const getBasePrice = () => {
-    if (selectedCategory) {
-      return selectedCategory.price;
-    }
-    return event.basePrice || 0;
+    return event.ticketPrice || 0;
   };
 
   const getAvailableTickets = () => {
-    if (selectedCategory) {
-      return selectedCategory.availableSeats;
-    }
-    return event.availableTickets || (event.capacity - event.ticketsSold) || 0;
+    return event.availableTickets || 0;
   };
 
   const calculateTotal = () => {
@@ -131,13 +68,10 @@ function TicketPurchase({ event, onBack, onSuccess }) {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('token');
       const response = await axios.post(
         `${API_URL}/tickets`,
         {
           eventId: event._id,
-          categoryId: selectedCategory?._id,
-          categoryName: selectedCategory?.name,
           ...formData,
           quantity: parseInt(formData.quantity),
           pricePerTicket: getPrice()
@@ -154,9 +88,7 @@ function TicketPurchase({ event, onBack, onSuccess }) {
         eventVenue: event.venue,
         eventImage: event.image,
         eventCategory: event.category,
-        eventStartDate: event.startDate,
-        eventEndDate: event.endDate,
-        categoryName: selectedCategory?.name || 'standard',
+        eventDate: event.date,
         customerName: formData.customerName,
         customerEmail: formData.customerEmail,
       });
@@ -167,8 +99,6 @@ function TicketPurchase({ event, onBack, onSuccess }) {
       alert(`❌ ${errorMessage}`);
     }
   };
-
-  const hasCategories = event.ticketCategories && event.ticketCategories.length > 0;
 
   const handleClosePurchasedTicket = () => {
     setPurchasedTicket(null);
@@ -191,90 +121,28 @@ function TicketPurchase({ event, onBack, onSuccess }) {
           <h2>{event.name}</h2>
           <p className="venue">📍 {event.venue}</p>
           <p className="date">
-            📅 {event.startDate && event.endDate
-              ? `${new Date(event.startDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} to ${new Date(event.endDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`
-              : event.startDate
-                ? new Date(event.startDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-                : event.endDate
-                  ? new Date(event.endDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-                  : 'Date not set'}
+            📅 {event.date
+              ? new Date(event.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+              : 'Date not set'}
           </p>
           <p className="category-tag">🎭 {event.category}</p>
         </div>
 
         <div className="purchase-form-section">
-          {/* Ticket Categories Section */}
-          {hasCategories && (
-            <div className="ticket-categories">
-              <h3>🎟️ Select Ticket Type</h3>
-              <div className="categories-grid">
-                {event.ticketCategories.map((category) => {
-                  const getCategoryDisplay = (name) => {
-                    const lower = name?.toLowerCase();
-                    if (lower === 'vip') return '👑 VIP';
-                    if (lower === 'premium') return '⭐ Premium';
-                    if (lower === 'balcony') return '🎭 Balcony';
-                    if (lower === 'gold') return '🥇 Gold';
-                    if (lower === 'silver') return '🥈 Silver';
-                    if (lower === 'platinum') return '💎 Platinum';
-                    if (lower === 'standard') return '🎫 Standard';
-                    // Capitalize first letter for any other category
-                    return `🎫 ${name?.charAt(0).toUpperCase() + name?.slice(1) || 'Standard'}`;
-                  };
-                  
-                  return (
-                  <div
-                    key={category._id || category.name}
-                    className={`category-card ${selectedCategory?.name === category.name ? 'selected' : ''} ${category.availableSeats === 0 ? 'sold-out' : ''}`}
-                    onClick={() => category.availableSeats > 0 && handleCategorySelect(category)}
-                  >
-                    <div className="category-header">
-                      <span className="category-name">
-                        {getCategoryDisplay(category.name)}
-                      </span>
-                      {selectedCategory?.name === category.name && (
-                        <span className="selected-badge">✓</span>
-                      )}
-                    </div>
-                    <div className="category-price">
-                      {priceLoading ? (
-                        <span className="price-loading">Loading...</span>
-                      ) : (
-                        <>
-                          <span className="dynamic-price">₹{(dynamicPrices[category.name] || category.price).toFixed(0)}</span>
-                          {dynamicPrices[category.name] && dynamicPrices[category.name] !== category.price && (
-                            <span className="base-price-strike">₹{category.price}</span>
-                          )}
-                        </>
-                      )}
-                    </div>
-                    <div className="category-seats">
-                      {category.availableSeats > 0 ? (
-                        <span className="available">{category.availableSeats} seats left</span>
-                      ) : (
-                        <span className="sold-out-text">Sold Out</span>
-                      )}
-                    </div>
-                    <div className="category-total">
-                      Total: {category.seats} seats
-                    </div>
-                  </div>
-                  );
-                })}
+          {/* Ticket Information Section */}
+          <div className="ticket-info">
+            <h3>🎟️ Ticket Details</h3>
+            <div className="ticket-details">
+              <div className="detail-row">
+                <span className="detail-label">Ticket Price:</span>
+                <span className="detail-value">₹{getPrice()}</span>
+              </div>
+              <div className="detail-row">
+                <span className="detail-label">Available Tickets:</span>
+                <span className="detail-value">{getAvailableTickets()} remaining</span>
               </div>
             </div>
-          )}
-
-          {/* Single Price Display (if no categories) */}
-          {!hasCategories && (
-            <div className="single-price-display">
-              <h3>🎟️ Ticket Price</h3>
-              <div className="price-box">
-                <span className="price-amount">₹{getPrice().toFixed(2)}</span>
-                <span className="available-text">{getAvailableTickets()} tickets available</span>
-              </div>
-            </div>
-          )}
+          </div>
 
           <h3>📝 Your Details</h3>
           
@@ -321,12 +189,6 @@ function TicketPurchase({ event, onBack, onSuccess }) {
 
             <div className="order-summary">
               <h4>📋 Order Summary</h4>
-              {selectedCategory && (
-                <div className="summary-row">
-                  <span>Ticket Type:</span>
-                  <span className="category-label">{selectedCategory.name.toUpperCase()}</span>
-                </div>
-              )}
               <div className="summary-row">
                 <span>Price per ticket:</span>
                 <span>₹{getPrice().toFixed(2)}</span>
@@ -402,17 +264,13 @@ function TicketPurchase({ event, onBack, onSuccess }) {
                       <span className="pp-value">{purchasedTicket.eventVenue}</span>
                     </div>
                   )}
-                  {purchasedTicket.eventStartDate && (
+                  {purchasedTicket.eventDate && (
                     <div className="pp-row">
                       <span className="pp-label">📅 Date</span>
                       <span className="pp-value">
-                        {new Date(purchasedTicket.eventStartDate).toLocaleDateString('en-US', {
+                        {new Date(purchasedTicket.eventDate).toLocaleDateString('en-US', {
                           weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
                         })}
-                        {purchasedTicket.eventEndDate && purchasedTicket.eventEndDate !== purchasedTicket.eventStartDate &&
-                          ` — ${new Date(purchasedTicket.eventEndDate).toLocaleDateString('en-US', {
-                            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-                          })}`}
                       </span>
                     </div>
                   )}
@@ -440,9 +298,7 @@ function TicketPurchase({ event, onBack, onSuccess }) {
                 </div>
                 <div className="pp-detail-box">
                   <span className="pp-box-label">Ticket Type</span>
-                  <span className="pp-box-value">
-                    {purchasedTicket.categoryName?.toUpperCase() || 'STANDARD'}
-                  </span>
+                  <span className="pp-box-value">STANDARD</span>
                 </div>
                 <div className="pp-detail-box">
                   <span className="pp-box-label">Quantity</span>

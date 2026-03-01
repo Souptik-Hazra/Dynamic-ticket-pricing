@@ -14,7 +14,6 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
 
   // Configure axios for sessions
   useEffect(() => {
@@ -28,31 +27,20 @@ export const AuthProvider = ({ children }) => {
       const response = await axios.get(`${API_URL}/auth/me`);
       setUser(response.data.user);
     } catch (error) {
-      console.error('Load user error:', error);
       setUser(null);
-    } finally {
-      setLoading(false);
     }
   };
 
   // Signup
   const signup = async (name, email, password) => {
     try {
-      const response = await axios.post(`${API_URL}/auth/signup`, {
-        name,
-        email,
-        password
-      });
-
-      const { user } = response.data;
-      setUser(user);
-
+      const response = await axios.post(`${API_URL}/auth/signup`, { name, email, password });
+      setUser(response.data.user);
       return { success: true };
     } catch (error) {
-      console.error('Signup error:', error);
       return {
         success: false,
-        error: error.response?.data?.error || 'Signup failed. Please try again.'
+        error: error.response?.data?.error || 'Signup failed'
       };
     }
   };
@@ -60,20 +48,13 @@ export const AuthProvider = ({ children }) => {
   // Signin
   const signin = async (email, password) => {
     try {
-      const response = await axios.post(`${API_URL}/auth/signin`, {
-        email,
-        password
-      });
-
-      const { user } = response.data;
-      setUser(user);
-
+      const response = await axios.post(`${API_URL}/auth/signin`, { email, password });
+      setUser(response.data.user);
       return { success: true };
     } catch (error) {
-      console.error('Signin error:', error);
       return {
         success: false,
-        error: error.response?.data?.error || 'Login failed. Please try again.'
+        error: error.response?.data?.error || 'Login failed'
       };
     }
   };
@@ -84,37 +65,25 @@ export const AuthProvider = ({ children }) => {
       await axios.post(`${API_URL}/auth/logout`);
     } catch (err) {
       console.error('Logout error:', err);
-    } finally {
-      setUser(null);
     }
+    setUser(null);
   };
 
-  // Check if user is admin
-  const isAdmin = () => {
-    return user?.role === 'admin';
-  };
-
-
-  // Update user profile
-  const updateUser = async (profileData) => {
-    try {
-      const response = await axios.put(`${API_URL}/auth/update-profile`, profileData);
-      setUser(response.data.user);
-      return response.data.user;
-    } catch (error) {
-      throw error;
-    }
+  // Update profile
+  const updateProfile = async (profileData) => {
+    const response = await axios.put(`${API_URL}/auth/update-profile`, profileData);
+    setUser(response.data.user);
+    return response.data.user;
   };
 
   const value = {
     user,
-    loading,
+    isAuthenticated: !!user,
     signup,
     signin,
     logout,
-    isAdmin,
-    isAuthenticated: !!user,
-    updateUser
+    loadUser,
+    updateProfile
   };
 
   return (

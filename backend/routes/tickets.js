@@ -1,12 +1,11 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const Ticket = require('../models/Ticket');
 const Event = require('../models/Event');
 const { protect } = require('../middleware/auth');
-const cacheService = require('../services/cacheService');
 const messageQueueService = require('../services/messageQueueService');
-const concurrencyService = require('../services/concurrencyService');
-const axios = require('axios');
+const cacheService = require('../services/cacheService');
 
 // Get all tickets with caching
 router.get('/', protect, async (req, res) => {
@@ -63,132 +62,61 @@ router.post('/', protect, async (req, res) => {
     return res.status(400).json({ message: 'Invalid request data' });
   }
 
-  const lockKey = `ticket-purchase:${eventId}`;
-  let lockToken = null;
-
   try {
-    // Acquire distributed lock for this event
-    lockToken = await concurrencyService.acquireLock(lockKey, 30);
-    
-    if (!lockToken) {
-      return res.status(429).json({ 
-        message: 'Too many concurrent requests. Please try again.' 
-      });
-    }
+    // Use MongoDB transaction for atomic ticket purchase
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-    // Start database transaction simulation (optimistic locking)
-    const result = await concurrencyService.optimisticUpdate(
-      Event,
-      eventId,
-      async (event) => {
-        // Validate event exists and is available
-        if (!event) {
-          throw new Error('Event not found');
-        }
+    try {
+      // Single atomic operation: check and decrement
+      const event = await Event.findOneAndUpdate(
+        { _id: eventId, availableTickets: { $gte: quantity } },
+        { $inc: { availableTickets: -quantity } },
+        { new: true, session }
+      );
 
-        if (event.availableTickets < quantity) {
-          throw new Error(`Only ${event.availableTickets} tickets available`);
-        }
-
-        // Calculate dynamic price using ML model
-        let predictedPrice = event.ticketPrice;
-        
-        try {
-          const mlResponse = await axios.post('http://localhost:5000/predict', {
-            features: {
-              available_tickets: event.availableTickets - quantity,
-              total_capacity: event.totalCapacity,
-              days_until_event: Math.ceil((new Date(event.date) - new Date()) / (1000 * 60 * 60 * 24)),
-              event_popularity: event.popularity || 5,
-              historical_demand: event.historicalDemand || 0.5
-            }
-          });
-
-          if (mlResponse.data.predicted_price) {
-            predictedPrice = mlResponse.data.predicted_price;
-          }
-        } catch (mlError) {
-          console.error('ML prediction error:', mlError.message);
-          // Continue with base price if ML fails
-        }
-
-        // Create ticket record
-        const ticket = new Ticket({
-          eventId: event._id,
-          userId: req.user.id,
-          quantity,
-          price: predictedPrice,
-          totalAmount: predictedPrice * quantity,
-          purchaseDate: new Date(),
-          status: 'confirmed'
-        });
-
-        await ticket.save();
-
-        // Update event inventory
-        const updates = {
-          availableTickets: event.availableTickets - quantity
-        };
-
-        // Publish async events
-        await messageQueueService.publishTicketPurchase({
-          ticketId: ticket._id,
-          eventId: event._id,
-          userId: req.user.id,
-          quantity,
-          totalAmount: ticket.totalAmount
-        });
-
-        await messageQueueService.publishAnalytics({
-          type: 'TICKET_SALE',
-          eventId: event._id,
-          quantity,
-          revenue: ticket.totalAmount,
-          timestamp: new Date()
-        });
-
-        // Invalidate caches
-        await cacheService.invalidatePattern(`tickets:user:${req.user.id}`);
-        await cacheService.invalidatePattern(`event:${eventId}`);
-        await cacheService.invalidatePattern('events:*');
-
-        return {
-          ticket,
-          updates
-        };
+      if (!event) {
+        await session.abortTransaction();
+        return res.status(400).json({ message: 'Event not found or insufficient tickets' });
       }
-    );
 
-    // Release lock
-    await concurrencyService.releaseLock(lockKey, lockToken);
+      // Create ticket within transaction
+      const ticket = new Ticket({
+        eventId: event._id,
+        userId: req.user.id,
+        quantity,
+        price: event.ticketPrice,
+        totalAmount: event.ticketPrice * quantity,
+        purchaseDate: new Date(),
+        status: 'confirmed'
+      });
 
-    res.status(201).json({
-      message: 'Ticket purchased successfully',
-      ticket: result.ticket
-    });
+      await ticket.save({ session });
+      await session.commitTransaction();
+
+      // Publish event asynchronously (outside transaction)
+      await messageQueueService.publishTicketPurchase({
+        ticketId: ticket._id,
+        eventId: event._id,
+        userId: req.user.id,
+        quantity,
+        totalAmount: ticket.totalAmount
+      });
+
+      res.status(201).json({
+        message: 'Ticket purchased successfully',
+        ticket
+      });
+
+    } catch (txnError) {
+      await session.abortTransaction();
+      throw txnError;
+    } finally {
+      await session.endSession();
+    }
 
   } catch (error) {
-    // Release lock on error
-    if (lockToken) {
-      await concurrencyService.releaseLock(lockKey, lockToken);
-    }
-
     console.error('Error purchasing ticket:', error);
-    
-    if (error.message.includes('available')) {
-      return res.status(400).json({ message: error.message });
-    }
-    
-    if (error.message.includes('not found')) {
-      return res.status(404).json({ message: error.message });
-    }
-    
-    if (error.message.includes('lock failed')) {
-      return res.status(409).json({ 
-        message: 'Unable to process request due to concurrent updates. Please try again.' 
-      });
-    }
-
     res.status(500).json({ message: 'Error processing ticket purchase' });
   }
 });
@@ -215,10 +143,9 @@ router.post('/purchase/batch', protect, async (req, res) => {
   }
 
   try {
-    // Process purchases with concurrency limit
-    const results = await concurrencyService.batchProcess(
-      purchases,
-      async (purchase) => {
+    // Process all purchases in parallel
+    const results = await Promise.all(
+      purchases.map(async (purchase) => {
         try {
           const response = await axios.post(
             'http://localhost:3001/api/tickets/purchase',
@@ -236,8 +163,7 @@ router.post('/purchase/batch', protect, async (req, res) => {
             error: error.response?.data?.message || error.message 
           };
         }
-      },
-      3 // Max 3 concurrent purchases
+      })
     );
 
     const successful = results.filter(r => r.success);
@@ -292,8 +218,7 @@ router.delete('/:id', protect, async (req, res) => {
         });
 
         // Invalidate caches
-        await cacheService.invalidatePattern(`tickets:user:${req.user.id}`);
-        await cacheService.invalidatePattern(`event:${ticket.eventId}`);
+        await cacheService.delete(`tickets:user:${req.user.id}`);
       }
     );
 

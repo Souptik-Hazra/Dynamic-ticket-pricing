@@ -16,7 +16,7 @@ import './components/NavBadge.css';
 import UserProfile from "./components/UserProfile.jsx";
 
 function AppContent() {
-  const { user, loading: authLoading, logout, isAuthenticated, isAdmin } = useAuth();
+  const { user, logout, isAuthenticated } = useAuth();
   const [authView, setAuthView] = useState('login'); // 'login' or 'signup'
   const [view, setView] = useState('home'); // Start with home page
   const [events, setEvents] = useState([]);
@@ -57,18 +57,6 @@ function AppContent() {
     setView('purchase');
   };
 
-  // Show loading spinner while checking auth
-  if (authLoading) {
-    return (
-      <div className="App">
-        <div className="loading-screen">
-          <div className="spinner"></div>
-          <p>Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
   const handleNavigate = (page, data = null) => {
     if (page === 'booking' && !isAuthenticated) {
       setView('login');
@@ -93,7 +81,7 @@ function AppContent() {
           <button onClick={() => setView('events')} className={view === 'events' ? 'active' : ''}>
             Events
           </button>
-          {isAuthenticated && isAdmin() && (
+          {isAuthenticated && user?.role === 'admin' && (
             <>
               <button onClick={() => setView('analytics')} className={view === 'analytics' ? 'active' : ''}>
                 Analytics
@@ -122,7 +110,7 @@ function AppContent() {
                       {getPlanLabel(user.subscription.plan)}
                   </span>
                )}
-              {!isAdmin() && (
+              {user?.role !== 'admin' && (
                 <button onClick={() => setView('subscription')} className="nav-profile-btn">Membership</button>
               )}
               <button onClick={() => setView('profile')} className="nav-profile-btn">Profile</button>
@@ -177,7 +165,7 @@ function AppContent() {
         <Analytics />
       )}
 
-      {view === 'admin' && isAuthenticated && isAdmin() && (
+      {view === 'admin' && isAuthenticated && user?.role === 'admin' && (
         <AdminDashboard />
       )}
 
@@ -193,7 +181,7 @@ function AppContent() {
       )}
 
       {view === 'profile' && isAuthenticated && (
-        <UserProfile />
+        <UserProfile onUpdateSuccess={() => setView('home')} />
       )}
 
       {view === 'subscription' && isAuthenticated && (

@@ -6,7 +6,7 @@ import { getAllPlans } from '../utils/subscriptionPlans';
 import './Subscription.css';
 
 const Subscription = () => {
-    const { user, login } = useAuth(); // Assuming login updates the user state or we need a way to refresh user
+    const { user, loadUser } = useAuth();
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
 
@@ -27,12 +27,8 @@ const Subscription = () => {
 
             if (response.data.success) {
                 setMessage(`Successfully subscribed to ${response.data.subscription.plan}`);
-                // Ideally, we should update the auth context user object here.
-                // Since I might not have direct access to set user, a page reload or similar might be needed
-                // Or if 'login' or a 'refreshUser' function is available in context.
-                // For now, alert and reload is safe if context doesn't expose updater.
-                alert('Subscription updated! Processing...');
-                window.location.reload(); 
+                await loadUser();
+                alert('Subscription updated!');
             }
         } catch (error) {
             console.error('Subscription error:', error);
