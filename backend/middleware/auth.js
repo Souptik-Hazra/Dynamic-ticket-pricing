@@ -1,20 +1,21 @@
 const User = require('../models/User');
 
-// Simplified session-based protect middleware
 const protect = async (req, res, next) => {
   // Check if session has user ID
-  if (!req.session || !req.session.userId) {
+  if (!req.session?.userId) {
     return res.status(401).json({ error: 'Not authorized, please login' });
   }
 
   try {
-    req.user = await User.findById(req.session.userId).select('-password');
-    if (!req.user) {
-      return res.status(401).json({ error: 'User not found in session' });
+    const user = await User.findById(req.session.userId).select('-password');
+    if (!user) {
+      return res.status(401).json({ error: 'User not found' });
     }
+    req.user = user;
     next();
   } catch (error) {
-    return res.status(401).json({ error: 'Session authentication failed' });
+    console.error('Auth error:', error);
+    res.status(401).json({ error: 'Authentication failed' });
   }
 };
 

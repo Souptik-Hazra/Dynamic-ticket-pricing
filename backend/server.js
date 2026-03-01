@@ -15,7 +15,6 @@ const Event = require('./models/Event');
 const Ticket = require('./models/Ticket');
 const PriceHistory = require('./models/PriceHistory');
 const PredictionLog = require('./models/PredictionLog');
-const EventLog = require('./models/EventLog');
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -135,24 +134,25 @@ function sanitizeObject(obj) {
 // Initialize all models (creates collections and indexes if not exist)
 const initializeModels = async () => {
   try {
-    const models = [Event, Ticket, PriceHistory, PredictionLog, EventLog];
-    for (const model of models) {
-      const collectionName = model.collection.name;
-      const collections = await mongoose.connection.db.listCollections().toArray();
-      const exists = collections.some(col => col.name === collectionName);
-      
-      if (exists) {
-        // Collection exists, just create indexes
-        await model.collection.createIndexes();
-        console.log(`✅ Collection exists: ${collectionName} (indexes created)`);
-      } else {
-        // Create collection and indexes
-        await model.collection.createIndexes();
-        console.log(`✅ Created collection: ${collectionName}`);
+    const models = [
+      { name: 'Event', model: Event },
+      { name: 'Ticket', model: Ticket },
+      { name: 'PriceHistory', model: PriceHistory },
+      { name: 'PredictionLog', model: PredictionLog }
+    ];
+
+    for (const { name, model } of models) {
+      try {
+        // Use syncIndexes for more reliable index creation
+        // This will create missing indexes and remove ones that don't match the schema
+        await model.syncIndexes();
+        console.log(`✅ ${name} collection initialized (indexes synced)`);
+      } catch (modelErr) {
+        console.error(`❌ Error initializing ${name}:`, modelErr.message);
       }
     }
   } catch (err) {
-    console.warn('⚠️ Model initialization warning:', err.message);
+    console.error('❌ Model initialization error:', err.message);
   }
 };
 

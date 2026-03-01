@@ -275,7 +275,7 @@ router.get('/stats', protect, admin, async (req, res) => {
     // Transform recentTickets to include event object
     const formattedTickets = recentTickets.map(ticket => ({
       _id: ticket._id,
-      customerName: ticket.customerName || ticket.userId?.name || 'Unknown',
+      customerName: ticket.userId?.name || 'Unknown',
       event: ticket.eventId ? { name: ticket.eventId.name, venue: ticket.eventId.venue } : null,
       quantity: ticket.quantity,
       totalAmount: ticket.totalAmount,
@@ -320,8 +320,8 @@ router.get('/tickets', protect, admin, async (req, res) => {
         eventName: ticket.eventId?.name || 'Unknown Event',
         eventVenue: ticket.eventId?.venue || '',
         eventDate: ticket.eventId?.eventDate,
-        buyerName: ticket.customerName || ticket.userId?.name || 'Unknown',
-        buyerEmail: ticket.customerEmail || ticket.userId?.email || 'Unknown',
+        buyerName: ticket.userId?.name || 'Unknown',
+        buyerEmail: ticket.userId?.email || 'Unknown',
         categoryName: ticket.categoryName || 'standard',
         quantity: ticket.quantity,
         pricePerTicket: ticket.price,
@@ -354,8 +354,8 @@ router.get('/fraud-analytics', protect, admin, async (req, res) => {
 
     tickets.forEach(ticket => {
       const userId = ticket.userId?._id || 'unknown';
-      const userName = ticket.userId?.name || ticket.customerName || 'Unknown User';
-      const userEmail = ticket.userId?.email || ticket.customerEmail || 'N/A';
+      const userName = ticket.userId?.name || 'Unknown User';
+      const userEmail = ticket.userId?.email || 'N/A';
 
       if (!userFraudMap[userId]) {
         userFraudMap[userId] = {

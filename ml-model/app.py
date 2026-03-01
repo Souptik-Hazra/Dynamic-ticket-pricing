@@ -77,6 +77,7 @@ def predict_price():
             hour_of_day = int(data.get('hour_of_day', 12))
             venue_tier = int(data.get('venue_tier', 2))
             artist_tier = int(data.get('artist_tier', 3))
+            category_tier = int(data.get('category_tier', 2))  # 1=economy, 2=standard, 3=vip, 4=premium
         except (ValueError, TypeError):
             return jsonify({'error': 'Invalid input: All values must be numeric'}), 400
         
@@ -120,6 +121,13 @@ def predict_price():
         features_scaled = scaler.transform([features])
         predicted_price = model.predict(features_scaled)[0]
         
+        # Apply category-based price adjustment
+        # Category tiers: 1=economy (0.7x), 2=standard (1.0x), 3=vip (1.4x), 4=premium (1.8x)
+        category_multipliers = {1: 0.7, 2: 1.0, 3: 1.4, 4: 1.8}
+        category_tier = max(1, min(4, category_tier))
+        tier_multiplier = category_multipliers.get(category_tier, 1.0)
+        predicted_price = predicted_price * tier_multiplier
+        
         # Ensure reasonable price bounds (INR)
         predicted_price = max(50, min(predicted_price, 50000))
         
@@ -152,6 +160,98 @@ def predict_price():
                 'venue_tier': features[12],
                 'artist_tier': features[13]
             },
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        return jsonify(response)
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+@app.route('/predict-categories', methods=['POST'])
+def predict_categories():
+    """Predict prices for all ticket categories based on event features"""
+    try:
+        if model is None or scaler is None:
+            return jsonify({'error': 'Model not loaded'}), 500
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No input data provided'}), 400
+        
+        # Validate base features
+        try:
+            demand = float(data.get('demand', 100))
+            capacity = float(data.get('capacity', 1000))
+            days_until = float(data.get('days_until_event', 30))
+            event_duration = float(data.get('event_duration_days', 1))
+            popularity = float(data.get('event_popularity', 0.5))
+            competitor = float(data.get('competitor_price', 100))
+            historical = float(data.get('historical_sales', 50))
+            season = int(data.get('season', 1))
+            day_of_week = int(data.get('day_of_week', 1))
+            hour_of_day = int(data.get('hour_of_day', 12))
+            venue_tier = int(data.get('venue_tier', 2))
+            artist_tier = int(data.get('artist_tier', 3))
+            categories = data.get('categories', [])  # List of {name, tier}
+        except (ValueError, TypeError):
+            return jsonify({'error': 'Invalid input format'}), 400
+        
+        if not categories:
+            return jsonify({'error': 'No categories provided'}), 400
+        
+        # Calculate derived features
+        is_weekend = 1 if day_of_week >= 6 else 0
+        is_holiday = int(data.get('is_holiday', 0))
+        
+        # Build base feature vector
+        features = [
+            demand, capacity, days_until, event_duration, popularity,
+            competitor, historical, season, day_of_week, hour_of_day,
+            is_weekend, is_holiday, venue_tier, artist_tier
+        ]
+        
+        # Validate ranges
+        demand = max(0, min(demand, 100000))
+        capacity = max(1, min(capacity, 100000))
+        days_until = max(0, min(days_until, 365))
+        
+        # Scale features and get base prediction
+        features_scaled = scaler.transform([features])
+        base_price = model.predict(features_scaled)[0]
+        
+        # Category multipliers: 1=economy (0.7x), 2=standard (1.0x), 3=vip (1.4x), 4=premium (1.8x)
+        category_multipliers = {1: 0.7, 2: 1.0, 3: 1.4, 4: 1.8}
+        
+        # Generate prices for each category
+        category_prices = {}
+        for cat in categories:
+            cat_name = cat.get('name', 'standard')
+            cat_tier = max(1, min(4, cat.get('tier', 2)))
+            tier_multiplier = category_multipliers.get(cat_tier, 1.0)
+            cat_price = base_price * tier_multiplier
+            
+            # Apply category-specific base price if available
+            if 'basePrice' in cat:
+                # Blend ML prediction with category base price (60% ML, 40% base)
+                cat_price = (cat_price * 0.6) + (float(cat.get('basePrice', cat_price)) * 0.4)
+            
+            # Ensure bounds
+            cat_price = max(50, min(50000, cat_price))
+            category_prices[cat_name] = round(cat_price, 2)
+        
+        margin = base_price * 0.06  # 6% margin
+        
+        response = {
+            'success': True,
+            'base_price': round(base_price, 2),
+            'category_prices': category_prices,
+            'price_range': {
+                'min': round(max(50, base_price - margin), 2),
+                'max': round(min(50000, base_price + margin), 2)
+            },
+            'confidence': 0.95,
+            'model_version': model_version,
             'timestamp': datetime.now().isoformat()
         }
         
@@ -385,6 +485,7 @@ def predict_event_demand_route():
         return jsonify({'error': str(e)}), 400
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
+    # Use ML_PORT if available (local development), otherwise PORT (deployment), default to 5000
+    port = int(os.environ.get('ML_PORT', os.environ.get('PORT', 5000)))
     debug_mode = os.environ.get('FLASK_DEBUG', '0') == '1'
     app.run(host='0.0.0.0', port=port, debug=debug_mode)

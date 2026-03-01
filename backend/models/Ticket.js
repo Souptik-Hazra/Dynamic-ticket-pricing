@@ -11,12 +11,6 @@ const ticketSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
-  customerName: {
-    type: String
-  },
-  customerEmail: {
-    type: String
-  },
   quantity: {
     type: Number,
     required: true,
@@ -37,11 +31,6 @@ const ticketSchema = new mongoose.Schema({
   categoryName: {
     type: String,
     enum: ['standard', 'vip', 'premium', 'balcony', 'economy'],
-    default: 'standard'
-  },
-  ticketType: {
-    type: String,
-    enum: ['standard', 'vip', 'premium', 'early-bird', 'last-minute', 'balcony', 'economy'],
     default: 'standard'
   },
   status: {

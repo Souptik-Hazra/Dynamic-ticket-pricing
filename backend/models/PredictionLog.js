@@ -19,6 +19,9 @@ const predictionLogSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
+  categoryPrices: {
+    type: mongoose.Schema.Types.Mixed,  // {categoryName: price}
+  },
   priceRange: {
     min: Number,
     max: Number
