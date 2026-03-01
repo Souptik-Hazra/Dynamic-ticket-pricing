@@ -69,6 +69,7 @@ function EventList({ events, onUpdatePrice, onSelectEvent, onRefresh }) {
             <div key={event._id} className="event-card">
               <div className="event-image">
                 <img src={event.image} alt="" />
+                <span className="event-category-badge">{event.category}</span>
                 <span className="event-image-title">{event.name}</span>
                 <span className={`event-status ${event.status}`}>
                   {event.status}
