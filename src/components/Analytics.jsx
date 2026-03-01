@@ -71,33 +71,6 @@ function Analytics() {
           </div>
         </div>
       </div>
-
-      {/* Detailed Analytics */}
-      <div className="detailed-stats">
-        <h2>📊 Detailed Statistics</h2>
-
-        <div className="stats-grid">
-          <div className="stat-card">
-            <h3>Revenue by Category</h3>
-            {analytics.revenueByCategory && Object.entries(analytics.revenueByCategory).map(([category, revenue]) => (
-              <div key={category} className="stat-row">
-                <span>{category}</span>
-                <span>₹{revenue.toFixed(2)}</span>
-              </div>
-            ))}
-          </div>
-
-          <div className="stat-card">
-            <h3>Popular Events</h3>
-            {analytics.topEvents && analytics.topEvents.slice(0, 5).map((event, idx) => (
-              <div key={idx} className="stat-row">
-                <span>{event.name}</span>
-                <span>{event.ticketsSold} tickets</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

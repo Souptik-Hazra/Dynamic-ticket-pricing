@@ -129,7 +129,7 @@ function AppContent() {
                 <button onClick={() => setView('subscription')} className="nav-profile-btn">Membership</button>
               )}
               <button onClick={() => setView('profile')} className="nav-profile-btn">Profile</button>
-              <button onClick={logout} className="nav-logout-btn">Logout</button>
+              <button onClick={() => { logout(); setView('home'); }} className="nav-logout-btn">Logout</button>
             </div>
           )}
         </div>
