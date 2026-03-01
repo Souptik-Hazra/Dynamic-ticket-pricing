@@ -27,11 +27,4 @@ const admin = (req, res, next) => {
   }
 };
 
-// Simplified: No JWT needed
-const generateToken = (id) => {
-  return 'session-based';
-};
-
-module.exports = { protect, admin, generateToken };
-
-module.exports = { protect, admin, generateToken };
+module.exports = { protect, admin };

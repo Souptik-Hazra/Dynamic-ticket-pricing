@@ -15,6 +15,7 @@ const Event = require('./models/Event');
 const Ticket = require('./models/Ticket');
 const PriceHistory = require('./models/PriceHistory');
 const PredictionLog = require('./models/PredictionLog');
+const EventLog = require('./models/EventLog');
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -25,9 +26,6 @@ const ticketRoutes = require('./routes/tickets');
 const analyticsRoutes = require('./routes/analytics');
 const eventRoutes = require('./routes/events');
 
-
-const swaggerUi = require('swagger-ui-express');
-const swaggerSpecs = require('./swagger.js');
 const app = express();
 
 // Security Middleware removed for full project openness
@@ -86,7 +84,7 @@ app.use(cors({
 
 app.use(cookieParser());
 app.use(session({
-  secret: process.env.JWT_SECRET || 'souptik_session_secret',
+  secret: process.env.SESSION_SECRET || 'souptik_session_secret',
   resave: false,
   saveUninitialized: false,
   proxy: true, // trust render proxy
@@ -134,11 +132,36 @@ function sanitizeObject(obj) {
   }
 }
 
+// Initialize all models (creates collections and indexes if not exist)
+const initializeModels = async () => {
+  try {
+    const models = [Event, Ticket, PriceHistory, PredictionLog, EventLog];
+    for (const model of models) {
+      const collectionName = model.collection.name;
+      const collections = await mongoose.connection.db.listCollections().toArray();
+      const exists = collections.some(col => col.name === collectionName);
+      
+      if (exists) {
+        // Collection exists, just create indexes
+        await model.collection.createIndexes();
+        console.log(`✅ Collection exists: ${collectionName} (indexes created)`);
+      } else {
+        // Create collection and indexes
+        await model.collection.createIndexes();
+        console.log(`✅ Created collection: ${collectionName}`);
+      }
+    }
+  } catch (err) {
+    console.warn('⚠️ Model initialization warning:', err.message);
+  }
+};
+
 // MongoDB connection
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/dynamic-ticket-pricing';
 mongoose.connect(MONGODB_URI)
 .then(async () => {
   console.log('✅ MongoDB connected successfully');
+  await initializeModels();
 })
 .catch(err => console.error('❌ MongoDB connection error:', err));
 
@@ -165,13 +188,6 @@ app.use('/api/tickets', ticketRoutes);
 
 // Analytics routes
 app.use('/api/analytics', analyticsRoutes);
-
-
-// Swagger UI with relaxed CSP for docs only
-app.use('/api/docs', (req, res, next) => {
-  res.setHeader('Content-Security-Policy', "default-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; script-src 'self' 'unsafe-inline';");
-  next();
-}, swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 
 // Health check
 app.get('/api/health', async (req, res) => {

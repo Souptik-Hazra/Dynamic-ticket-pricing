@@ -10,6 +10,7 @@ import Analytics from './components/Analytics';
 import TicketPurchase from './components/TicketPurchase';
 import Subscription from './components/Subscription';
 import { API_URL } from './config/api';
+import { getPlanLabel } from './utils/subscriptionPlans';
 import './App.css';
 import './components/NavBadge.css';
 import UserProfile from "./components/UserProfile.jsx";
@@ -118,11 +119,7 @@ function AppContent() {
               <span className="user-name">{user?.name}</span>
                {user?.subscription && user.subscription.isActive && user.subscription.plan !== 'none' && (
                   <span className="nav-subscription-badge">
-                      {user.subscription.plan === '7_days' ? 'WEEKLY' :
-                       user.subscription.plan === '30_days' ? 'MONTHLY' :
-                       user.subscription.plan === '3_months' ? 'QUARTERLY' :
-                       user.subscription.plan === '6_months' ? 'BIANNUAL' :
-                       user.subscription.plan === '1_year' ? 'ANNUAL' : 'MEMBER'}
+                      {getPlanLabel(user.subscription.plan)}
                   </span>
                )}
               {!isAdmin() && (

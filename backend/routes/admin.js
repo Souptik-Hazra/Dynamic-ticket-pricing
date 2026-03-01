@@ -12,39 +12,70 @@ router.get('/events', protect, admin, async (req, res) => {
     // Auto-update event statuses based on current date
     await Event.updateEventStatuses();
     
+    // Single aggregation query: group tickets by eventId and categoryName
+    const ticketAggregation = await Ticket.aggregate([
+      { $match: { status: 'confirmed' } },
+      {
+        $group: {
+          _id: {
+            eventId: '$eventId',
+            categoryName: '$categoryName'
+          },
+          actualRevenue: { $sum: '$totalAmount' },
+          quantity: { $sum: '$quantity' }
+        }
+      }
+    ]);
+    
+    // Organize aggregation results by eventId for quick lookup
+    const revenueByEvent = {};
+    ticketAggregation.forEach(item => {
+      const eventId = item._id.eventId.toString();
+      if (!revenueByEvent[eventId]) {
+        revenueByEvent[eventId] = {
+          actualRevenue: 0,
+          categoryData: {}
+        };
+      }
+      revenueByEvent[eventId].actualRevenue += item.actualRevenue;
+      revenueByEvent[eventId].categoryData[item._id.categoryName] = {
+        quantity: item.quantity,
+        actualRevenue: item.actualRevenue
+      };
+    });
+    
+    // Get all events (minimal query since heavy lifting done in aggregation)
     const events = await Event.find().sort({ createdAt: -1 });
     
-    // Calculate profit margin for each event
-    const eventsWithProfit = await Promise.all(events.map(async (event) => {
+    // Combine event data with pre-calculated revenue
+    const eventsWithProfit = events.map(event => {
       const eventObj = event.toObject();
+      const revData = revenueByEvent[event._id.toString()] || { 
+        actualRevenue: 0, 
+        categoryData: {} 
+      };
       
-      // Get all tickets for this event
-      const tickets = await Ticket.find({ eventId: event._id, status: 'confirmed' });
-      
-      // Calculate actual revenue (from dynamic prices)
-      const actualRevenue = tickets.reduce((sum, t) => sum + t.totalAmount, 0);
-      
-      // Calculate base revenue (what would have been if sold at base price)
+      // Calculate base revenue from categories using aggregated ticket counts
       let baseRevenue = 0;
-      tickets.forEach(ticket => {
-        const category = event.ticketCategories.find(c => c.name === ticket.categoryName);
-        if (category) {
-          baseRevenue += category.price * ticket.quantity;
+      event.ticketCategories.forEach(category => {
+        const catData = revData.categoryData[category.name];
+        if (catData) {
+          baseRevenue += category.price * catData.quantity;
         }
       });
       
       // Calculate profit margin
-      const profitAmount = actualRevenue - baseRevenue;
+      const profitAmount = revData.actualRevenue - baseRevenue;
       const profitPercentage = baseRevenue > 0 ? ((profitAmount / baseRevenue) * 100) : 0;
       
       return {
         ...eventObj,
-        totalRevenue: actualRevenue,
+        totalRevenue: revData.actualRevenue,
         baseRevenue: baseRevenue,
         profitAmount: profitAmount,
         profitPercentage: profitPercentage
       };
-    }));
+    });
     
     res.json({
       success: true,

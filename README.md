@@ -5,10 +5,10 @@ A comprehensive full-stack event ticketing platform with intelligent dynamic pri
 ## ✨ Key Features
 
 ### 🔐 Authentication & Security
-- JWT-based authentication with bcrypt password hashing
+- Session-based authentication with bcrypt password hashing
 - Role-based access control (Admin/User)
 - Protected routes with middleware
-- Persistent sessions using localStorage
+- Persistent sessions using HTTP cookies
 - Secure API endpoints
 
 ### 🎭 Event Management
@@ -59,7 +59,7 @@ A comprehensive full-stack event ticketing platform with intelligent dynamic pri
 **Backend:**
 - Node.js with Express.js
 - MongoDB with Mongoose ODM
-- JWT for authentication
+- Session-based authentication with bcryptjs
 - Redis for caching
 - RabbitMQ for message queuing
 - Concurrency control services
@@ -101,7 +101,7 @@ Dynamic-Ticket-Pricing/
 │   │   ├── MLModel.js         # ML model metadata
 │   │   └── PredictionLog.js   # Prediction tracking
 │   ├── middleware/
-│   │   └── auth.js            # JWT authentication
+│   │   └── auth.js            # Session-based authentication
 │   ├── routes/
 │   │   ├── auth.js            # Login, signup, profile
 │   │   ├── admin.js           # Event management
@@ -373,7 +373,7 @@ Each event can have multiple ticket types:
 - Competitor pricing integration
 
 ### 4. Authentication Flow
-- JWT tokens with 7-day expiry
+- Session-based authentication with 7-day expiry
 - Bcrypt password hashing (10 rounds)
 - Role-based access (admin/user)
 - Protected routes with middleware
@@ -401,8 +401,7 @@ Review Order → Purchase → Confirmation
 MONGODB_URI=mongodb://localhost:27017/dynamic-ticket-pricing
 PORT=3001
 ML_API_URL=http://localhost:5000
-JWT_SECRET=your-256-bit-secret-key-change-in-production
-JWT_EXPIRE=7d
+SESSION_SECRET=your-256-bit-secret-key-change-in-production
 REDIS_URL=redis://localhost:6379
 RABBITMQ_URL=amqp://localhost
 ```
@@ -417,7 +416,7 @@ RABBITMQ_URL=amqp://localhost
 ## 🚀 Deployment
 
 ### Production Checklist:
-- [ ] Change JWT_SECRET to secure random string
+- [ ] Change SESSION_SECRET to secure random string
 - [ ] Enable HTTPS/SSL
 - [ ] Set up MongoDB Atlas or managed database
 - [ ] Configure Redis for caching

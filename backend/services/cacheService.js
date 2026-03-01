@@ -57,6 +57,19 @@ const cacheService = {
     } catch (err) {
       return false;
     }
+  },
+
+  async invalidatePattern(pattern) {
+    if (!redisClient) return false;
+    try {
+      const keys = await redisClient.keys(pattern);
+      if (keys.length > 0) {
+        await redisClient.del(keys);
+      }
+      return true;
+    } catch (err) {
+      return false;
+    }
   }
 };
 

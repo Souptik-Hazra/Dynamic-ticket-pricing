@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { API_URL } from '../config/api';
+import { getAllPlans } from '../utils/subscriptionPlans';
 import './Subscription.css';
 
 const Subscription = () => {
@@ -9,13 +10,7 @@ const Subscription = () => {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
 
-    const plans = [
-        { id: '7_days', title: 'Weekly Access', duration: '7 Days', price: '₹199', features: ['Basic Support', 'Limited Analytics'] },
-        { id: '30_days', title: 'Monthly Plan', duration: '30 Days', price: '₹499', features: ['Priority Support', 'Full Analytics', '10% Discount'] },
-        { id: '3_months', title: 'Quarterly Plan', duration: '3 Months', price: '₹1,299', features: ['Priority Support', 'Full Analytics', '15% Discount'] },
-        { id: '6_months', title: 'Biannual Plan', duration: '6 Months', price: '₹2,499', features: ['Priority Support', 'Full Analytics', '20% Discount'] },
-        { id: '1_year', title: 'Annual Plan', duration: '1 Year', price: '₹3,999', features: ['VIP Support', 'All Features', '25% Discount'] }
-    ];
+    const plans = getAllPlans();
 
     const currentPlan = user?.subscription?.plan || 'none';
 
