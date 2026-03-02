@@ -1,3 +1,52 @@
+/* Notification Tab Modern Styles */
+.notification-bg {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 60vh;
+  justify-content: center;
+  background: linear-gradient(120deg, #f8fafc 60%, #e0e7ff 100%);
+}
+.notification-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 32px;
+}
+.notification-bell {
+  font-size: 44px;
+  margin-right: 18px;
+  filter: drop-shadow(0 2px 8px #0001);
+}
+.notification-title {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #2d2d2d;
+  margin: 0;
+  letter-spacing: 0.5px;
+}
+.notification-card {
+  width: 100%;
+  max-width: 440px;
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 6px 32px #0002, 0 1.5px 6px #6366f180;
+  padding: 36px 32px 32px 32px;
+  margin: 0 auto;
+  transition: box-shadow 0.2s;
+  color: #222 !important;
+}
+
+.notification-card input,
+.notification-card select,
+.notification-card textarea,
+.notification-card label,
+.notification-card h3,
+.notification-card button {
+  color: #222 !important;
+}
+.notification-card:hover {
+  box-shadow: 0 10px 40px #6366f133, 0 2px 8px #6366f1cc;
+}
 .admin-dashboard {
   min-height: 100vh;
   background: #f5f7fa;

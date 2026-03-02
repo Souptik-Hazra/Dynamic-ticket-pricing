@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Event = require('../models/Event');
 const Ticket = require('../models/Ticket');
+const Notification = require('../models/Notification');
 const { protect, admin } = require('../middleware/auth');
 
 // @route   GET /api/admin/events
@@ -465,6 +466,35 @@ router.get('/fraud-analytics', protect, admin, async (req, res) => {
   } catch (error) {
     console.error('Fraud analytics error:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// Admin send notification to all users
+// Enhanced: Send notification to all users or users of a specific event
+router.post('/notify', protect, admin, async (req, res) => {
+  try {
+    const { message, eventId } = req.body;
+    if (!message || !message.trim()) {
+      return res.status(400).json({ error: 'Message is required' });
+    }
+    let users = [];
+    if (eventId) {
+      // Find users who bought tickets for this event
+      const tickets = await require('../models/Ticket').find({ eventId }, 'userId');
+      const userIds = [...new Set(tickets.map(t => t.userId.toString()))];
+      users = await require('../models/User').find({ _id: { $in: userIds }, role: 'user' }, '_id');
+    } else {
+      // All users (excluding admins)
+      users = await require('../models/User').find({ role: 'user' }, '_id');
+    }
+    if (!users.length) {
+      return res.status(404).json({ error: 'No users found to notify.' });
+    }
+    const notifications = users.map(u => ({ userId: u._id, message }));
+    await require('../models/Notification').insertMany(notifications);
+    res.json({ success: true, count: notifications.length });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to send notifications' });
   }
 });
 

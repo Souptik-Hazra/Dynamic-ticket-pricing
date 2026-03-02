@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import NotificationBell from "./NotificationBell";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext.jsx";
 import { API_URL } from "../config/api";
@@ -7,6 +8,11 @@ import "./UserProfile.css";
 const UserProfile = () => {
   const { user, updateUser } = useAuth();
   const [activeTab, setActiveTab] = useState("profile");
+  // Demo notifications; replace with API call for real notifications
+  const [notifications, setNotifications] = useState([
+    { message: "Welcome to the platform!", time: "Just now", read: false },
+    { message: "Your ticket for SJT Marathon is confirmed.", time: "1h ago", read: true },
+  ]);
   const [form, setForm] = useState({
     name: user?.name || "",
     email: user?.email || "",
@@ -94,25 +100,29 @@ const UserProfile = () => {
       {/* Header Card */}
       <div className="profile-header-card">
         <div className="profile-header-bg"></div>
-        <div className="profile-header-content">
-          <div className="profile-avatar">{getInitials(user?.name)}</div>
-          <div className="profile-header-info">
-            <h1 className="profile-display-name">{user?.name || "User"}</h1>
-            <p className="profile-email">{user?.email}</p>
-            <div className="profile-meta">
-              <span className="profile-badge">
-                {user?.role === "admin" ? "👑 Admin" : "🎫 Member"}
-              </span>
-              {user?.subscription?.plan && user?.subscription?.plan !== 'none' && (
-                <span className="profile-badge subscription-badge" style={{background: '#2ecc71', color: 'black', marginLeft: '10px'}}>
-                   ⭐ {user.subscription.plan.replace(/_/g, ' ').toUpperCase()}
+        <div className="profile-header-content" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <div className="profile-avatar">{getInitials(user?.name)}</div>
+            <div className="profile-header-info">
+              <h1 className="profile-display-name">{user?.name || "User"}</h1>
+              <p className="profile-email">{user?.email}</p>
+              <div className="profile-meta">
+                <span className="profile-badge">
+                  {user?.role === "admin" ? "👑 Admin" : "🎫 Member"}
                 </span>
-              )}
-              <span className="profile-member-since">
-                Member since {getMemberSince()}
-              </span>
+                {user?.subscription?.plan && user?.subscription?.plan !== 'none' && (
+                  <span className="profile-badge subscription-badge" style={{background: '#2ecc71', color: 'black', marginLeft: '10px'}}>
+                    ⭐ {user.subscription.plan.replace(/_/g, ' ').toUpperCase()}
+                  </span>
+                )}
+                <span className="profile-member-since">
+                  Member since {getMemberSince()}
+                </span>
+              </div>
             </div>
           </div>
+          {/* Notification Bell */}
+          <NotificationBell notifications={notifications} />
         </div>
       </div>
 

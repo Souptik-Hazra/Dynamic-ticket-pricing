@@ -1,0 +1,66 @@
+.notification-bell-container {
+  position: relative;
+  display: inline-block;
+}
+.notification-bell {
+  background: none;
+  border: none;
+  font-size: 1.8rem;
+  cursor: pointer;
+  position: relative;
+}
+.notification-badge {
+  position: absolute;
+  top: 0;
+  right: -5px;
+  background: red;
+  color: white;
+  border-radius: 50%;
+  font-size: 0.8rem;
+  padding: 2px 6px;
+}
+.notification-dropdown {
+  position: absolute;
+  right: 0;
+  top: 2.2rem;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  width: 260px;
+  z-index: 100;
+  padding: 0.5rem 0.7rem;
+}
+.notification-dropdown h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+}
+.notification-empty {
+  color: #888;
+  text-align: center;
+  padding: 1rem 0;
+}
+.notification-dropdown ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.notification-dropdown li {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #eee;
+  font-size: 0.97rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.notification-dropdown li.unread {
+  font-weight: bold;
+  background: #f6f8fa;
+}
+.notification-time {
+  color: #aaa;
+  font-size: 0.8rem;
+  margin-left: 8px;
+}

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import AdminEventForm from './AdminEventForm';
+import AdminNotificationForm from './AdminNotificationForm';
 import { API_URL } from '../config/api';
 import './AdminDashboard.css';
 
@@ -15,6 +16,8 @@ function AdminDashboard() {
   const [loading, setLoading] = useState(false);
   const [showEventForm, setShowEventForm] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
+  // For notification tab
+  const [notificationTabEvents, setNotificationTabEvents] = useState([]);
 
   // Get auth headers
   const getAuthHeaders = () => {
@@ -31,8 +34,21 @@ function AdminDashboard() {
       fetchTickets();
     } else if (view === 'fraud') {
       fetchFraudAnalytics();
+    } else if (view === 'notifications') {
+      // For notification tab, fetch events for dropdown
+      fetchNotificationTabEvents();
     }
   }, [view]);
+
+  const fetchNotificationTabEvents = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API_URL}/admin/events`, { headers: { Authorization: `Bearer ${token}` } });
+      setNotificationTabEvents(res.data.events || []);
+    } catch {
+      setNotificationTabEvents([]);
+    }
+  };
 
   const fetchStats = async () => {
     try {
@@ -130,6 +146,7 @@ function AdminDashboard() {
   };
 
   return (
+
     <div className="admin-dashboard">
       <header className="admin-header">
         <div className="admin-header-content">
@@ -138,42 +155,31 @@ function AdminDashboard() {
       </header>
 
       <nav className="admin-nav">
-        <button 
-          className={view === 'stats' ? 'active' : ''} 
-          onClick={() => setView('stats')}
-        >
-          📊 Statistics
-        </button>
-        <button 
-          className={view === 'events' ? 'active' : ''} 
-          onClick={() => setView('events')}
-        >
-          🎭 Manage Events
-        </button>
-        <button 
-          className={view === 'tickets' ? 'active' : ''} 
-          onClick={() => setView('tickets')}
-        >
-          🎟️ Ticket Buyers
-        </button>
-        <button 
-          className={view === 'fraud' ? 'active' : ''} 
-          onClick={() => setView('fraud')}
-        >
-          🚨 Fraud Analytics
-        </button>
-          // ...existing code...
+        <button className={view === 'stats' ? 'active' : ''} onClick={() => setView('stats')}>📊 Statistics</button>
+        <button className={view === 'events' ? 'active' : ''} onClick={() => setView('events')}>🎭 Manage Events</button>
+        <button className={view === 'tickets' ? 'active' : ''} onClick={() => setView('tickets')}>🎟️ Ticket Buyers</button>
+        <button className={view === 'fraud' ? 'active' : ''} onClick={() => setView('fraud')}>🚨 Fraud Analytics</button>
+        <button className={view === 'notifications' ? 'active' : ''} onClick={() => setView('notifications')}>🔔 Notifications</button>
       </nav>
 
       <main className="admin-content">
         {loading && <div className="loading">Loading...</div>}
 
-        // ...existing code...
+        {view === 'notifications' && (
+          <div className="admin-notifications-view notification-bg">
+            <div className="notification-header">
+              <span className="notification-bell">🔔</span>
+              <h2 className="notification-title">Send Notification</h2>
+            </div>
+            <div className="notification-card">
+              <AdminNotificationForm events={notificationTabEvents} />
+            </div>
+          </div>
+        )}
 
         {view === 'stats' && stats && (
           <div className="stats-view">
             <h2>System Statistics</h2>
-            
             <div className="stats-grid">
               <div className="stat-card">
                 <div className="stat-icon">🎭</div>
@@ -182,7 +188,6 @@ function AdminDashboard() {
                   <p className="stat-value">{stats.totalEvents}</p>
                 </div>
               </div>
-
               <div className="stat-card">
                 <div className="stat-icon">👥</div>
                 <div className="stat-info">
@@ -190,7 +195,6 @@ function AdminDashboard() {
                   <p className="stat-value">{stats.totalUsers}</p>
                 </div>
               </div>
-
               <div className="stat-card">
                 <div className="stat-icon">🎟️</div>
                 <div className="stat-info">
@@ -198,7 +202,6 @@ function AdminDashboard() {
                   <p className="stat-value">{stats.totalTickets}</p>
                 </div>
               </div>
-
               <div className="stat-card">
                 <div className="stat-icon">💰</div>
                 <div className="stat-info">

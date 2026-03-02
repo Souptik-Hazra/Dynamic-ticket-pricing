@@ -22,6 +22,7 @@ const mlModelRoutes = require('./routes/mlModel');
 const ticketRoutes = require('./routes/tickets');
 const analyticsRoutes = require('./routes/analytics');
 const eventRoutes = require('./routes/events');
+const notificationsRoutes = require('./routes/notifications');
 
 const app = express();
 
@@ -143,6 +144,9 @@ app.use('/api/tickets', ticketRoutes);
 
 // Analytics routes
 app.use('/api/analytics', analyticsRoutes);
+
+// Notifications routes
+app.use('/api/notifications', notificationsRoutes);
 
 // Health check
 app.get('/api/health', async (req, res) => {
