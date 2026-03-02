@@ -15,10 +15,6 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  // NOTE: Using localStorage for token storage. For higher security environments,
-  // consider httpOnly cookies, but this requires backend cookie handling.
-  // Current approach is acceptable for this application's security requirements.
-  const [token, setToken] = useState(localStorage.getItem('token'));
   const refreshTimeoutRef = useRef(null);
 
   // Schedule token refresh before expiration
@@ -59,20 +55,15 @@ export const AuthProvider = ({ children }) => {
 
   // Set axios default header
   useEffect(() => {
-    if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      loadUser();
-      scheduleTokenRefresh();
-    } else {
-      setLoading(false);
-    }
-    
+    // Always send credentials (cookies) with requests
+    axios.defaults.withCredentials = true;
+    loadUser();
     return () => {
       if (refreshTimeoutRef.current) {
         clearTimeout(refreshTimeoutRef.current);
       }
     };
-  }, [token, scheduleTokenRefresh]);
+  }, []);
 
   // Load user data
   const loadUser = async () => {
@@ -94,18 +85,8 @@ export const AuthProvider = ({ children }) => {
         name,
         email,
         password
-      });
-
-      const { token, refreshToken, user } = response.data;
-      
-      localStorage.setItem('token', token);
-      if (refreshToken) {
-        localStorage.setItem('refreshToken', refreshToken);
-      }
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      setToken(token);
-      setUser(user);
-
+      }, { withCredentials: true });
+      setUser(response.data.user);
       return { success: true };
     } catch (error) {
       console.error('Signup error:', error);
@@ -122,18 +103,8 @@ export const AuthProvider = ({ children }) => {
       const response = await axios.post(`${API_URL}/auth/signin`, {
         email,
         password
-      });
-
-      const { token, refreshToken, user } = response.data;
-      
-      localStorage.setItem('token', token);
-      if (refreshToken) {
-        localStorage.setItem('refreshToken', refreshToken);
-      }
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      setToken(token);
-      setUser(user);
-
+      }, { withCredentials: true });
+      setUser(response.data.user);
       return { success: true };
     } catch (error) {
       console.error('Signin error:', error);
@@ -145,15 +116,14 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Logout
-  const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('refreshToken');
+  const logout = async () => {
+    try {
+      await axios.post(`${API_URL}/auth/logout`, {}, { withCredentials: true });
+    } catch (e) {}
     if (refreshTimeoutRef.current) {
       clearTimeout(refreshTimeoutRef.current);
     }
-    setToken(null);
     setUser(null);
-    delete axios.defaults.headers.common['Authorization'];
   };
 
   // Check if user is admin

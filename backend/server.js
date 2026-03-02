@@ -84,14 +84,23 @@ app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/signup', authLimiter);
 
 
-// 3. CORS with robust origin check
+
+// 3. CORS with credentials and robust origin check
 // Set ALLOWED_ORIGINS in your .env or Render dashboard, e.g.:
-// ALLOWED_ORIGINS=https://dynamic-ticket-pricing-mulq.vercel.app,https://your-other-frontend.com
+// ALLOWED_ORIGINS=https://localhost:5173,https://your-other-frontend.com
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
-  : [/^http:\/\/localhost:\d+$/]; // Allow any localhost port for development
+  : ['https://localhost:5173']; // Default to Vite dev server with HTTPS
 
-app.use(cors());
+app.use(cors({
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true
+}));
 
 // 4. Body parsing with size limits (prevent large payload attacks)
 app.use(express.json({ limit: '10mb' }));
@@ -211,10 +220,34 @@ app.get('/api/health', async (req, res) => {
   });
 });
 
-// Start server
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📊 API: http://localhost:${PORT}/api`);
-});
+
+// HTTPS setup for local development
+const fs = require('fs');
+const https = require('https');
+const HTTPS_PORT = process.env.HTTPS_PORT || 3443;
+
+if (process.env.NODE_ENV === 'production') {
+  // In production, you should use a reverse proxy (like Nginx) to handle HTTPS
+  const PORT = process.env.PORT || 3001;
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`📊 API: http://localhost:${PORT}/api`);
+  });
+} else {
+  // For local development, use self-signed certs
+  const keyPath = path.join(__dirname, 'server.key');
+  const certPath = path.join(__dirname, 'server.cert');
+  if (!fs.existsSync(keyPath) || !fs.existsSync(certPath)) {
+    console.error('Missing server.key or server.cert. Run `node generate-cert.js` in backend directory.');
+    process.exit(1);
+  }
+  const options = {
+    key: fs.readFileSync(keyPath),
+    cert: fs.readFileSync(certPath)
+  };
+  https.createServer(options, app).listen(HTTPS_PORT, () => {
+    console.log(`🚀 HTTPS server running on port ${HTTPS_PORT}`);
+    console.log(`📊 API: https://localhost:${HTTPS_PORT}/api`);
+  });
+}
 
