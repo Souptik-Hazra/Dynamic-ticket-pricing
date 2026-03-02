@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const PredictionLog = require('../models/PredictionLog');
 const MLModel = require('../models/MLModel');
+const cacheService = require('../services/cacheService');
 
 // @route   POST /api/ml-model/update-metadata
 // @desc    Update ML model metadata after training (called by train_model_enhanced.py)
@@ -38,6 +39,9 @@ router.post('/update-metadata', async (req, res) => {
 
     console.log(`✅ ML Model ${modelVersion} synced to MongoDB`);
 
+    // Invalidate active model cache
+    await cacheService.del('mlmodel:active');
+
     res.status(200).json({
       success: true,
       message: `Model ${modelVersion} updated successfully`,
@@ -54,11 +58,23 @@ router.post('/update-metadata', async (req, res) => {
 // @access  Public
 router.get('/active', async (req, res) => {
   try {
+    // Try to get from cache first
+    const cacheKey = 'mlmodel:active';
+    const cachedModel = await cacheService.get(cacheKey);
+    if (cachedModel) {
+      return res.json(cachedModel);
+    }
+
     const activeModel = await MLModel.findOne({ isActive: true });
     if (!activeModel) {
       return res.status(404).json({ error: 'No active model found' });
     }
-    res.json({ success: true, data: activeModel });
+
+    const result = { success: true, data: activeModel };
+    // Cache for 1 hour (model rarely changes)
+    await cacheService.set(cacheKey, result, 3600);
+
+    res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

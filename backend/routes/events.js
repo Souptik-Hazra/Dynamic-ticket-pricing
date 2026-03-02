@@ -4,6 +4,7 @@ const axios = require('axios');
 const Event = require('../models/Event');
 const PriceHistory = require('../models/PriceHistory');
 const PredictionLog = require('../models/PredictionLog');
+const cacheService = require('../services/cacheService');
 
 // ML Model API URL
 const ML_API_URL = process.env.ML_API_URL || 'http://localhost:5000';
@@ -26,6 +27,13 @@ const getDayOfWeek = (date) => {
 // @access  Public
 router.get('/', async (req, res) => {
   try {
+      // Try to get from cache first
+      const cacheKey = 'events:all';
+      const cachedEvents = await cacheService.get(cacheKey);
+      if (cachedEvents) {
+        return res.json(cachedEvents);
+      }
+
       // Auto-update event statuses based on current date
       await Event.updateEventStatuses();
       
@@ -42,6 +50,9 @@ router.get('/', async (req, res) => {
       }
       return eventObj;
     });
+    
+    // Cache for 10 minutes
+    await cacheService.set(cacheKey, publicEvents, 600);
     
     res.json(publicEvents);
   } 
@@ -116,6 +127,13 @@ router.get('/:id/dynamic-prices', async (req, res) => {
 // @access  Public
 router.get('/:id', async (req, res) => {
   try {
+    // Try to get from cache first
+    const cacheKey = `event:${req.params.id}`;
+    const cachedEvent = await cacheService.get(cacheKey);
+    if (cachedEvent) {
+      return res.json(cachedEvent);
+    }
+
     const event = await Event.findById(req.params.id);
     if (!event) {
       return res.status(404).json({ error: 'Event not found' });
@@ -130,6 +148,9 @@ router.get('/:id', async (req, res) => {
       });
     }
     
+    // Cache for 10 minutes
+    await cacheService.set(cacheKey, eventObj, 600);
+    
     res.json(eventObj);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -143,6 +164,8 @@ router.post('/', async (req, res) => {
   try {
     const event = new Event(req.body);
     await event.save();
+    // Invalidate events cache
+    await cacheService.del('events:all');
     res.status(201).json(event);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -162,6 +185,9 @@ router.put('/:id', async (req, res) => {
     if (!event) {
       return res.status(404).json({ error: 'Event not found' });
     }
+    // Invalidate caches
+    await cacheService.del('events:all');
+    await cacheService.del(`event:${req.params.id}`);
     res.json(event);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -177,6 +203,9 @@ router.delete('/:id', async (req, res) => {
     if (!event) {
       return res.status(404).json({ error: 'Event not found' });
     }
+    // Invalidate caches
+    await cacheService.del('events:all');
+    await cacheService.del(`event:${req.params.id}`);
     res.json({ message: 'Event deleted successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });

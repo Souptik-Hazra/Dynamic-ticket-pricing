@@ -2,12 +2,20 @@ const express = require('express');
 const router = express.Router();
 const Event = require('../models/Event');
 const Ticket = require('../models/Ticket');
+const cacheService = require('../services/cacheService');
 
 // @route   GET /api/analytics
 // @desc    Get system analytics
 // @access  Public (can be protected if needed)
 router.get('/', async (req, res) => {
   try {
+    // Try to get from cache first
+    const cacheKey = 'analytics:dashboard';
+    const cachedAnalytics = await cacheService.get(cacheKey);
+    if (cachedAnalytics) {
+      return res.json(cachedAnalytics);
+    }
+
     // Get total events count
     const totalEvents = await Event.countDocuments();
 
@@ -45,14 +53,19 @@ router.get('/', async (req, res) => {
       { $limit: 5 }
     ]);
 
-    res.json({
+    const result = {
       success: true,
       totalEvents,
       upcomingEvents,
       totalTicketsSold: stats.totalTickets,
       totalRevenue: stats.totalRevenue,
       topEvents: eventRevenue
-    });
+    };
+
+    // Cache for 15 minutes
+    await cacheService.set(cacheKey, result, 900);
+
+    res.json(result);
   } catch (error) {
     console.error('Analytics error:', error);
     res.status(500).json({

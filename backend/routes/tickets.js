@@ -24,8 +24,8 @@ router.get('/', protect, async (req, res) => {
       .populate('eventId')
       .sort({ purchaseDate: -1 });
     
-    // Cache for 5 minutes
-    await cacheService.set(cacheKey, tickets, 300);
+    // Cache for 10 minutes
+    await cacheService.set(cacheKey, tickets, 600);
     
     res.json(tickets);
   } catch (error) {
