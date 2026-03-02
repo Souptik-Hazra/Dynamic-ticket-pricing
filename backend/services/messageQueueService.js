@@ -4,7 +4,12 @@ let channel = null;
 let connection = null;
 let isConnected = false;
 
-const QUEUE_NAME = 'ticket_purchases';
+// Queue names
+const QUEUES = {
+  TICKET_PURCHASES: 'ticket_purchases',
+  ANALYTICS: 'analytics_events',
+  NOTIFICATIONS: 'notifications'
+};
 
 // Initialize RabbitMQ connection
 const initRabbitMQ = async () => {
@@ -13,7 +18,10 @@ const initRabbitMQ = async () => {
     connection = await amqp.connect(rabbitUrl);
     channel = await connection.createChannel();
     
-    await channel.assertQueue(QUEUE_NAME, { durable: true });
+    // Assert all queues
+    await channel.assertQueue(QUEUES.TICKET_PURCHASES, { durable: true });
+    await channel.assertQueue(QUEUES.ANALYTICS, { durable: true });
+    await channel.assertQueue(QUEUES.NOTIFICATIONS, { durable: true });
     
     connection.on('error', (err) => {
       console.error('RabbitMQ connection error:', err);
@@ -34,14 +42,15 @@ const initRabbitMQ = async () => {
 };
 
 const messageQueueService = {
-  async sendMessage(message) {
+  // Generic send message
+  async sendMessage(queueName, message) {
     if (!isConnected || !channel) {
       console.log('Message queue not available, processing synchronously');
       return false;
     }
     
     try {
-      channel.sendToQueue(QUEUE_NAME, Buffer.from(JSON.stringify(message)), {
+      channel.sendToQueue(queueName, Buffer.from(JSON.stringify(message)), {
         persistent: true
       });
       return true;
@@ -51,14 +60,69 @@ const messageQueueService = {
     }
   },
 
-  async consumeMessages(callback) {
+  // Publish ticket purchase event
+  async publishTicketPurchase(data) {
+    if (!isConnected) {
+      console.log('📧 [Sync] Processing ticket purchase:', data.ticketId);
+      // Process synchronously - e.g., send confirmation email directly
+      return this.processTicketPurchaseSync(data);
+    }
+    return this.sendMessage(QUEUES.TICKET_PURCHASES, {
+      type: 'TICKET_PURCHASE',
+      data,
+      timestamp: new Date()
+    });
+  },
+
+  // Publish analytics event
+  async publishAnalytics(data) {
+    if (!isConnected) {
+      console.log('📊 [Sync] Logging analytics:', data.type);
+      // Analytics can be logged directly to console/DB if queue unavailable
+      return true;
+    }
+    return this.sendMessage(QUEUES.ANALYTICS, {
+      type: 'ANALYTICS',
+      data,
+      timestamp: new Date()
+    });
+  },
+
+  // Publish notification
+  async publishNotification(data) {
+    if (!isConnected) {
+      console.log('🔔 [Sync] Processing notification:', data.type);
+      // Process notification synchronously
+      return this.processNotificationSync(data);
+    }
+    return this.sendMessage(QUEUES.NOTIFICATIONS, {
+      type: 'NOTIFICATION',
+      data,
+      timestamp: new Date()
+    });
+  },
+
+  // Synchronous fallback handlers
+  processTicketPurchaseSync(data) {
+    // Could send email directly here if email service is configured
+    console.log(`✅ Ticket ${data.ticketId} confirmed for user ${data.userId}`);
+    return true;
+  },
+
+  processNotificationSync(data) {
+    console.log(`🔔 Notification: ${data.type} - ${data.message || 'No message'}`);
+    return true;
+  },
+
+  // Consume messages from a queue
+  async consumeMessages(queueName, callback) {
     if (!isConnected || !channel) {
       console.log('Message queue not available');
       return;
     }
     
     try {
-      channel.consume(QUEUE_NAME, async (msg) => {
+      channel.consume(queueName, async (msg) => {
         if (msg !== null) {
           const content = JSON.parse(msg.content.toString());
           await callback(content);
@@ -70,6 +134,31 @@ const messageQueueService = {
     }
   },
 
+  // Start consuming all queues (call this from server.js if needed)
+  async startConsumers() {
+    if (!isConnected) return;
+
+    // Ticket purchase consumer
+    await this.consumeMessages(QUEUES.TICKET_PURCHASES, async (msg) => {
+      console.log('📧 Processing ticket purchase from queue:', msg.data.ticketId);
+      // Add email sending logic here
+    });
+
+    // Analytics consumer
+    await this.consumeMessages(QUEUES.ANALYTICS, async (msg) => {
+      console.log('📊 Processing analytics event:', msg.data.type);
+      // Add analytics processing logic here
+    });
+
+    // Notifications consumer
+    await this.consumeMessages(QUEUES.NOTIFICATIONS, async (msg) => {
+      console.log('🔔 Processing notification:', msg.data.type);
+      // Add notification sending logic here
+    });
+
+    console.log('✅ Message queue consumers started');
+  },
+
   async close() {
     try {
       if (channel) await channel.close();
@@ -78,7 +167,10 @@ const messageQueueService = {
     } catch (err) {
       console.error('Error closing message queue connection:', err);
     }
-  }
+  },
+
+  // Expose queue names
+  QUEUES
 };
 
 // Initialize on module load
