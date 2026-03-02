@@ -12,7 +12,7 @@ function AdminEventForm({ event, onClose }) {
     endDate: '',
     eventPopularity: 0.5,
     category: 'concert',
-    image: 'https://via.placeholder.com/400x250',
+    image: 'public/events.png',
     status: 'upcoming',
     venueTier: 2,
     artistTier: 0,
@@ -546,7 +546,7 @@ function AdminEventForm({ event, onClose }) {
                 <img 
                   src={imagePreview || formData.image} 
                   alt="Event preview" 
-                  onError={(e) => e.target.src = 'https://via.placeholder.com/400x250?text=Invalid+Image'}
+                  onError={(e) => e.target.src = 'public/favicon.ico'}
                 />
               </div>
             )}

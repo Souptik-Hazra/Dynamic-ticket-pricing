@@ -144,12 +144,16 @@ function EventList({ events, onUpdatePrice, onSelectEvent, onRefresh }) {
                 </div>
 
                 <div className="event-actions">
-                  <button 
+                  <button
                     className="btn-primary"
                     onClick={() => onSelectEvent(event)}
-                    disabled={isSoldOut(event)}
+                    disabled={isSoldOut(event) || event.status === 'completed'}
                   >
-                    {isSoldOut(event) ? 'Sold Out' : 'Buy Tickets'}
+                    {event.status === 'completed'
+                      ? 'CLOSED'
+                      : isSoldOut(event)
+                        ? 'Sold Out'
+                        : 'Buy Tickets'}
                   </button>
                 </div>
 
