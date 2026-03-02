@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { eventFormSchema } from '../utils/validationSchemas';
 import axios from 'axios';
 import { API_URL } from '../config/api';
 import './AdminEventForm.css';
@@ -76,11 +77,8 @@ function AdminEventForm({ event, onClose }) {
       // Set ticket categories if they exist
       if (event.ticketCategories && event.ticketCategories.length > 0) {
         setTicketCategories(event.ticketCategories.map(cat => ({
-          name: cat.name,
-          price: cat.price,
-          maxPrice: cat.maxPrice || cat.price * 2,
-          seats: cat.seats,
-          availableSeats: cat.availableSeats // Preserve available seats
+          ...cat,
+          maxPrice: cat.maxPrice || cat.price * 2
         })));
       } else if (event.basePrice || event.capacity) {
         // Handle old events without ticketCategories - create a default one
@@ -136,14 +134,14 @@ function AdminEventForm({ event, onClose }) {
   };
   
   const handleCategoryChange = (index, field, value) => {
-    const newCategories = [...ticketCategories];
-    newCategories[index][field] = value;
-    setTicketCategories(newCategories);
+    setTicketCategories(ticketCategories.map((cat, i) =>
+      i === index ? { ...cat, [field]: value } : cat
+    ));
     setError('');
   };
   
   const addTicketCategory = () => {
-    setTicketCategories([...ticketCategories, { name: '', price: '', maxPrice: '', seats: '', availableSeats: undefined }]);
+    setTicketCategories(ticketCategories.concat({ name: '', price: '', maxPrice: '', seats: '', availableSeats: undefined }));
   };
   
   const removeTicketCategory = (index) => {
@@ -152,22 +150,25 @@ function AdminEventForm({ event, onClose }) {
     }
   };
 
+  const validateTicketCategories = (categories) => {
+    return categories.filter(cat =>
+      cat.name?.trim() && cat.price !== '' && cat.price != null && cat.seats !== '' && cat.seats != null
+    );
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
-    if (!formData.name || !formData.venue || !formData.startDate) {
-      setError('Please fill all required fields');
+    try {
+      await eventFormSchema.validate(formData, { abortEarly: false });
+    } catch (validationError) {
+      setError(validationError.errors[0]);
       return;
     }
-    
-    // Validate ticket categories - check for actual values (numbers or non-empty strings)
-    const validCategories = ticketCategories.filter(cat => {
-      const hasName = cat.name && cat.name.trim() !== '';
-      const hasPrice = cat.price !== '' && cat.price !== null && cat.price !== undefined;
-      const hasSeats = cat.seats !== '' && cat.seats !== null && cat.seats !== undefined;
-      return hasName && hasPrice && hasSeats;
-    });
+
+    // Validate ticket categories
+    const validCategories = validateTicketCategories(ticketCategories);
     if (validCategories.length === 0) {
       setError('Please add at least one ticket category with name, price and seats');
       return;

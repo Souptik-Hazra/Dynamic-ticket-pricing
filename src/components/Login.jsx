@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
+import { loginSchema } from '../utils/validationSchemas';
 import { useAuth } from '../context/AuthContext';
 import './Login.css';
 
-function Login({ onSwitchToSignup }) {
+function Login({ onSwitchToSignup, onSignin }) {
   const { signin } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
@@ -24,7 +25,21 @@ function Login({ onSwitchToSignup }) {
     setError('');
     setLoading(true);
 
-    const result = await signin(formData.email, formData.password);
+    try {
+      await loginSchema.validate(formData, { abortEarly: false });
+    } catch (validationError) {
+      setError(validationError.errors[0]);
+      setLoading(false);
+      return;
+    }
+
+
+    let result;
+    if (onSignin) {
+      result = await onSignin(formData.email, formData.password);
+    } else {
+      result = await signin(formData.email, formData.password);
+    }
 
     if (result.success) {
       // Navigation will be handled by App.jsx based on auth state
@@ -75,7 +90,7 @@ function Login({ onSwitchToSignup }) {
               placeholder="••••••••"
               required
               disabled={loading}
-              minLength="6"
+              minLength="8"
             />
           </div>
 
@@ -87,20 +102,10 @@ function Login({ onSwitchToSignup }) {
         <div className="auth-footer">
           <p>
             Don't have an account?{' '}
-            <button 
-              className="link-btn" 
-              onClick={onSwitchToSignup}
-              disabled={loading}
-            >
+            <button className="link-btn" onClick={onSwitchToSignup} disabled={loading}>
               Sign Up
             </button>
           </p>
-        </div>
-
-        <div className="demo-credentials">
-          <p className="demo-title">Demo Credentials:</p>
-          <p><strong>Admin:</strong> admin@test.com / admin123</p>
-          <p><strong>User:</strong> user@test.com / user123</p>
         </div>
       </div>
     </div>

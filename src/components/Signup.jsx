@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { signupSchema } from '../utils/validationSchemas';
 import { useAuth } from '../context/AuthContext';
 import './Login.css';
 
@@ -25,14 +26,10 @@ function Signup({ onSwitchToLogin }) {
     e.preventDefault();
     setError('');
 
-    // Validation
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters');
+    try {
+      await signupSchema.validate(formData, { abortEarly: false });
+    } catch (validationError) {
+      setError(validationError.errors[0]);
       return;
     }
 
@@ -103,9 +100,9 @@ function Signup({ onSwitchToLogin }) {
               placeholder="••••••••"
               required
               disabled={loading}
-              minLength="6"
+              minLength="8"
             />
-            <small>Must be at least 6 characters</small>
+            <small>Must be at least 8 characters</small>
           </div>
 
           <div className="form-group">
@@ -119,7 +116,7 @@ function Signup({ onSwitchToLogin }) {
               placeholder="••••••••"
               required
               disabled={loading}
-              minLength="6"
+              minLength="8"
             />
           </div>
 

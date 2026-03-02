@@ -15,7 +15,21 @@ import './components/NavBadge.css';
 import UserProfile from "./components/UserProfile.jsx";
 
 function AppContent() {
-  const { user, loading: authLoading, logout, isAuthenticated, isAdmin } = useAuth();
+  const { user, loading: authLoading, logout: baseLogout, signin, isAuthenticated, isAdmin } = useAuth();
+    // Wrap logout to redirect to home
+    const handleLogout = () => {
+      baseLogout();
+      setView('home');
+    };
+
+    // Wrap signin to redirect to events
+    const handleSignin = async (email, password) => {
+      const result = await signin(email, password);
+      if (result.success) {
+        setView('events');
+      }
+      return result;
+    };
   const [authView, setAuthView] = useState('login'); // 'login' or 'signup'
   const [view, setView] = useState('home'); // Start with home page
   const [events, setEvents] = useState([]);
@@ -145,7 +159,7 @@ function AppContent() {
                   <button onClick={() => setView('subscription')} className="nav-profile-btn">Membership</button>
                 )}
                 <button onClick={() => setView('profile')} className="nav-profile-btn">Profile</button>
-                <button onClick={logout} className="nav-logout-btn">Logout</button>
+                <button onClick={handleLogout} className="nav-logout-btn">Logout</button>
               </>
             )}
           </div>
@@ -177,7 +191,7 @@ function AppContent() {
                 <button onClick={() => setView('subscription')} className="nav-profile-btn">Membership</button>
               )}
               <button onClick={() => setView('profile')} className="nav-profile-btn">Profile</button>
-              <button onClick={logout} className="nav-logout-btn">Logout</button>
+              <button onClick={handleLogout} className="nav-logout-btn">Logout</button>
             </div>
           )}
         </div>
@@ -190,7 +204,7 @@ function AppContent() {
     return (
       <div className="App">
         {renderNavigation()}
-        <Login onSwitchToSignup={() => { setAuthView('signup'); setView('signup'); }} />
+        <Login onSwitchToSignup={() => { setAuthView('signup'); setView('signup'); }} onSignin={handleSignin} />
       </div>
     );
   }

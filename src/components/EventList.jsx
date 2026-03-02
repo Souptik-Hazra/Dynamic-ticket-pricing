@@ -28,38 +28,30 @@ function EventList({ events, onUpdatePrice, onSelectEvent, onRefresh }) {
   };
 
   const getOccupancyPercentage = (event) => {
-    // Calculate from category data if available
-    if (event.ticketCategories && event.ticketCategories.length > 0) {
+    if (event.ticketCategories?.length > 0) {
       const totalSeats = event.ticketCategories.reduce((sum, cat) => sum + cat.seats, 0);
-      const totalAvailable = event.ticketCategories.reduce((sum, cat) => sum + cat.availableSeats, 0);
-      const sold = totalSeats - totalAvailable;
-      return Math.min(100, ((sold / totalSeats) * 100)).toFixed(1);
+      const sold = event.ticketCategories.reduce((sum, cat) => sum + (cat.seats - cat.availableSeats), 0);
+      return Math.min(100, (sold / totalSeats) * 100).toFixed(1);
     }
-    return Math.min(100, ((event.ticketsSold / event.capacity) * 100)).toFixed(1);
+    return Math.min(100, (event.ticketsSold / event.capacity) * 100).toFixed(1);
   };
 
   const getTicketsSold = (event) => {
-    if (event.ticketCategories && event.ticketCategories.length > 0) {
-      const totalSeats = event.ticketCategories.reduce((sum, cat) => sum + cat.seats, 0);
-      const totalAvailable = event.ticketCategories.reduce((sum, cat) => sum + cat.availableSeats, 0);
-      return totalSeats - totalAvailable;
+    if (event.ticketCategories?.length > 0) {
+      return event.ticketCategories.reduce((sum, cat) => sum + (cat.seats - cat.availableSeats), 0);
     }
     return event.ticketsSold;
   };
 
-  const getTotalCapacity = (event) => {
-    if (event.ticketCategories && event.ticketCategories.length > 0) {
-      return event.ticketCategories.reduce((sum, cat) => sum + cat.seats, 0);
-    }
-    return event.capacity;
-  };
+  const getTotalCapacity = (event) =>
+    event.ticketCategories?.length > 0
+      ? event.ticketCategories.reduce((sum, cat) => sum + cat.seats, 0)
+      : event.capacity;
 
-  const isSoldOut = (event) => {
-    if (event.ticketCategories && event.ticketCategories.length > 0) {
-      return event.ticketCategories.every(cat => cat.availableSeats <= 0);
-    }
-    return event.ticketsSold >= event.capacity;
-  };
+  const isSoldOut = (event) =>
+    event.ticketCategories?.length > 0
+      ? event.ticketCategories.every(cat => cat.availableSeats <= 0)
+      : event.ticketsSold >= event.capacity;
 
   // Removed daysUntil logic
 

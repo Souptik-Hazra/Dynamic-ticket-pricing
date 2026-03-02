@@ -274,44 +274,21 @@ const UserProfile = () => {
             </div>
           ) : (
             <div className="tickets-list">
-              {tickets.map((ticket) => (
+              {tickets.map(ticket => (
                 <div key={ticket._id} className="ticket-card-profile">
                   <div className="ticket-left">
-                    <div className="ticket-event-name">
-                      {ticket.eventId?.name || "Event"}
-                    </div>
+                    <div className="ticket-event-name">{ticket.eventId?.name || "Event"}</div>
                     <div className="ticket-details-row">
-                      <span className="ticket-detail">
-                        🎟️ {ticket.categoryName?.toUpperCase() || "STANDARD"}
-                      </span>
+                      <span className="ticket-detail">🎟️ {ticket.categoryName?.toUpperCase() || "STANDARD"}</span>
                       <span className="ticket-detail">× {ticket.quantity}</span>
-                      <span className="ticket-detail">
-                        📅{" "}
-                        {new Date(ticket.purchaseDate).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
-                      </span>
+                      <span className="ticket-detail">📅 {new Date(ticket.purchaseDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
                     </div>
-                    {ticket.bookingReference && (
-                      <div className="ticket-ref">Ref: {ticket.bookingReference}</div>
-                    )}
+                    {ticket.bookingReference && <div className="ticket-ref">Ref: {ticket.bookingReference}</div>}
                   </div>
                   <div className="ticket-right">
-                    <div className="ticket-amount">
-                      ₹{ticket.totalAmount?.toFixed(2)}
-                    </div>
-                    <span className={`ticket-status ${ticket.status || "confirmed"}`}>
-                      {ticket.status || "confirmed"}
-                    </span>
-                    <button
-                      className="print-ticket-btn"
-                      onClick={() => handlePrintTicket(ticket)}
-                      title="Print / Save as PDF"
-                    >
-                      🖨️ Print
-                    </button>
+                    <div className="ticket-amount">₹{ticket.totalAmount?.toFixed(2)}</div>
+                    <span className={`ticket-status ${ticket.status || "confirmed"}`}>{ticket.status || "confirmed"}</span>
+                    <button className="print-ticket-btn" onClick={() => handlePrintTicket(ticket)} title="Print / Save as PDF">🖨️ Print</button>
                   </div>
                 </div>
               ))}
@@ -323,15 +300,11 @@ const UserProfile = () => {
                 </div>
                 <div className="summary-item">
                   <span className="summary-label">Total Tickets</span>
-                  <span className="summary-value">
-                    {tickets.reduce((sum, t) => sum + (t.quantity || 0), 0)}
-                  </span>
+                  <span className="summary-value">{tickets.map(t => t.quantity || 0).reduce((sum, q) => sum + q, 0)}</span>
                 </div>
                 <div className="summary-item">
                   <span className="summary-label">Total Spent</span>
-                  <span className="summary-value">
-                    ₹{tickets.reduce((sum, t) => sum + (t.totalAmount || 0), 0).toFixed(2)}
-                  </span>
+                  <span className="summary-value">₹{tickets.map(t => t.totalAmount || 0).reduce((sum, amt) => sum + amt, 0).toFixed(2)}</span>
                 </div>
               </div>
             </div>
