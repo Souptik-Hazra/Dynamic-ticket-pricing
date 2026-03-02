@@ -1,6 +1,68 @@
 const express = require('express');
 const router = express.Router();
 const PredictionLog = require('../models/PredictionLog');
+const MLModel = require('../models/MLModel');
+
+// @route   POST /api/ml-model/update-metadata
+// @desc    Update ML model metadata after training (called by train_model_enhanced.py)
+// @access  Public (internal service call)
+router.post('/update-metadata', async (req, res) => {
+  try {
+    const { modelVersion, modelType, features, trainScore, testScore, parameters, metadata } = req.body;
+
+    if (!modelVersion) {
+      return res.status(400).json({ error: 'modelVersion is required' });
+    }
+
+    // Deactivate all previous models
+    await MLModel.updateMany({}, { isActive: false });
+
+    // Create or update the model entry
+    const modelData = {
+      modelVersion,
+      modelType: modelType || 'XGBRegressor (XGBoost)',
+      features: features || [],
+      trainScore: trainScore || 0,
+      testScore: testScore || 0,
+      parameters: parameters || {},
+      metadata: metadata || {},
+      isActive: true,
+      trainedAt: metadata?.trainedAt ? new Date(metadata.trainedAt) : new Date()
+    };
+
+    const mlModel = await MLModel.findOneAndUpdate(
+      { modelVersion },
+      modelData,
+      { upsert: true, new: true }
+    );
+
+    console.log(`✅ ML Model ${modelVersion} synced to MongoDB`);
+
+    res.status(200).json({
+      success: true,
+      message: `Model ${modelVersion} updated successfully`,
+      data: mlModel
+    });
+  } catch (error) {
+    console.error('Error updating ML model metadata:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// @route   GET /api/ml-model/active
+// @desc    Get currently active ML model info
+// @access  Public
+router.get('/active', async (req, res) => {
+  try {
+    const activeModel = await MLModel.findOne({ isActive: true });
+    if (!activeModel) {
+      return res.status(404).json({ error: 'No active model found' });
+    }
+    res.json({ success: true, data: activeModel });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // @route   POST /api/ml-model/prediction-log
 // @desc    Log a prediction (for ML model tracking)

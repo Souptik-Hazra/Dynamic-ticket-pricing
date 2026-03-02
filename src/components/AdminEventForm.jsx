@@ -20,7 +20,7 @@ function AdminEventForm({ event, onClose }) {
   });
   
   const [ticketCategories, setTicketCategories] = useState([
-    { name: 'standard', price: '', maxPrice: '', seats: '', availableSeats: undefined }
+    { name: '', price: '', maxPrice: '', seats: '', availableSeats: undefined }
   ]);
   
   const [loading, setLoading] = useState(false);
@@ -28,11 +28,36 @@ function AdminEventForm({ event, onClose }) {
   const [imagePreview, setImagePreview] = useState('');
   const [imageSource, setImageSource] = useState('url'); // 'url' or 'upload'
 
+  // Helper function to compute status based on dates
+  const computeStatus = (startDate, endDate) => {
+    if (!startDate) return 'upcoming';
+    
+    const now = new Date();
+    const start = new Date(startDate);
+    // Treat endDate as end-of-day (23:59:59) so same-day events stay "ongoing" all day
+    const end = endDate ? new Date(endDate) : new Date(start);
+    end.setHours(23, 59, 59, 999);
+    
+    if (now < start) {
+      return 'upcoming';
+    } else if (now >= start && now <= end) {
+      return 'ongoing';
+    } else {
+      return 'completed';
+    }
+  };
+
   useEffect(() => {
     if (event) {
+      // Clear any existing errors when loading edit data
+      setError('');
+      
       // Format start and end date for datetime-local input
       const startDate = event.startDate ? new Date(event.startDate).toISOString().slice(0, 16) : '';
       const endDate = event.endDate ? new Date(event.endDate).toISOString().slice(0, 16) : '';
+      // Auto-compute status based on dates (preserve 'cancelled' status)
+      const autoStatus = event.status === 'cancelled' ? 'cancelled' : computeStatus(startDate, endDate);
+      
       setFormData({
         name: event.name,
         description: event.description,
@@ -42,7 +67,7 @@ function AdminEventForm({ event, onClose }) {
         eventPopularity: event.eventPopularity || 0.5,
         category: event.category,
         image: event.image,
-        status: event.status,
+        status: autoStatus,
         venueTier: event.venueTier || 2,
         artistTier: event.artistTier || 3,
         isHoliday: event.isHoliday || false
@@ -57,16 +82,56 @@ function AdminEventForm({ event, onClose }) {
           seats: cat.seats,
           availableSeats: cat.availableSeats // Preserve available seats
         })));
+      } else if (event.basePrice || event.capacity) {
+        // Handle old events without ticketCategories - create a default one
+        setTicketCategories([{
+          name: 'standard',
+          price: event.basePrice || '',
+          maxPrice: event.basePrice ? event.basePrice * 2 : '',
+          seats: event.capacity || '',
+          availableSeats: event.availableTickets || event.capacity || undefined
+        }]);
       }
     }
   }, [event]);
 
+  // Auto-update status in background every minute
+  useEffect(() => {
+    const updateStatusAutomatically = () => {
+      if (formData.status !== 'cancelled' && formData.startDate) {
+        const newStatus = computeStatus(formData.startDate, formData.endDate);
+        if (newStatus !== formData.status) {
+          setFormData(prev => ({ ...prev, status: newStatus }));
+        }
+      }
+    };
+
+    // Check immediately on mount/date changes
+    updateStatusAutomatically();
+
+    // Check every minute
+    const interval = setInterval(updateStatusAutomatically, 60000);
+    return () => clearInterval(interval);
+  }, [formData.startDate, formData.endDate, formData.status]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    
+    setFormData(prev => {
+      const newData = {
+        ...prev,
+        [name]: value
+      };
+      
+      // Auto-update status when dates change (skip if status is 'cancelled')
+      if ((name === 'startDate' || name === 'endDate') && prev.status !== 'cancelled') {
+        const startDate = name === 'startDate' ? value : prev.startDate;
+        const endDate = name === 'endDate' ? value : prev.endDate;
+        newData.status = computeStatus(startDate, endDate);
+      }
+      
+      return newData;
+    });
     setError('');
   };
   
@@ -78,7 +143,7 @@ function AdminEventForm({ event, onClose }) {
   };
   
   const addTicketCategory = () => {
-    setTicketCategories([...ticketCategories, { name: 'standard', price: '', maxPrice: '', seats: '', availableSeats: undefined }]);
+    setTicketCategories([...ticketCategories, { name: '', price: '', maxPrice: '', seats: '', availableSeats: undefined }]);
   };
   
   const removeTicketCategory = (index) => {
@@ -96,10 +161,15 @@ function AdminEventForm({ event, onClose }) {
       return;
     }
     
-    // Validate ticket categories
-    const validCategories = ticketCategories.filter(cat => cat.price && cat.seats);
+    // Validate ticket categories - check for actual values (numbers or non-empty strings)
+    const validCategories = ticketCategories.filter(cat => {
+      const hasName = cat.name && cat.name.trim() !== '';
+      const hasPrice = cat.price !== '' && cat.price !== null && cat.price !== undefined;
+      const hasSeats = cat.seats !== '' && cat.seats !== null && cat.seats !== undefined;
+      return hasName && hasPrice && hasSeats;
+    });
     if (validCategories.length === 0) {
-      setError('Please add at least one ticket category with price and seats');
+      setError('Please add at least one ticket category with name, price and seats');
       return;
     }
 
@@ -271,17 +341,22 @@ function AdminEventForm({ event, onClose }) {
                 <div className="category-fields">
                   <div className="form-group category-field">
                     <label>Type</label>
-                    <select
+                    <input
+                      type="text"
+                      list="category-options"
                       value={category.name}
                       onChange={(e) => handleCategoryChange(index, 'name', e.target.value)}
+                      placeholder="e.g., VIP, Standard"
                       disabled={loading}
-                    >
+                      required
+                    />
+                    <datalist id="category-options">
                       <option value="standard">Standard</option>
                       <option value="vip">VIP</option>
                       <option value="premium">Premium</option>
                       <option value="balcony">Balcony</option>
                       <option value="economy">Economy</option>
-                    </select>
+                    </datalist>
                   </div>
                   
                   <div className="form-group category-field">
