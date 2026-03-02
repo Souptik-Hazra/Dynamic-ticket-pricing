@@ -53,13 +53,37 @@ router.get('/', async (req, res) => {
       { $limit: 5 }
     ]);
 
+    // --- User Fraud Stats (Top 50) ---
+    const UserFraudStats = require('../models/UserFraudStats');
+    const User = require('../models/User');
+    // Get top 50 users by fraudScore (descending)
+    const fraudStats = await UserFraudStats.find({})
+      .sort({ fraudScore: -1 })
+      .limit(50)
+      .lean();
+    // Attach user details (name, email) to each fraud stat
+    const userIds = fraudStats.map(f => f.userId);
+    const users = await User.find({ _id: { $in: userIds } }).lean();
+    const userMap = {};
+    users.forEach(u => { userMap[u._id.toString()] = u; });
+    const fraudStatsWithUser = fraudStats.map(f => {
+      const user = userMap[f.userId.toString()];
+      return {
+        ...f,
+        userName: user ? user.name : 'Unknown User',
+        email: user ? user.email : 'N/A',
+      };
+    });
+
+
     const result = {
       success: true,
       totalEvents,
       upcomingEvents,
       totalTicketsSold: stats.totalTickets,
       totalRevenue: stats.totalRevenue,
-      topEvents: eventRevenue
+      topEvents: eventRevenue,
+      userFraudStats: fraudStatsWithUser
     };
 
     // Cache for 15 minutes

@@ -34,6 +34,12 @@ timeout /t 3 /nobreak >nul
 echo Done!
 echo.
 
+echo [3.5/5] Running Fraud Analytics Update...
+start "Fraud Analytics" cmd /k "cd ml-model && python fraud_detector.py"
+timeout /t 3 /nobreak >nul
+echo Done!
+echo.
+
 echo [4/5] Starting Backend...
 start "Backend" cmd /k "cd backend && npm start"
 timeout /t 3 /nobreak >nul
