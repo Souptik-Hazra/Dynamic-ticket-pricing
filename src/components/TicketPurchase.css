@@ -28,6 +28,9 @@
   grid-template-columns: 1fr 1.5fr;
   gap: 3rem;
   margin-top: 2rem;
+  min-height: 70vh;
+  max-height: 80vh;
+  overflow-y: auto;
 }
 
 .event-summary {
@@ -846,7 +849,6 @@
     z-index: 99999;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
-    color-adjust: exact !important;
   }
 
   .purchase-print-overlay {
