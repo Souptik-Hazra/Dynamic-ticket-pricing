@@ -14,6 +14,10 @@ const Ticket = require('./models/Ticket');
 const PriceHistory = require('./models/PriceHistory');
 const PredictionLog = require('./models/PredictionLog');
 
+// Import services for initialization
+const cacheService = require('./services/cacheService');
+const concurrencyService = require('./services/concurrencyService');
+
 // Import routes
 const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
@@ -25,46 +29,61 @@ const eventRoutes = require('./routes/events');
 
 const app = express();
 
-// Security Middleware removed for full project openness
+// ==================== SECURITY MIDDLEWARE ====================
 
-// 2. Rate Limiting (simple in-memory implementation)
-const requestCounts = new Map();
-const RATE_LIMIT_WINDOW = 60000; // 1 minute
-const MAX_REQUESTS = 100;
+// 1. HTTPS Enforcement (production only)
+// Redirects HTTP to HTTPS when behind a proxy (Heroku, Render, etc.)
+if (process.env.NODE_ENV === 'production') {
+  app.use((req, res, next) => {
+    // Check for HTTPS via X-Forwarded-Proto header (set by reverse proxy)
+    if (req.headers['x-forwarded-proto'] !== 'https') {
+      return res.redirect(301, `https://${req.headers.host}${req.url}`);
+    }
+    next();
+  });
+  
+  // Set security headers
+  app.use((req, res, next) => {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    next();
+  });
+}
 
-app.use((req, res, next) => {
-  const ip = req.ip || req.connection.remoteAddress;
-  const now = Date.now();
-  
-  if (!requestCounts.has(ip)) {
-    requestCounts.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
-    return next();
-  }
-  
-  const userRequests = requestCounts.get(ip);
-  
-  if (now > userRequests.resetTime) {
-    requestCounts.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
-    return next();
-  }
-  
-  if (userRequests.count >= MAX_REQUESTS) {
-    return res.status(429).json({ error: 'Too many requests. Please try again later.' });
-  }
-  
-  userRequests.count++;
-  next();
+// Trust proxy for accurate IP detection (required for rate limiting behind reverse proxy)
+app.set('trust proxy', 1);
+
+// 2. Rate Limiting with express-rate-limit (works across instances if using Redis store)
+const rateLimit = require('express-rate-limit');
+
+// General API rate limiter
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 100, // 100 requests per minute
+  message: { error: 'Too many requests. Please try again later.' },
+  standardHeaders: true, // Return rate limit info in headers
+  legacyHeaders: false,
+  keyGenerator: (req) => req.ip || req.headers['x-forwarded-for'] || 'unknown'
 });
 
-// Cleanup old entries every 5 minutes
-setInterval(() => {
-  const now = Date.now();
-  for (const [ip, data] of requestCounts.entries()) {
-    if (now > data.resetTime) {
-      requestCounts.delete(ip);
-    }
-  }
-}, 300000);
+// Stricter limiter for auth routes (prevent brute force)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // 10 attempts per 15 minutes
+  message: { error: 'Too many login attempts. Please try again in 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.ip || req.headers['x-forwarded-for'] || 'unknown'
+});
+
+// Apply general rate limiting to all routes
+app.use('/api/', apiLimiter);
+
+// Apply stricter rate limiting to auth routes
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/signup', authLimiter);
 
 
 // 3. CORS with robust origin check
@@ -102,14 +121,43 @@ app.use((req, res, next) => {
 function sanitizeObject(obj) {
   for (const key in obj) {
     if (typeof obj[key] === 'string') {
-      // Remove potential XSS vectors
-      obj[key] = obj[key].replace(/<script[^>]*>.*?<\/script>/gi, '');
-      obj[key] = obj[key].replace(/javascript:/gi, '');
-      obj[key] = obj[key].replace(/on\w+\s*=/gi, '');
+      obj[key] = sanitizeString(obj[key]);
     } else if (typeof obj[key] === 'object' && obj[key] !== null) {
       sanitizeObject(obj[key]);
     }
   }
+}
+
+// Robust string sanitization that handles obfuscation attempts
+function sanitizeString(str) {
+  let prev;
+  let current = str;
+  
+  // Keep sanitizing until no more changes (handles nested obfuscation like <scr<script>ipt>)
+  do {
+    prev = current;
+    
+    // Remove all HTML tags (not just script)
+    current = current.replace(/<[^>]*>/gi, '');
+    
+    // Remove javascript: protocol (with possible whitespace/encoding)
+    current = current.replace(/j\s*a\s*v\s*a\s*s\s*c\s*r\s*i\s*p\s*t\s*:/gi, '');
+    
+    // Remove event handlers (onclick, onerror, onload, etc.)
+    current = current.replace(/on\w+\s*=/gi, '');
+    
+    // Remove data: URLs that could contain scripts
+    current = current.replace(/data\s*:\s*text\/html/gi, '');
+    
+    // Remove expression() CSS function (IE)
+    current = current.replace(/expression\s*\(/gi, '');
+    
+    // Remove vbscript: protocol
+    current = current.replace(/vbscript\s*:/gi, '');
+    
+  } while (prev !== current);
+  
+  return current;
 }
 
 // MongoDB connection
@@ -117,6 +165,13 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/dynami
 mongoose.connect(MONGODB_URI)
 .then(async () => {
   console.log('✅ MongoDB connected successfully');
+  
+  // Initialize Redis services after MongoDB is connected
+  console.log('🔄 Initializing Redis services...');
+  await Promise.all([
+    cacheService.init().catch(err => console.warn('⚠️ Cache service:', err.message)),
+    concurrencyService.init().catch(err => console.warn('⚠️ Concurrency service:', err.message))
+  ]);
 })
 .catch(err => console.error('❌ MongoDB connection error:', err));
 
@@ -150,7 +205,9 @@ app.get('/api/health', async (req, res) => {
     status: 'healthy', 
     message: 'Backend server is running',
     services: {
-      mongodb: mongoose.connection.readyState === 1
+      mongodb: mongoose.connection.readyState === 1,
+      redis: cacheService.isConnected(),
+      locks: concurrencyService.isConnected()
     },
     timestamp: new Date().toISOString()
   });

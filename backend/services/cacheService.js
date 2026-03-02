@@ -103,12 +103,17 @@ const cacheService = {
       console.error('Cache invalidate pattern error:', err);
       return false;
     }
+  },
+  
+  // Initialize Redis connection
+  async init() {
+    return initRedis();
+  },
+  
+  // Check if Redis is connected
+  isConnected() {
+    return isConnected;
   }
 };
-
-// Initialize on module load
-initRedis().catch(err => {
-  console.warn('⚠️  Cache service initialization failed, running without cache');
-});
 
 module.exports = cacheService;

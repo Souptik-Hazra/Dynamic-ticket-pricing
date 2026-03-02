@@ -2,6 +2,7 @@ const redis = require('redis');
 
 let redisClient = null;
 let isConnected = false;
+let distributedModeWarningShown = false;
 
 // Initialize Redis client for distributed locking
 const initRedis = async () => {
@@ -23,12 +24,15 @@ const initRedis = async () => {
 
     redisClient.on('connect', () => {
       isConnected = true;
+      console.log('✅ Redis connected - distributed locking enabled');
     });
 
     try {
       await redisClient.connect();
     } catch (err) {
       console.warn('⚠️  Redis not available for locks, using in-memory fallback');
+      console.warn('⚠️  WARNING: In-memory locks only work for single-server deployments.');
+      console.warn('⚠️  For multi-server/distributed deployments, configure REDIS_URL to prevent race conditions.');
       isConnected = false;
     }
   }
@@ -71,7 +75,13 @@ const concurrencyService = {
   },
 
   // In-memory fallback methods
+  // WARNING: These only work for single-server deployments
   acquireLockInMemory(key, ttl) {
+    if (!distributedModeWarningShown && process.env.NODE_ENV === 'production') {
+      console.warn('⚠️  PRODUCTION WARNING: Using in-memory locks! This will cause race conditions in multi-server deployments.');
+      distributedModeWarningShown = true;
+    }
+    
     const now = Date.now();
     const lock = inMemoryLocks.get(key);
     
@@ -100,14 +110,21 @@ const concurrencyService = {
         }
       }
     }, 5000); // Clean every 5 seconds
+  },
+  
+  // Initialize Redis connection
+  async init() {
+    return initRedis();
+  },
+  
+  // Check if Redis is connected
+  isConnected() {
+    return isConnected;
   }
 };
 
-// Initialize
-initRedis().catch(err => {
-  console.warn('⚠️  Concurrency service using in-memory locks');
-});
-
+// Start cleanup on module load
 concurrencyService.startCleanup();
 
+module.exports = concurrencyService;
 module.exports = concurrencyService;

@@ -1,21 +1,28 @@
 const jwt = require('jsonwebtoken');
-const jwtSecret = process.env.JWT_SECRET || 'default_secret';
+
+// SECURITY: JWT_SECRET is required - do not use fallback in production
+const jwtSecret = process.env.JWT_SECRET;
+if (!jwtSecret) {
+  console.error('\x1b[31m%s\x1b[0m', '❌ CRITICAL: JWT_SECRET environment variable is not set!');
+  console.error('\x1b[33m%s\x1b[0m', '   Set JWT_SECRET in your .env file with a strong random string (32+ characters)');
+  console.error('\x1b[33m%s\x1b[0m', '   Example: JWT_SECRET=your-super-secret-key-here-make-it-long-and-random');
+  process.exit(1);
+}
 
 const User = require('../models/User');
 
-const JWT_EXPIRE = process.env.JWT_EXPIRE || '7d';
+// Reduced token lifetime for security (default 1 hour, refresh before expiry)
+const JWT_EXPIRE = process.env.JWT_EXPIRE || '1h';
+const JWT_REFRESH_EXPIRE = process.env.JWT_REFRESH_EXPIRE || '7d';
 
-// (Removed duplicate protect middleware declaration)
-// Simplified protect middleware: verify JWT and attach user
+// Protect middleware: verify JWT and attach user
+// SECURITY: Only accept token from Authorization header (Bearer token)
 const protect = async (req, res, next) => {
   let token = null;
-  // Accept token from Authorization header (Bearer) or from query/body for flexibility
+  
+  // Only accept token from Authorization header for security
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
     token = req.headers.authorization.split(' ')[1];
-  } else if (req.query.token) {
-    token = req.query.token;
-  } else if (req.body && req.body.token) {
-    token = req.body.token;
   }
   if (!token) {
     return res.status(401).json({ error: 'Not authorized, no token' });
@@ -48,4 +55,31 @@ const generateToken = (id) => {
   });
 };
 
-module.exports = { protect, admin, generateToken };
+// Generate refresh token (longer lived)
+const generateRefreshToken = (id) => {
+  return jwt.sign({ id, type: 'refresh' }, jwtSecret, {
+    expiresIn: JWT_REFRESH_EXPIRE
+  });
+};
+
+// Verify refresh token and issue new access token
+const refreshAccessToken = async (refreshToken) => {
+  try {
+    const decoded = jwt.verify(refreshToken, jwtSecret);
+    if (decoded.type !== 'refresh') {
+      throw new Error('Invalid token type');
+    }
+    const user = await User.findById(decoded.id);
+    if (!user) {
+      throw new Error('User not found');
+    }
+    return {
+      token: generateToken(user._id),
+      user: user.toJSON()
+    };
+  } catch (error) {
+    throw new Error('Invalid refresh token');
+  }
+};
+
+module.exports = { protect, admin, generateToken, generateRefreshToken, refreshAccessToken };

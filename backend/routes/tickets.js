@@ -1,12 +1,18 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const Ticket = require('../models/Ticket');
 const Event = require('../models/Event');
 const { protect } = require('../middleware/auth');
 const cacheService = require('../services/cacheService');
 const messageQueueService = require('../services/messageQueueService');
 const concurrencyService = require('../services/concurrencyService');
+const notificationService = require('../services/notificationService');
+const { fetchWithRetry } = require('../utils/retry');
 const axios = require('axios');
+
+// ML API URL from environment variable
+const ML_API_URL = process.env.ML_API_URL || 'http://localhost:5000';
 
 // Get all tickets with caching
 router.get('/', protect, async (req, res) => {
@@ -55,20 +61,32 @@ router.get('/:id', protect, async (req, res) => {
   }
 });
 
-// Simple ticket purchase endpoint (POST /)
+// Ticket purchase endpoint with concurrency control (POST /)
 router.post('/', protect, async (req, res) => {
+  const { eventId, categoryId, categoryName, quantity, pricePerTicket, customerName, customerEmail } = req.body;
+
+  // Parse quantity as integer and validate
+  const parsedQuantity = parseInt(quantity, 10);
+  
+  if (!eventId || !parsedQuantity || parsedQuantity < 1 || isNaN(parsedQuantity)) {
+    return res.status(400).json({ error: 'Invalid request data - quantity must be a positive number' });
+  }
+
+  if (parsedQuantity > 15) {
+    return res.status(400).json({ error: 'Maximum 15 tickets allowed per purchase' });
+  }
+
+  // Acquire distributed lock to prevent race conditions
+  const lockKey = `ticket-purchase:${eventId}`;
+  let lockAcquired = false;
+
   try {
-    const { eventId, categoryId, categoryName, quantity, pricePerTicket, customerName, customerEmail } = req.body;
-
-    // Parse quantity as integer and validate
-    const parsedQuantity = parseInt(quantity, 10);
+    lockAcquired = await concurrencyService.acquireLock(lockKey, 30);
     
-    if (!eventId || !parsedQuantity || parsedQuantity < 1 || isNaN(parsedQuantity)) {
-      return res.status(400).json({ error: 'Invalid request data - quantity must be a positive number' });
-    }
-
-    if (parsedQuantity > 15) {
-      return res.status(400).json({ error: 'Maximum 15 tickets allowed per purchase' });
+    if (!lockAcquired) {
+      return res.status(429).json({ 
+        error: 'Too many concurrent requests for this event. Please try again.' 
+      });
     }
 
     console.log(`📝 Processing ticket purchase: Event=${eventId}, Category=${categoryName}, Quantity=${parsedQuantity}`);
@@ -128,48 +146,59 @@ router.post('/', protect, async (req, res) => {
 
     console.log(`✅ Creating ticket: Qty=${parsedQuantity}, Price=${price}, Total=${price * parsedQuantity}`);
 
-    // Create ticket
-    const ticket = new Ticket({
-      eventId: event._id,
-      userId: req.user.id,
-      quantity: parsedQuantity,
-      price: price,
-      totalAmount: price * parsedQuantity,
-      categoryName: categoryName || 'standard',
-      customerName: customerName,
-      customerEmail: customerEmail,
-      purchaseDate: new Date(),
-      status: 'confirmed',
-      bookingReference: `TKT-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
-    });
-
-    await ticket.save();
-
-    // Update event inventory
-    if (categoryName && event.ticketCategories) {
-      const categoryIndex = event.ticketCategories.findIndex(c => c.name === categoryName);
-      if (categoryIndex !== -1) {
-        event.ticketCategories[categoryIndex].availableSeats -= parsedQuantity;
-        console.log(`📉 Updated ${categoryName} seats: ${event.ticketCategories[categoryIndex].availableSeats + parsedQuantity} -> ${event.ticketCategories[categoryIndex].availableSeats}`);
-      }
-    }
+    // Use MongoDB transaction to ensure atomicity
+    const session = await mongoose.startSession();
+    let ticket = null;
     
-    // Recalculate ticketsSold and availableTickets from category data
-    if (event.ticketCategories && event.ticketCategories.length > 0) {
-      const totalSeats = event.ticketCategories.reduce((sum, cat) => sum + cat.seats, 0);
-      const totalAvailable = event.ticketCategories.reduce((sum, cat) => sum + cat.availableSeats, 0);
-      event.capacity = totalSeats;
-      event.availableTickets = totalAvailable;
-      event.ticketsSold = totalSeats - totalAvailable;
-    } else {
-      event.availableTickets -= parsedQuantity;
-      event.ticketsSold += parsedQuantity;
-    }
-    
-    event.totalRevenue += ticket.totalAmount;
-    await event.save();
+    try {
+      await session.withTransaction(async () => {
+        // Create ticket within transaction
+        const ticketData = {
+          eventId: event._id,
+          userId: req.user.id,
+          quantity: parsedQuantity,
+          price: price,
+          totalAmount: price * parsedQuantity,
+          categoryName: categoryName || 'standard',
+          customerName: customerName,
+          customerEmail: customerEmail,
+          purchaseDate: new Date(),
+          status: 'confirmed',
+          bookingReference: `TKT-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
+        };
+        
+        const tickets = await Ticket.create([ticketData], { session });
+        ticket = tickets[0];
 
-    // Clear cache
+        // Update event inventory within the same transaction
+        if (categoryName && event.ticketCategories) {
+          const categoryIndex = event.ticketCategories.findIndex(c => c.name === categoryName);
+          if (categoryIndex !== -1) {
+            event.ticketCategories[categoryIndex].availableSeats -= parsedQuantity;
+            console.log(`📉 Updated ${categoryName} seats: ${event.ticketCategories[categoryIndex].availableSeats + parsedQuantity} -> ${event.ticketCategories[categoryIndex].availableSeats}`);
+          }
+        }
+        
+        // Recalculate ticketsSold and availableTickets from category data
+        if (event.ticketCategories && event.ticketCategories.length > 0) {
+          const totalSeats = event.ticketCategories.reduce((sum, cat) => sum + cat.seats, 0);
+          const totalAvailable = event.ticketCategories.reduce((sum, cat) => sum + cat.availableSeats, 0);
+          event.capacity = totalSeats;
+          event.availableTickets = totalAvailable;
+          event.ticketsSold = totalSeats - totalAvailable;
+        } else {
+          event.availableTickets -= parsedQuantity;
+          event.ticketsSold += parsedQuantity;
+        }
+        
+        event.totalRevenue += ticket.totalAmount;
+        await event.save({ session });
+      });
+    } finally {
+      await session.endSession();
+    }
+
+    // Clear cache (outside transaction - non-critical)
     try {
       await cacheService.invalidatePattern(`tickets:user:${req.user.id}`);
       await cacheService.invalidatePattern(`event:${eventId}`);
@@ -187,145 +216,20 @@ router.post('/', protect, async (req, res) => {
   } catch (error) {
     console.error('Error purchasing ticket:', error.message, error.stack);
     res.status(500).json({ error: error.message || 'Error processing ticket purchase' });
+  } finally {
+    // Always release the lock
+    if (lockAcquired) {
+      await concurrencyService.releaseLock(lockKey);
+    }
   }
 });
 
-// Purchase ticket with concurrency control
-router.post('/purchase', protect, async (req, res) => {
-  const { eventId, quantity } = req.body;
-
-  if (!eventId || !quantity || quantity < 1) {
-    return res.status(400).json({ message: 'Invalid request data' });
-  }
-
-  const lockKey = `ticket-purchase:${eventId}`;
-  let lockToken = null;
-
-  try {
-    // Acquire distributed lock for this event
-    lockToken = await concurrencyService.acquireLock(lockKey, 30);
-    
-    if (!lockToken) {
-      return res.status(429).json({ 
-        message: 'Too many concurrent requests. Please try again.' 
-      });
-    }
-
-    // Start database transaction simulation (optimistic locking)
-    const result = await concurrencyService.optimisticUpdate(
-      Event,
-      eventId,
-      async (event) => {
-        // Validate event exists and is available
-        if (!event) {
-          throw new Error('Event not found');
-        }
-
-        if (event.availableTickets < quantity) {
-          throw new Error(`Only ${event.availableTickets} tickets available`);
-        }
-
-        // Calculate dynamic price using ML model
-        let predictedPrice = event.ticketPrice;
-        
-        try {
-          const mlResponse = await axios.post('http://localhost:5000/predict', {
-            features: {
-              available_tickets: event.availableTickets - quantity,
-              total_capacity: event.totalCapacity,
-              days_until_event: Math.ceil((new Date(event.date) - new Date()) / (1000 * 60 * 60 * 24)),
-              event_popularity: event.popularity || 5,
-              historical_demand: event.historicalDemand || 0.5
-            }
-          });
-
-          if (mlResponse.data.predicted_price) {
-            predictedPrice = mlResponse.data.predicted_price;
-          }
-        } catch (mlError) {
-          console.error('ML prediction error:', mlError.message);
-          // Continue with base price if ML fails
-        }
-
-        // Create ticket record
-        const ticket = new Ticket({
-          eventId: event._id,
-          userId: req.user.id,
-          quantity,
-          price: predictedPrice,
-          totalAmount: predictedPrice * quantity,
-          purchaseDate: new Date(),
-          status: 'confirmed'
-        });
-
-        await ticket.save();
-
-        // Update event inventory
-        const updates = {
-          availableTickets: event.availableTickets - quantity
-        };
-
-        // Publish async events
-        await messageQueueService.publishTicketPurchase({
-          ticketId: ticket._id,
-          eventId: event._id,
-          userId: req.user.id,
-          quantity,
-          totalAmount: ticket.totalAmount
-        });
-
-        await messageQueueService.publishAnalytics({
-          type: 'TICKET_SALE',
-          eventId: event._id,
-          quantity,
-          revenue: ticket.totalAmount,
-          timestamp: new Date()
-        });
-
-        // Invalidate caches
-        await cacheService.invalidatePattern(`tickets:user:${req.user.id}`);
-        await cacheService.invalidatePattern(`event:${eventId}`);
-        await cacheService.invalidatePattern('events:*');
-
-        return {
-          ticket,
-          updates
-        };
-      }
-    );
-
-    // Release lock
-    await concurrencyService.releaseLock(lockKey, lockToken);
-
-    res.status(201).json({
-      message: 'Ticket purchased successfully',
-      ticket: result.ticket
-    });
-
-  } catch (error) {
-    // Release lock on error
-    if (lockToken) {
-      await concurrencyService.releaseLock(lockKey, lockToken);
-    }
-
-    console.error('Error purchasing ticket:', error);
-    
-    if (error.message.includes('available')) {
-      return res.status(400).json({ message: error.message });
-    }
-    
-    if (error.message.includes('not found')) {
-      return res.status(404).json({ message: error.message });
-    }
-    
-    if (error.message.includes('lock failed')) {
-      return res.status(409).json({ 
-        message: 'Unable to process request due to concurrent updates. Please try again.' 
-      });
-    }
-
-    res.status(500).json({ message: 'Error processing ticket purchase' });
-  }
+// Legacy /purchase endpoint - redirects to main POST / endpoint for backwards compatibility
+// @deprecated Use POST / instead
+router.post('/purchase', protect, (req, res, next) => {
+  console.log('⚠️ /purchase endpoint is deprecated, use POST /tickets instead');
+  // Forward to main ticket purchase handler
+  router.handle(Object.assign(req, { url: '/', method: 'POST' }), res, next);
 });
 
 // Batch purchase tickets with rate limiting

@@ -79,15 +79,18 @@ router.post('/signup', async (req, res) => {
 
     console.log('✅ User created successfully:', user._id);
 
-    // Generate token
+    // Generate tokens
+    const { generateRefreshToken } = require('../middleware/auth');
     const token = generateToken(user._id);
+    const refreshToken = generateRefreshToken(user._id);
 
-    console.log('✅ Token generated, sending response');
+    console.log('✅ Tokens generated, sending response');
 
     res.status(201).json({
       success: true,
       message: 'User registered successfully',
       token,
+      refreshToken,
       user: {
         id: user._id,
         name: user.name,
@@ -136,13 +139,16 @@ router.post('/signin', async (req, res) => {
     user.lastLogin = Date.now();
     await user.save();
 
-    // Generate token
+    // Generate tokens
+    const { generateRefreshToken } = require('../middleware/auth');
     const token = generateToken(user._id);
+    const refreshToken = generateRefreshToken(user._id);
 
     res.json({
       success: true,
       message: 'Login successful',
       token,
+      refreshToken,
       user: {
         id: user._id,
         name: user.name,
@@ -181,6 +187,31 @@ router.get('/me', protect, async (req, res) => {
   } catch (error) {
     console.error('Get user error:', error);
     res.status(401).json({ error: 'Not authorized' });
+  }
+});
+
+// @route   POST /api/auth/refresh
+// @desc    Refresh access token using refresh token
+// @access  Public
+router.post('/refresh', async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+    
+    if (!refreshToken) {
+      return res.status(400).json({ error: 'Refresh token is required' });
+    }
+    
+    const { refreshAccessToken } = require('../middleware/auth');
+    const result = await refreshAccessToken(refreshToken);
+    
+    res.json({
+      success: true,
+      token: result.token,
+      user: result.user
+    });
+  } catch (error) {
+    console.error('Token refresh error:', error);
+    res.status(401).json({ error: 'Invalid or expired refresh token' });
   }
 });
 

@@ -103,9 +103,9 @@ function Signup({ onSwitchToLogin }) {
               placeholder="••••••••"
               required
               disabled={loading}
-              minLength="6"
+              minLength="8"
             />
-            <small>Must be at least 6 characters</small>
+            <small>Must be at least 8 characters with letters and numbers</small>
           </div>
 
           <div className="form-group">
@@ -119,7 +119,7 @@ function Signup({ onSwitchToLogin }) {
               placeholder="••••••••"
               required
               disabled={loading}
-              minLength="6"
+              minLength="8"
             />
           </div>
 
