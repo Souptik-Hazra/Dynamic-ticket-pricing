@@ -64,8 +64,7 @@ const apiLimiter = rateLimit({
   max: 100, // 100 requests per minute
   message: { error: 'Too many requests. Please try again later.' },
   standardHeaders: true, // Return rate limit info in headers
-  legacyHeaders: false,
-  keyGenerator: (req) => req.ip || req.headers['x-forwarded-for'] || 'unknown'
+  legacyHeaders: false
 });
 
 // Stricter limiter for auth routes (prevent brute force)
@@ -74,8 +73,7 @@ const authLimiter = rateLimit({
   max: 10, // 10 attempts per 15 minutes
   message: { error: 'Too many login attempts. Please try again in 15 minutes.' },
   standardHeaders: true,
-  legacyHeaders: false,
-  keyGenerator: (req) => req.ip || req.headers['x-forwarded-for'] || 'unknown'
+  legacyHeaders: false
 });
 
 // Apply general rate limiting to all routes

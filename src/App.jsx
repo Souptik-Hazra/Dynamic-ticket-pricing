@@ -24,6 +24,19 @@ function AppContent() {
   const [loading, setLoading] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  // Redirect to home page after logout
+  useEffect(() => {
+    if (!isAuthenticated && view !== 'home' && view !== 'login' && view !== 'signup') {
+      setView('home');
+    }
+  }, [isAuthenticated, view]);
+  // Redirect to events page after login
+  useEffect(() => {
+    if (isAuthenticated && view === 'login') {
+      setView('events');
+    }
+  }, [isAuthenticated, view]);
+
   // Close mobile menu when view changes
   useEffect(() => {
     setMobileMenuOpen(false);

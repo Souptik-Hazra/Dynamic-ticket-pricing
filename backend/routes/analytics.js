@@ -13,7 +13,7 @@ router.get('/', async (req, res) => {
 
     // Get upcoming events count
     const upcomingEvents = await Event.countDocuments({
-      date: { $gte: new Date() },
+      startDate: { $gte: new Date() },
       status: 'upcoming'
     });
 
