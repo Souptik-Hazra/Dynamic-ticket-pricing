@@ -10,7 +10,7 @@ function AutoPriceUpdater({ eventId, onPriceUpdate, compact = false }) {
     if (!eventId) return;
     
     try {
-      const response = await axios.get(`${API_URL}/api/events/${eventId}/dynamic-prices`);
+      const response = await axios.get(`${API_URL}/events/${eventId}/dynamic-prices`);
       if (response.data) {
         setPriceInfo(response.data);
         if (onPriceUpdate) {

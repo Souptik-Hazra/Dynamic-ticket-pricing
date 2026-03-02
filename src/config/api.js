@@ -2,31 +2,31 @@
 export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 export const ML_API_URL = import.meta.env.VITE_ML_API_URL || 'http://localhost:5000';
 
-// API endpoints
+// API endpoints (paths relative to API_URL - do NOT add /api/ prefix)
 export const ENDPOINTS = {
   // Auth
   LOGIN: '/auth/login',
   SIGNUP: '/auth/signup',
   
   // Events
-  EVENTS: '/api/events',
-  EVENT_BY_ID: (id) => `/api/events/${id}`,
+  EVENTS: '/events',
+  EVENT_BY_ID: (id) => `/events/${id}`,
   
   // Tickets
-  TICKETS: '/api/tickets',
-  USER_TICKETS: '/api/tickets/user',
-  PURCHASE_TICKET: '/api/tickets/purchase',
+  TICKETS: '/tickets',
+  USER_TICKETS: '/tickets/user',
+  PURCHASE_TICKET: '/tickets/purchase',
   
   // Admin
-  ADMIN_EVENTS: '/api/admin/events',
-  ADMIN_EVENT_BY_ID: (id) => `/api/admin/events/${id}`,
-  ADMIN_USERS: '/api/admin/users',
+  ADMIN_EVENTS: '/admin/events',
+  ADMIN_EVENT_BY_ID: (id) => `/admin/events/${id}`,
+  ADMIN_USERS: '/admin/users',
   
   // Analytics
-  ANALYTICS: '/api/analytics',
+  ANALYTICS: '/analytics',
   
   // Price Prediction
-  PREDICT_PRICE: '/api/predict-price'
+  PREDICT_PRICE: '/predict-price'
 };
 
 export default API_URL;

@@ -2,6 +2,19 @@ import React from 'react';
 import './EventList.css';
 import AutoPriceUpdater from './AutoPriceUpdater';
 
+// Get emoji based on event category
+const getCategoryEmoji = (category) => {
+  const emojiMap = {
+    concert: '🎵',
+    sports: '⚽',
+    theater: '🎭',
+    conference: '💼',
+    festival: '🎪',
+    other: '🎟️'
+  };
+  return emojiMap[category?.toLowerCase()] || '🎟️';
+};
+
 function EventList({ events, onUpdatePrice, onSelectEvent, onRefresh }) {
   const formatDateTime = (date) => {
     if (!date) return '';
@@ -68,7 +81,22 @@ function EventList({ events, onUpdatePrice, onSelectEvent, onRefresh }) {
           {events.map(event => (
             <div key={event._id} className="event-card">
               <div className="event-image">
-                <img src={event.image} alt="" />
+                {event.image ? (
+                  <img 
+                    src={event.image} 
+                    alt="" 
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.nextSibling.style.display = 'flex';
+                    }}
+                  />
+                ) : null}
+                <span 
+                  className="event-emoji-placeholder" 
+                  style={{ display: event.image ? 'none' : 'flex' }}
+                >
+                  {getCategoryEmoji(event.category)}
+                </span>
                 <span className="event-image-title">{event.name}</span>
                 <span className={`event-status ${event.status}`}>
                   {event.status}

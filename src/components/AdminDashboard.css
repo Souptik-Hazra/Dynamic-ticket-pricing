@@ -867,3 +867,152 @@
     padding: 0.5rem;
   }
 }
+
+/* ========================================
+   ENHANCED RESPONSIVE STYLES
+   ======================================== */
+
+/* Tablet Landscape */
+@media (max-width: 1024px) {
+  .admin-header-content {
+    padding: 0 1.5rem;
+  }
+  
+  .admin-nav {
+    padding: 1rem 1.5rem;
+    flex-wrap: wrap;
+  }
+  
+  .admin-content {
+    padding: 0 1.5rem;
+  }
+  
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Tablet Portrait */
+@media (max-width: 768px) {
+  .admin-header {
+    padding: 1.5rem 1rem;
+  }
+  
+  .admin-header h1 {
+    font-size: 1.5rem;
+  }
+  
+  .admin-nav {
+    padding: 0.75rem 1rem;
+    gap: 0.5rem;
+    justify-content: center;
+  }
+  
+  .admin-nav button {
+    padding: 0.6rem 1rem;
+    font-size: 0.85rem;
+    flex: 1 1 calc(50% - 0.5rem);
+    text-align: center;
+  }
+  
+  .admin-content {
+    padding: 0 1rem;
+    margin: 1rem 0;
+  }
+  
+  .recent-tickets {
+    padding: 1rem;
+  }
+  
+  .recent-tickets h3 {
+    font-size: 1.1rem;
+  }
+  
+  /* Table horizontal scroll */
+  .tickets-table,
+  .events-table {
+    overflow-x: auto;
+    display: block;
+  }
+  
+  .tickets-table table,
+  .events-table table {
+    min-width: 600px;
+  }
+}
+
+/* Mobile Large */
+@media (max-width: 576px) {
+  .admin-header {
+    padding: 1rem;
+  }
+  
+  .admin-header h1 {
+    font-size: 1.25rem;
+  }
+  
+  .logout-btn {
+    padding: 0.4rem 1rem;
+    font-size: 0.85rem;
+  }
+  
+  .admin-nav {
+    padding: 0.5rem;
+  }
+  
+  .admin-nav button {
+    flex: 1 1 100%;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+  }
+  
+  .admin-content {
+    padding: 0 0.5rem;
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .stat-card {
+    padding: 1rem;
+  }
+  
+  .stat-icon {
+    font-size: 2rem;
+  }
+  
+  .stat-value {
+    font-size: 1.5rem;
+  }
+  
+  .recent-tickets {
+    padding: 0.75rem;
+    border-radius: 8px;
+  }
+}
+
+/* Mobile Small */
+@media (max-width: 375px) {
+  .admin-header h1 {
+    font-size: 1.1rem;
+  }
+  
+  .admin-user-info span {
+    font-size: 0.85rem;
+  }
+  
+  .stat-card {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .stat-info h3 {
+    font-size: 0.8rem;
+  }
+  
+  .stat-value {
+    font-size: 1.3rem;
+  }
+}

@@ -1,5 +1,7 @@
 // Script to create a new admin user in MongoDB
 const mongoose = require('mongoose');
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const User = require('./models/User');
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/dynamic-ticket-pricing';

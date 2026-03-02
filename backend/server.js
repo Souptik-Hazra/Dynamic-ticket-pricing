@@ -3,9 +3,10 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const axios = require('axios');
+const path = require('path');
 
-// Load environment variables
-dotenv.config();
+// Load environment variables from root .env
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
 // Import models
 const Event = require('./models/Event');
@@ -22,9 +23,6 @@ const ticketRoutes = require('./routes/tickets');
 const analyticsRoutes = require('./routes/analytics');
 const eventRoutes = require('./routes/events');
 
-
-const swaggerUi = require('swagger-ui-express');
-const swaggerSpecs = require('./swagger.js');
 const app = express();
 
 // Security Middleware removed for full project openness
@@ -145,13 +143,6 @@ app.use('/api/tickets', ticketRoutes);
 
 // Analytics routes
 app.use('/api/analytics', analyticsRoutes);
-
-
-// Swagger UI with relaxed CSP for docs only
-app.use('/api/docs', (req, res, next) => {
-  res.setHeader('Content-Security-Policy', "default-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; script-src 'self' 'unsafe-inline';");
-  next();
-}, swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 
 // Health check
 app.get('/api/health', async (req, res) => {
