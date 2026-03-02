@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import './Login.css';
 
-function Login({ onSwitchToSignup }) {
+function Login() {
+  const navigate = useNavigate();
   const { signin } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
@@ -27,7 +29,7 @@ function Login({ onSwitchToSignup }) {
     const result = await signin(formData.email, formData.password);
 
     if (result.success) {
-      // Navigation will be handled by App.jsx based on auth state
+      navigate('/');
     } else {
       setError(result.error);
     }
@@ -89,7 +91,7 @@ function Login({ onSwitchToSignup }) {
             Don't have an account?{' '}
             <button 
               className="link-btn" 
-              onClick={onSwitchToSignup}
+              onClick={() => navigate('/signup')}
               disabled={loading}
             >
               Sign Up

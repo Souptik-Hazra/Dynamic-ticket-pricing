@@ -57,10 +57,16 @@ router.get('/:id', protect, async (req, res) => {
 
 // Purchase ticket with concurrency control, distributed locking, and ML predictions
 router.post('/', protect, async (req, res) => {
-  const { eventId, quantity } = req.body;
+  const { eventId, quantity, categoryName } = req.body;
+  const qty = parseInt(quantity, 10);
 
-  if (!eventId || !quantity || quantity < 1) {
-    return res.status(400).json({ message: 'Invalid request data' });
+  console.log(`Purchase request - quantity from body: ${quantity}, parsed qty: ${qty}, type: ${typeof qty}`);
+
+  // Validate quantity
+  if (!eventId || !qty || qty < 1 || qty > 15 || isNaN(qty)) {
+    return res.status(400).json({ 
+      message: 'Invalid quantity. Must be between 1 and 15 tickets.' 
+    });
   }
 
   const lockKey = `ticket-purchase:${eventId}`;
@@ -86,8 +92,16 @@ router.post('/', protect, async (req, res) => {
           throw new Error('Event not found');
         }
 
-        if (event.availableTickets < quantity) {
+        if (event.availableTickets < qty) {
           throw new Error(`Only ${event.availableTickets} tickets available`);
+        }
+
+        // If category-specific, validate category availability
+        if (categoryName && event.ticketCategories) {
+          const category = event.ticketCategories.find(cat => cat.name === categoryName);
+          if (category && category.availableSeats < qty) {
+            throw new Error(`Only ${category.availableSeats} ${categoryName} tickets available`);
+          }
         }
 
         // Calculate dynamic price using ML model
@@ -96,7 +110,7 @@ router.post('/', protect, async (req, res) => {
         try {
           const mlResponse = await axios.post('http://localhost:5000/predict', {
             features: {
-              available_tickets: event.availableTickets - quantity,
+              available_tickets: event.availableTickets - qty,
               total_capacity: event.totalCapacity,
               days_until_event: Math.ceil((new Date(event.date) - new Date()) / (1000 * 60 * 60 * 24)),
               event_popularity: event.popularity || 5,
@@ -116,33 +130,51 @@ router.post('/', protect, async (req, res) => {
         const ticket = new Ticket({
           eventId: event._id,
           userId: req.user.id,
-          quantity,
+          quantity: qty,
           price: predictedPrice,
-          totalAmount: predictedPrice * quantity,
+          totalAmount: predictedPrice * qty,
           purchaseDate: new Date(),
-          status: 'confirmed'
+          status: 'confirmed',
+          categoryName: categoryName || 'standard'
         });
 
         await ticket.save();
+        console.log(`Ticket created - quantity: ${ticket.quantity}, id: ${ticket._id}`);
 
         // Update event inventory
-        const updates = {
-          availableTickets: event.availableTickets - quantity
+        const updateObj = {
+          $set: {
+            availableTickets: event.availableTickets - qty
+          }
         };
+
+        // Update category-specific inventory if applicable
+        if (categoryName && event.ticketCategories) {
+          const categoryIndex = event.ticketCategories.findIndex(cat => cat.name === categoryName);
+          if (categoryIndex !== -1) {
+            updateObj.$set[`ticketCategories.${categoryIndex}.availableSeats`] = 
+              event.ticketCategories[categoryIndex].availableSeats - qty;
+          }
+        }
+
+        // Update ticketsSold if available (for non-category events)
+        if (event.ticketsSold !== undefined) {
+          updateObj.$set.ticketsSold = (event.ticketsSold || 0) + qty;
+        }
 
         // Publish async events
         await messageQueueService.publishTicketPurchase({
           ticketId: ticket._id,
           eventId: event._id,
           userId: req.user.id,
-          quantity,
+          quantity: qty,
           totalAmount: ticket.totalAmount
         });
 
         await messageQueueService.publishAnalytics({
           type: 'TICKET_SALE',
           eventId: event._id,
-          quantity,
+          quantity: qty,
           revenue: ticket.totalAmount,
           timestamp: new Date()
         });
@@ -154,7 +186,7 @@ router.post('/', protect, async (req, res) => {
 
         return {
           ticket,
-          updates
+          updates: updateObj
         };
       }
     );
@@ -162,11 +194,14 @@ router.post('/', protect, async (req, res) => {
     // Release lock
     await concurrencyService.releaseLock(lockKey, lockToken);
 
+    console.log(`Purchase successful - ticket qty: ${result.ticket.quantity}, updated event available: ${result.updatedDocument?.availableTickets}`);
+
+    // Return updated event data with the response
     res.status(201).json({
       message: 'Ticket purchased successfully',
-      ticket: result.ticket
+      ticket: result.ticket,
+      event: result.updatedDocument
     });
-
   } catch (error) {
     // Release lock on error
     if (lockToken) {
@@ -194,7 +229,7 @@ router.post('/', protect, async (req, res) => {
 });
 
 // Batch purchase tickets with rate limiting
-router.post('/purchase/batch', protect, async (req, res) => {
+router.post('/batch', protect, async (req, res) => {
   const { purchases } = req.body; // Array of {eventId, quantity}
 
   if (!Array.isArray(purchases) || purchases.length === 0) {
@@ -221,11 +256,11 @@ router.post('/purchase/batch', protect, async (req, res) => {
       async (purchase) => {
         try {
           const response = await axios.post(
-            'http://localhost:3001/api/tickets/purchase',
+            'http://localhost:3001/api/tickets',
             purchase,
             {
               headers: {
-                'x-auth-token': req.header('x-auth-token')
+                Authorization: req.header('Authorization')
               }
             }
           );
@@ -274,10 +309,28 @@ router.delete('/:id', protect, async (req, res) => {
     await concurrencyService.withLock(
       `ticket-cancel:${ticket.eventId}`,
       async () => {
-        // Update event inventory
-        await Event.findByIdAndUpdate(ticket.eventId, {
+        // Get event to update category-specific inventory
+        const event = await Event.findById(ticket.eventId);
+        
+        const updateObj = {
           $inc: { availableTickets: ticket.quantity }
-        });
+        };
+
+        // Restore category-specific seats if applicable
+        if (ticket.categoryName && event && event.ticketCategories) {
+          const categoryIndex = event.ticketCategories.findIndex(cat => cat.name === ticket.categoryName);
+          if (categoryIndex !== -1) {
+            updateObj.$inc[`ticketCategories.${categoryIndex}.availableSeats`] = ticket.quantity;
+          }
+        }
+
+        // Decrement ticketsSold if it exists
+        if (event && event.ticketsSold !== undefined) {
+          updateObj.$inc.ticketsSold = -ticket.quantity;
+        }
+
+        // Update event inventory
+        await Event.findByIdAndUpdate(ticket.eventId, updateObj);
 
         // Update ticket status
         ticket.status = 'cancelled';

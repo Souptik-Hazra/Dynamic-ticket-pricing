@@ -1,11 +1,19 @@
 import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { API_URL } from '../config/api';
 import './TicketPurchase.css';
 
-function TicketPurchase({ event, onBack, onSuccess }) {
+function TicketPurchase() {
+  const { eventId } = useParams();
+  const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
+  
+  // State for fetched event
+  const [event, setEvent] = useState(null);
+  const [loadingEvent, setLoadingEvent] = useState(true);
+
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [dynamicPrices, setDynamicPrices] = useState({});
   const [imageError, setImageError] = useState(false);
@@ -17,6 +25,28 @@ function TicketPurchase({ event, onBack, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [priceLoading, setPriceLoading] = useState(true);
   const [purchasedTicket, setPurchasedTicket] = useState(null);
+  
+  // Fetch event details
+  useEffect(() => {
+    const fetchEvent = async () => {
+      if (!eventId) return;
+      try {
+        setLoadingEvent(true);
+        const response = await axios.get(`${API_URL}/events/${eventId}`);
+        setEvent(response.data);
+      } catch (error) {
+        console.error('Error fetching event:', error);
+        alert('Failed to load event details');
+        navigate('/events');
+      } finally {
+        setLoadingEvent(false);
+      }
+    };
+    fetchEvent();
+  }, [eventId, navigate]);
+  
+  const onBack = () => navigate(-1);
+  const onSuccess = () => navigate('/profile'); // Redirect to profile tickets after purchase
 
   const getCategoryEmoji = (category) => {
     const emojiMap = {
@@ -36,6 +66,13 @@ function TicketPurchase({ event, onBack, onSuccess }) {
 
   // Fetch dynamic prices for all categories
   useEffect(() => {
+    if (!event) return;
+    
+    // Select first category by default if not selected
+    if (event.ticketCategories && event.ticketCategories.length > 0 && !selectedCategory) {
+      setSelectedCategory(event.ticketCategories[0]);
+    }
+
     const fetchDynamicPrices = async () => {
       try {
         setPriceLoading(true);
@@ -63,7 +100,7 @@ function TicketPurchase({ event, onBack, onSuccess }) {
     };
     
     fetchDynamicPrices();
-  }, [event]);
+  }, [event]);  // Depend only on `event` (which has _id and ticketCategories)
 
   // Pre-fill user data if logged in
   useEffect(() => {
@@ -76,12 +113,7 @@ function TicketPurchase({ event, onBack, onSuccess }) {
     }
   }, [user]);
 
-  // Select first category by default
-  useEffect(() => {
-    if (event.ticketCategories && event.ticketCategories.length > 0) {
-      setSelectedCategory(event.ticketCategories[0]);
-    }
-  }, [event]);
+  // Removed separate selectedCategory effect, combined with main effect
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -93,10 +125,7 @@ function TicketPurchase({ event, onBack, onSuccess }) {
 
   const handleCategorySelect = (category) => {
     setSelectedCategory(category);
-    // Reset quantity if it exceeds available seats
-    if (formData.quantity > category.availableSeats) {
-      setFormData(prev => ({ ...prev, quantity: Math.min(prev.quantity, category.availableSeats) }));
-    }
+    // Don't automatically reset quantity - let user see the warning at submission instead
   };
 
   const getPrice = () => {
@@ -130,8 +159,9 @@ function TicketPurchase({ event, onBack, onSuccess }) {
 
     if (loading) return; // Prevent double submission
 
-    if (!isAuthenticated) {
+    if (!user) { // Updated to use `user` instead of `isAuthenticated` sometimes
       alert('Please login to purchase tickets');
+      navigate('/login');
       return;
     }
 
@@ -149,20 +179,27 @@ function TicketPurchase({ event, onBack, onSuccess }) {
 
     try {
       const token = localStorage.getItem('token');
+      const purchaseData = {
+        eventId: event._id,
+        categoryId: selectedCategory?._id,
+        categoryName: selectedCategory?.name,
+        customerName: formData.customerName,
+        customerEmail: formData.customerEmail,
+        quantity: parseInt(formData.quantity),
+        pricePerTicket: getPrice()
+      };
+      
+      console.log('Purchase request data:', purchaseData);
+      
       const response = await axios.post(
         `${API_URL}/tickets`,
-        {
-          eventId: event._id,
-          categoryId: selectedCategory?._id,
-          categoryName: selectedCategory?.name,
-          ...formData,
-          quantity: parseInt(formData.quantity),
-          pricePerTicket: getPrice()
-        },
+        purchaseData,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
       );
+
+      console.log('Purchase response:', response.data);
 
       setLoading(false);
       setPurchasedTicket({
@@ -185,8 +222,6 @@ function TicketPurchase({ event, onBack, onSuccess }) {
     }
   };
 
-  const hasCategories = event.ticketCategories && event.ticketCategories.length > 0;
-
   const handleClosePurchasedTicket = () => {
     setPurchasedTicket(null);
     onSuccess();
@@ -195,6 +230,21 @@ function TicketPurchase({ event, onBack, onSuccess }) {
   const handlePrintPurchasedTicket = () => {
     window.print();
   };
+
+  if (loadingEvent) {
+    return (
+      <div className="ticket-purchase-container bg-white dark:bg-gray-900 min-h-screen">
+          <div className="loading-container" style={{display:'flex', justifyContent:'center', alignItems:'center', height:'50vh'}}>
+             <div className="spinner"></div>
+             <p style={{marginLeft:'10px'}}>Loading event details...</p>
+          </div>
+      </div>
+    );
+  }
+
+  if (!event) return null; // Or some error state
+
+  const hasCategories = event.ticketCategories && event.ticketCategories.length > 0;
 
   return (
     <div className="ticket-purchase-container bg-white dark:bg-gray-900 text-gray-900 dark:text-white min-h-screen">
@@ -235,7 +285,7 @@ function TicketPurchase({ event, onBack, onSuccess }) {
             <div className="ticket-categories">
               <h3>🎟️ Select Ticket Type</h3>
               <div className="categories-grid">
-                {event.ticketCategories.map((category) => {
+                {event.ticketCategories && event.ticketCategories.map((category) => {
                   const getCategoryDisplay = (name) => {
                     const lower = name?.toLowerCase();
                     if (lower === 'vip') return '👑 VIP';

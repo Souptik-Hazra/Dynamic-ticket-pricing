@@ -24,12 +24,17 @@ router.put('/update-profile', protect, async (req, res) => {
       if (req.body.password.length < 8) {
         return res.status(400).json({ error: 'Password must be at least 8 characters' });
       }
-      const salt = await bcryptjs.genSalt(10);
-      user.password = await bcryptjs.hash(req.body.password, salt);
+      // Just set prediction, let the pre-save hook handle hashing
+      user.password = req.body.password;
     }
     
     await user.save();
-    res.json({ success: true, user: user.toJSON() });
+    
+    // Return user without password
+    const userResponse = user.toObject();
+    delete userResponse.password;
+    
+    res.json({ success: true, user: userResponse });
   } catch (error) {
     console.error('Update profile error:', error);
     res.status(500).json({ error: error.message || 'Server error' });
@@ -66,10 +71,11 @@ router.post('/signup', async (req, res) => {
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       console.log('❌ User already exists:', email);
-      return res.status(400).json({ error: 'User already exists with this email' });
+      return res.status(400).json({ error: 'User with this email already exists' });
     }
 
     // Create user
+    // User.create returns the created document, so no need to call .save() again immediately
     const user = await User.create({
       name,
       email,
@@ -78,9 +84,7 @@ router.post('/signup', async (req, res) => {
     });
 
     console.log('✅ User created successfully:', user._id);
-
-    await user.save();
-
+    
     // Store user ID in session
     req.session.userId = user._id;
 

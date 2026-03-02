@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import './Login.css';
 
-function Signup({ onSwitchToLogin }) {
+function Signup() {
+  const navigate = useNavigate();
   const { signup } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
@@ -41,7 +43,7 @@ function Signup({ onSwitchToLogin }) {
     const result = await signup(formData.name, formData.email, formData.password);
 
     if (result.success) {
-      // Navigation will be handled by App.jsx based on auth state
+      navigate('/');
     } else {
       setError(result.error);
     }

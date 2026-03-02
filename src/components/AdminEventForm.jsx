@@ -47,33 +47,41 @@ function AdminEventForm({ event, onClose }) {
 
   useEffect(() => {
     if (event) {
+      console.log("Loading event for edit:", event);
       // Format start and end date for datetime-local input
       const startDate = event.startDate ? new Date(event.startDate).toISOString().slice(0, 16) : '';
       const endDate = event.endDate ? new Date(event.endDate).toISOString().slice(0, 16) : '';
+      
       setFormData({
-        name: event.name,
-        description: event.description,
-        venue: event.venue,
+        name: event.name || '',
+        description: event.description || '',
+        venue: event.venue || '',
         startDate,
         endDate,
-        eventPopularity: event.eventPopularity || 0.5,
-        category: event.category,
-        image: event.image,
-        status: event.status,
+        eventPopularity: event.eventPopularity !== undefined ? event.eventPopularity : 0.5,
+        category: event.category || 'concert',
+        image: event.image || '',
+        status: event.status || 'upcoming',
         venueTier: event.venueTier || 2,
-        artistTier: event.artistTier || 3,
+        artistTier: event.artistTier !== undefined ? event.artistTier : 3,
         isHoliday: event.isHoliday || false
       });
       
       // Set ticket categories if they exist
       if (event.ticketCategories && event.ticketCategories.length > 0) {
+        console.log("Setting ticket categories:", event.ticketCategories);
         setTicketCategories(event.ticketCategories.map(cat => ({
-          name: cat.name,
-          price: cat.price,
-          maxPrice: cat.maxPrice || cat.price * 2,
-          seats: cat.seats,
+          name: cat.name || 'standard',
+          price: cat.price !== undefined ? cat.price : '',
+          maxPrice: cat.maxPrice !== undefined ? cat.maxPrice : (cat.price ? cat.price * 2 : ''),
+          seats: cat.seats !== undefined ? cat.seats : '',
           availableSeats: cat.availableSeats // Preserve available seats
         })));
+      } else {
+        // Fallback if no categories exist in fetched event
+        setTicketCategories([
+          { name: 'standard', price: '', maxPrice: '', seats: '', availableSeats: undefined }
+        ]);
       }
     }
   }, [event]);
@@ -115,11 +123,20 @@ function AdminEventForm({ event, onClose }) {
       setError('Please fill all required fields');
       return;
     }
-    
     // Validate ticket categories
-    const validCategories = ticketCategories.filter(cat => cat.price && cat.seats);
+    const validCategories = ticketCategories.filter(cat => 
+      (cat.price !== '' && cat.price !== null && cat.price !== undefined) && 
+      (cat.seats !== '' && cat.seats !== null && cat.seats !== undefined)
+    );
+
+    if (ticketCategories.length === 0) {
+      setError('Please add at least one ticket category');
+      return;
+    }
+    
     if (validCategories.length === 0) {
-      setError('Please add at least one ticket category with price and seats');
+      console.log("Validation failed. Current categories:", ticketCategories);
+      setError('Please ensure at least one ticket category has valid price and seats');
       return;
     }
 
@@ -226,6 +243,10 @@ function AdminEventForm({ event, onClose }) {
                 <option value="theater">Theater</option>
                 <option value="conference">Conference</option>
                 <option value="festival">Festival</option>
+                <option value="comedy">Comedy</option>
+                <option value="cinema">Cinema</option>
+                <option value="music">Music</option>
+                <option value="dance">Dance</option>
                 <option value="other">Other</option>
               </select>
             </div>
@@ -395,7 +416,7 @@ function AdminEventForm({ event, onClose }) {
             </div>
 
             <div className="form-group">
-              <label htmlFor="artistTier">Artist / Performer Tier</label>
+              <label htmlFor="artistTier">Artist / Performer Tier (Optional)</label>
               <select
                 id="artistTier"
                 name="artistTier"

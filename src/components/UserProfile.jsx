@@ -68,8 +68,25 @@ const UserProfile = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const dataToSend = { ...form };
-      if (!dataToSend.password) delete dataToSend.password;
+      const dataToSend = {};
+      if (form.name !== user?.name) dataToSend.name = form.name;
+      if (form.email !== user?.email) dataToSend.email = form.email;
+      if (form.city !== user?.city) dataToSend.city = form.city;
+      if (form.birthdate && form.birthdate !== (user?.birthdate ? user.birthdate.substring(0, 10) : "")) {
+         dataToSend.birthdate = form.birthdate;
+      }
+      
+      // Only include password if user typed something
+      if (form.password && form.password.trim() !== '') {
+        dataToSend.password = form.password;
+      }
+
+      if (Object.keys(dataToSend).length === 0) {
+        setMessage({ text: "No changes to save.", type: "" });
+        setLoading(false);
+        return;
+      }
+
       await updateUser(dataToSend);
       setMessage({ text: "Profile updated successfully!", type: "success" });
       setForm((prev) => ({ ...prev, password: "" }));

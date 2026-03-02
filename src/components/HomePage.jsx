@@ -1,10 +1,12 @@
 
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_URL } from '../config/api';
 import './HomePage.css';
 
-const HomePage = ({ onNavigate }) => {
+const HomePage = () => {
+  const navigate = useNavigate();
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -109,9 +111,9 @@ const HomePage = ({ onNavigate }) => {
               <p>No events found. Check back soon!</p>
             </div>
           ) : (
-            <div className="events-grid" onClick={() => onNavigate('booking', event)}>
+            <div className="events-grid">
               {filteredEvents.map(event => (
-                <div key={event._id} className="event-card">
+                <div key={event._id} className="event-card" onClick={() => navigate(`/purchase/${event._id}`)}>
                   <div className="event-image">
                     {!failedImages.has(event._id) && event.image ? (
                       <img 

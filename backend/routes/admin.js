@@ -3,6 +3,7 @@ const router = express.Router();
 const Event = require('../models/Event');
 const Ticket = require('../models/Ticket');
 const { protect, admin } = require('../middleware/auth');
+const { getDaysAgo, formatDateString } = require('../utils/dateUtils');
 
 // @route   GET /api/admin/events
 // @desc    Get all events (admin view with full details)
@@ -126,8 +127,8 @@ router.post('/events', protect, admin, async (req, res) => {
     
     if (req.body.artistTier !== undefined) {
       const tier = parseInt(req.body.artistTier);
-      if (tier < 1 || tier > 5) {
-        return res.status(400).json({ error: 'Artist tier must be between 1 (Local) and 5 (International Superstar)' });
+      if (tier < 0 || tier > 5) {
+        return res.status(400).json({ error: 'Artist tier must be between 0 (N/A) and 5 (International Superstar)' });
       }
     }
     
@@ -176,8 +177,8 @@ router.put('/events/:id', protect, admin, async (req, res) => {
     
     if (req.body.artistTier !== undefined) {
       const tier = parseInt(req.body.artistTier);
-      if (tier < 1 || tier > 5) {
-        return res.status(400).json({ error: 'Artist tier must be between 1 (Local) and 5 (International Superstar)' });
+      if (tier < 0 || tier > 5) {
+        return res.status(400).json({ error: 'Artist tier must be between 0 (N/A) and 5 (International Superstar)' });
       }
     }
     
@@ -189,24 +190,35 @@ router.put('/events/:id', protect, admin, async (req, res) => {
     
     // If updating ticket categories, preserve availableSeats for existing categories
     if (req.body.ticketCategories) {
-      req.body.ticketCategories = req.body.ticketCategories.map(newCat => {
+      const updatedCategories = req.body.ticketCategories.map(newCat => {
+        // Find existing category by name (assuming name is unique per event)
         const existingCat = existingEvent.ticketCategories.find(c => c.name === newCat.name);
+        
         if (existingCat) {
-          // Preserve the sold ticket count
+          // Calculate sold tickets from DB state
           const soldTickets = existingCat.seats - existingCat.availableSeats;
+          
+          // New availableSeats = new total seats - previously sold tickets
+          // Ensure we don't go below 0 (though theoretically shouldn't if validation is good)
+          const newAvailable = Math.max(0, newCat.seats - soldTickets);
+          
           return {
             ...newCat,
-            availableSeats: Math.max(0, newCat.seats - soldTickets)
+            availableSeats: newAvailable
           };
         }
-        // New category - availableSeats = seats
+        
+        // New category - availableSeats = seats (unless specified otherwise)
         return {
           ...newCat,
-          availableSeats: newCat.availableSeats ?? newCat.seats
+          availableSeats: newCat.availableSeats !== undefined ? newCat.availableSeats : newCat.seats
         };
       });
+      
+      req.body.ticketCategories = updatedCategories;
     }
     
+    // Add runValidators: true to ensure enums and constraints are checked
     const event = await Event.findByIdAndUpdate(
       req.params.id,
       req.body,
@@ -421,7 +433,7 @@ router.get('/fraud-analytics', protect, admin, async (req, res) => {
       }
 
       // Indicator 4: Calculate purchase velocity (purchases in last 7 days)
-      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const sevenDaysAgo = getDaysAgo(7);
       const recentPurchases = user.purchases.filter(p => new Date(p.date) > sevenDaysAgo).length;
       if (recentPurchases >= 3) {
         fraudScore += 15;
@@ -454,14 +466,14 @@ router.get('/fraud-analytics', protect, admin, async (req, res) => {
     const avgFraudScore = allUsers.reduce((sum, u) => sum + u.fraudScore, 0) / allUsers.length || 0;
 
     // Get timeline data (last 30 days of purchases for chart)
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const thirtyDaysAgo = getDaysAgo(30);
     const timelineData = {};
 
     Object.values(userFraudMap).forEach(user => {
       user.purchases.forEach(purchase => {
         const purchaseDate = new Date(purchase.date);
         if (purchaseDate > thirtyDaysAgo) {
-          const dateStr = purchaseDate.toISOString().split('T')[0];
+          const dateStr = formatDateString(purchaseDate);
           if (!timelineData[dateStr]) {
             timelineData[dateStr] = { low: 0, medium: 0, high: 0, total: 0 };
           }

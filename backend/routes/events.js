@@ -4,22 +4,10 @@ const axios = require('axios');
 const Event = require('../models/Event');
 const PriceHistory = require('../models/PriceHistory');
 const PredictionLog = require('../models/PredictionLog');
+const { getSeason, getDayOfWeek, getHourOfDay } = require('../utils/dateUtils');
 
 // ML Model API URL
 const ML_API_URL = process.env.ML_API_URL || 'http://localhost:5000';
-
-// Helper functions
-const getSeason = (date) => {
-  const month = new Date(date).getMonth() + 1;
-  if (month >= 3 && month <= 5) return 2; // Spring
-  if (month >= 6 && month <= 8) return 3; // Summer
-  if (month >= 9 && month <= 11) return 4; // Fall
-  return 1; // Winter
-};
-
-const getDayOfWeek = (date) => {
-  return new Date(date).getDay() || 7; // Sunday = 7
-};
 
 // @route   GET /api/events
 // @desc    Get all events
@@ -43,6 +31,10 @@ router.get('/', async (req, res) => {
       return eventObj;
     });
     
+    // Disable caching for dynamic data
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
     res.json(publicEvents);
   } 
   catch (error) {
@@ -204,9 +196,6 @@ router.get('/:id/price', async (req, res) => {
       Math.max(1, Math.ceil((new Date(event.endDate) - new Date(event.startDate)) / (1000 * 60 * 60 * 24))) : 
       1;
 
-    // Extract hour from start date, use hourOfDay field if set
-    const eventHour = new Date(event.startDate).getHours();
-
     // Prepare features for ML model
     const features = {
       demand: demand || 100,
@@ -218,7 +207,7 @@ router.get('/:id/price', async (req, res) => {
       historical_sales: historicalSales,
       season: getSeason(event.startDate),
       day_of_week: getDayOfWeek(event.startDate),
-      hour_of_day: event.hourOfDay !== undefined ? event.hourOfDay : eventHour,
+      hour_of_day: event.hourOfDay !== undefined ? event.hourOfDay : getHourOfDay(event.startDate),
       is_holiday: event.isHoliday ? 1 : 0,
       venue_tier: event.venueTier || 2,
       artist_tier: event.artistTier || 3,

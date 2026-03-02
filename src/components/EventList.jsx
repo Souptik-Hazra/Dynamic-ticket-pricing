@@ -1,9 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { API_URL } from '../config/api';
 import './EventList.css';
 import AutoPriceUpdater from './AutoPriceUpdater';
 
-function EventList({ events, onUpdatePrice, onSelectEvent, onRefresh }) {
+function EventList() {
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [failedImages, setFailedImages] = useState(new Set());
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    fetchEvents();
+  }, []);
+
+  const fetchEvents = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`${API_URL}/events`);
+      setEvents(response.data);
+    } catch (error) {
+      console.error('Error fetching events:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onSelectEvent = (event) => {
+    navigate(`/purchase/${event._id}`);
+  };
 
   const getCategoryEmoji = (category) => {
     const emojiMap = {
@@ -76,12 +102,17 @@ function EventList({ events, onUpdatePrice, onSelectEvent, onRefresh }) {
     <div className="event-list-container bg-white dark:bg-gray-900 text-gray-900 dark:text-white min-h-screen">
       <div className="list-header">
         <h2>Available Events</h2>
-        <button className="refresh-btn" onClick={onRefresh}>
+        <button className="refresh-btn" onClick={fetchEvents}>
           🔄 Refresh
         </button>
       </div>
 
-      {events.length === 0 ? (
+      {loading ? (
+        <div className="loading-container" style={{ textAlign: 'center', padding: '2rem' }}>
+          <div className="spinner"></div>
+          <p>Loading events...</p>
+        </div>
+      ) : events.length === 0 ? (
         <div className="no-events">
           <p>No events available. Create one to get started!</p>
         </div>
@@ -160,7 +191,7 @@ function EventList({ events, onUpdatePrice, onSelectEvent, onRefresh }) {
 
                 <AutoPriceUpdater 
                   eventId={event._id} 
-                  onPriceUpdate={onRefresh}
+                  onPriceUpdate={fetchEvents}
                   compact={true}
                 />
               </div>
@@ -172,13 +203,13 @@ function EventList({ events, onUpdatePrice, onSelectEvent, onRefresh }) {
   );
 }
 
-  import Footer from './Footer';
+import Footer from './Footer';
 
-  export default function EventListWrapper(props) {
-    return (
-      <>
-        <EventList {...props} />
-        <Footer />
-      </>
-    );
-  }
+export default function EventListWrapper() {
+  return (
+    <>
+      <EventList />
+      <Footer />
+    </>
+  );
+}

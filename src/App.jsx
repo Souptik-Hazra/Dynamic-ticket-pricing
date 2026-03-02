@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import HomePage from './components/HomePage';
@@ -15,191 +16,151 @@ import './App.css';
 import './components/NavBadge.css';
 import UserProfile from "./components/UserProfile.jsx";
 
-function AppContent() {
-  const { user, loading: authLoading, logout, isAuthenticated, isAdmin } = useAuth();
-  const [authView, setAuthView] = useState('login'); // 'login' or 'signup'
-  const [view, setView] = useState('home'); // Start with home page
-  const [events, setEvents] = useState([]);
-  const [selectedEvent, setSelectedEvent] = useState(null);
-  const [loading, setLoading] = useState(false);
+// Navbar Component
+function Navbar() {
+  const { user, logout, isAuthenticated, isAdmin } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  // Fetch events on initial load (public access)
-  useEffect(() => {
-    fetchEvents();
-  }, []);
-
-  const fetchEvents = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get(`${API_URL}/events`);
-      setEvents(response.data);
-    } catch (error) {
-      console.error('Error fetching events:', error);
-      alert('Failed to fetch events');
-    } finally {
-      setLoading(false);
-    }
+  const handleLogout = () => {
+    logout();
+    navigate('/');
   };
 
-  const handleUpdatePrice = async (eventId) => {
-    try {
-      const response = await axios.get(`${API_URL}/events/${eventId}/price`);
-      alert(`New dynamic price: ₹${response.data.current_price.toFixed(2)}`);
-      fetchEvents(); // Refresh events
-    } catch (error) {
-      console.error('Error updating price:', error);
-      alert('Failed to update price. Make sure ML model is running.');
-    }
-  };
-
-  const handleSelectEvent = (event) => {
-    setSelectedEvent(event);
-    setView('purchase');
-  };
-
-  // Show loading spinner while checking auth
-  if (authLoading) {
-    return (
-      <div className="App">
-        <div className="loading-screen">
-          <div className="spinner"></div>
-          <p>Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  const handleNavigate = (page, data = null) => {
-    if (page === 'booking' && !isAuthenticated) {
-      setView('login');
-      return;
-    }
-    setView(page);
-    if (data) setSelectedEvent(data);
-  };
-
-  // Render navigation bar
-  const renderNavigation = () => (
+  return (
     <nav className="top-navigation">
       <div className="nav-container">
-        <div className="nav-brand" onClick={() => setView('home')}>
+        <div className="nav-brand" onClick={() => navigate('/')} style={{cursor: 'pointer'}}>
           <span className="brand-icon">🎫</span>
           <span className="brand-name">FanFeverTickets</span>
         </div>
         <div className="nav-links">
-          <button onClick={() => setView('home')} className={view === 'home' ? 'active' : ''}>
-            Home
-          </button>
-          <button onClick={() => setView('events')} className={view === 'events' ? 'active' : ''}>
-            Events
-          </button>
+          <Link to="/" className={location.pathname === '/' ? 'active' : ''}>Home</Link>
+          <Link to="/events" className={location.pathname === '/events' ? 'active' : ''}>Events</Link>
+          
           {isAuthenticated && isAdmin() && (
             <>
-              <button onClick={() => setView('analytics')} className={view === 'analytics' ? 'active' : ''}>
-                Analytics
-              </button>
-              <button onClick={() => setView('admin')} className={view === 'admin' ? 'active' : ''}>
-                Admin
-              </button>
+              <Link to="/analytics" className={location.pathname === '/analytics' ? 'active' : ''}>Analytics</Link>
+              <Link to="/admin" className={location.pathname === '/admin' ? 'active' : ''}>Admin</Link>
             </>
           )}
         </div>
+        
         <div className="nav-actions">
           {!isAuthenticated ? (
-            <>
-              <button onClick={() => { setAuthView('login'); setView('login'); }} className="nav-login-btn">
+            <div className="auth-buttons">
+              <button 
+                className="nav-login-btn"
+                onClick={() => navigate('/login')}
+              >
                 Login
               </button>
-              <button onClick={() => { setAuthView('signup'); setView('signup'); }} className="nav-signup-btn">
+              <button 
+                className="nav-signup-btn"
+                onClick={() => navigate('/signup')}
+              >
                 Sign Up
               </button>
-            </>
+            </div>
           ) : (
-            <div className="nav-user">
-              <span className="user-name">{user?.name}</span>
-               {user?.subscription && user.subscription.isActive && user.subscription.plan !== 'none' && (
-                  <span className="nav-subscription-badge">
-                      {getPlanLabel(user.subscription.plan)}
-                  </span>
-               )}
-              {!isAdmin() && (
-                <button onClick={() => setView('subscription')} className="nav-profile-btn">Membership</button>
+            <div className="user-menu">
+              <span className="user-name">Hello, {user?.name?.split(' ')[0]}</span>
+              
+              {user?.subscription && user.subscription.isActive && user.subscription.plan !== 'none' && (
+                <span className="sub-badge">
+                  {getPlanLabel(user.subscription.plan)}
+                </span>
               )}
-              <button onClick={() => setView('profile')} className="nav-profile-btn">Profile</button>
-              <button onClick={() => { logout(); setView('home'); }} className="nav-logout-btn">Logout</button>
+              
+              <div className="user-actions">
+                {!isAdmin() && (
+                   <button onClick={() => navigate('/subscription')} className="nav-btn-icon" title="Membership">⭐</button>
+                )}
+                <button onClick={() => navigate('/profile')} className="nav-btn-icon" title="Profile">👤</button>
+                <button onClick={handleLogout} className="nav-logout-btn">Logout</button>
+              </div>
             </div>
           )}
         </div>
       </div>
     </nav>
   );
+}
 
-  // Show login/signup pages
-  if (view === 'login') {
+// Protected Route Wrapper
+const ProtectedRoute = ({ children, adminOnly = false }) => {
+  const { isAuthenticated, isAdmin, loading } = useAuth();
+  
+  if (loading) return <div className="loading-screen"><div className="spinner"></div></div>;
+  
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  
+  if (adminOnly && !isAdmin()) return <Navigate to="/" replace />;
+  
+  return children;
+};
+
+// Main Content
+function AppContent() {
+  const { loading } = useAuth();
+  
+  if (loading) {
     return (
-      <div className="App">
-        {renderNavigation()}
-        <Login onSwitchToSignup={() => { setAuthView('signup'); setView('signup'); }} />
+      <div className="loading-screen">
+        <div className="spinner"></div>
+        <p>Loading application...</p>
       </div>
     );
   }
 
-  if (view === 'signup') {
-    return (
-      <div className="App">
-        {renderNavigation()}
-        <Signup onSwitchToLogin={() => { setAuthView('login'); setView('login'); }} />
-      </div>
-    );
-  }
-
-  // Main application interface
   return (
-    <div className="App">
-      {renderNavigation()}
-
-      {view === 'home' && (
-        <HomePage onNavigate={handleNavigate} />
-      )}
-
-      {view === 'events' && (
-        <div className="main-content">
-          {loading && <div className="loading">Loading...</div>}
-          <EventList 
-            events={events}
-            onSelectEvent={handleSelectEvent}
-            onUpdatePrice={handleUpdatePrice}
-          />
-        </div>
-      )}
-
-      {view === 'analytics' && isAuthenticated && (
-        <Analytics />
-      )}
-
-      {view === 'admin' && isAuthenticated && isAdmin() && (
-        <AdminDashboard />
-      )}
-
-      {view === 'purchase' && selectedEvent && (
-        <TicketPurchase 
-          event={selectedEvent}
-          onBack={() => setView('events')}
-          onSuccess={() => {
-            fetchEvents();
-            setView('events');
-          }}
-        />
-      )}
-
-      {view === 'profile' && isAuthenticated && (
-        <UserProfile />
-      )}
-
-      {view === 'subscription' && isAuthenticated && (
-        <Subscription />
-      )}
-    </div>
+    <Router>
+      <div className="App">
+        <Navbar />
+        <main className="main-content">
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/events" element={<EventList />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            
+            {/* Protected Routes */}
+            <Route path="/admin" element={
+              <ProtectedRoute adminOnly={true}>
+                <AdminDashboard />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/analytics" element={
+              <ProtectedRoute adminOnly={true}>
+                <Analytics />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <UserProfile />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/subscription" element={
+              <ProtectedRoute>
+                <Subscription />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/purchase/:eventId" element={
+              <ProtectedRoute>
+                <TicketPurchase />
+              </ProtectedRoute>
+            } />
+            
+            {/* Catch all */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </main>
+      </div>
+    </Router>
   );
 }
 

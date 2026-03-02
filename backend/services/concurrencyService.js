@@ -87,7 +87,11 @@ const concurrencyService = {
         throw new Error('Concurrent modification detected. Please retry.');
       }
 
-      return result;
+      // Return both the result and the updated document
+      return {
+        ...result,
+        updatedDocument: updatedDoc
+      };
     } catch (err) {
       throw new Error(`Optimistic update failed: ${err.message}`);
     }

@@ -1,11 +1,17 @@
 const express = require('express');
 const session = require('express-session');
+const MongoStore = require('connect-mongo').default || require('connect-mongo');
 const cookieParser = require('cookie-parser');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const axios = require('axios');
 const path = require('path');
+const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
+
+// Import middleware
+const { errorHandler, asyncHandler } = require('./middleware/errorHandler');
 
 // Load environment variables from root .env
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
@@ -28,69 +34,51 @@ const eventRoutes = require('./routes/events');
 
 const app = express();
 
-// Security Middleware removed for full project openness
+// Security Middleware
+app.use(helmet({
+  contentSecurityPolicy: false, // Disable CSP for now as it can block external images/scripts
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 
-// 2. Rate Limiting (simple in-memory implementation)
-const requestCounts = new Map();
-const RATE_LIMIT_WINDOW = 60000; // 1 minute
-const MAX_REQUESTS = 100;
-
-app.use((req, res, next) => {
-  const ip = req.ip || req.connection.remoteAddress;
-  const now = Date.now();
-  
-  if (!requestCounts.has(ip)) {
-    requestCounts.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
-    return next();
-  }
-  
-  const userRequests = requestCounts.get(ip);
-  
-  if (now > userRequests.resetTime) {
-    requestCounts.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
-    return next();
-  }
-  
-  if (userRequests.count >= MAX_REQUESTS) {
-    return res.status(429).json({ error: 'Too many requests. Please try again later.' });
-  }
-  
-  userRequests.count++;
-  next();
+// 2. Rate Limiting using express-rate-limit
+const limiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  skip: (req) => process.env.NODE_ENV !== 'production', // Skip rate limiting in development
+  keyGenerator: (req) => req.ip || req.connection.remoteAddress // Use IP as key
 });
 
-// Cleanup old entries every 5 minutes
-setInterval(() => {
-  const now = Date.now();
-  for (const [ip, data] of requestCounts.entries()) {
-    if (now > data.resetTime) {
-      requestCounts.delete(ip);
-    }
-  }
-}, 300000);
+app.use(limiter);
 
 
-// 3. CORS with robust origin check
-// Set ALLOWED_ORIGINS in your .env or Render dashboard, e.g.:
-// ALLOWED_ORIGINS=https://dynamic-ticket-pricing-mulq.vercel.app,https://your-other-frontend.com
-const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
-  : [/^http:\/\/localhost:\d+$/]; // Allow any localhost port for development
-
+// 3. CORS Configuration (simplified)
 app.use(cors({
-  origin: true, // Reflect request origin
+  origin: process.env.NODE_ENV === 'production'
+    ? process.env.ALLOWED_ORIGINS?.split(',').map(o => o.trim())
+    : /^http:\/\/localhost/,
   credentials: true
 }));
+
+// MongoDB connection string from env
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/dynamic-ticket-pricing';
 
 app.use(cookieParser());
 app.use(session({
   secret: process.env.SESSION_SECRET || 'souptik_session_secret',
+  store: MongoStore.create({
+    mongoUrl: MONGODB_URI,
+    collectionName: 'sessions', // Name of the collection
+    ttl: 7 * 24 * 60 * 60 // = 7 days. Default
+  }),
   resave: false,
   saveUninitialized: false,
   proxy: true, // trust render proxy
   cookie: {
     secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Must be lax/none for cors
     httpOnly: true,
     maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
   }
@@ -157,7 +145,6 @@ const initializeModels = async () => {
 };
 
 // MongoDB connection
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/dynamic-ticket-pricing';
 mongoose.connect(MONGODB_URI)
 .then(async () => {
   console.log('✅ MongoDB connected successfully');
@@ -190,7 +177,7 @@ app.use('/api/tickets', ticketRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
 // Health check
-app.get('/api/health', async (req, res) => {
+app.get('/api/health', asyncHandler(async (req, res) => {
   res.json({ 
     status: 'healthy', 
     message: 'Backend server is running',
@@ -199,7 +186,19 @@ app.get('/api/health', async (req, res) => {
     },
     timestamp: new Date().toISOString()
   });
+}));
+
+// 404 Not Found handler (must be before error handler)
+app.use((req, res) => {
+  res.status(404).json({ 
+    success: false,
+    error: 'Route not found',
+    path: req.path
+  });
 });
+
+// Centralized Error Handler (must be last middleware)
+app.use(errorHandler);
 
 // Start server
 const PORT = process.env.PORT || 3001;
