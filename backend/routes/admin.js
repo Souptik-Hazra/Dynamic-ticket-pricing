@@ -1,9 +1,26 @@
+
 const express = require('express');
 const router = express.Router();
 const Event = require('../models/Event');
 const Ticket = require('../models/Ticket');
 const Notification = require('../models/Notification');
 const { protect, admin } = require('../middleware/auth');
+// Get user groups for notification targeting
+router.get('/user-groups', protect, admin, async (req, res) => {
+  try {
+    const User = require('../models/User');
+    // Example: group by city and subscription plan
+    const cities = await User.distinct('city', { city: { $ne: '' }, role: 'user' });
+    const plans = await User.distinct('subscription.plan', { 'subscription.plan': { $nin: [null, '', 'none'] }, role: 'user' });
+    const groups = [
+      ...cities.map(city => ({ id: city, name: `City: ${city}` })),
+      ...plans.map(plan => ({ id: plan, name: `Plan: ${plan}` }))
+    ];
+    res.json({ groups });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch user groups' });
+  }
+});
 
 // @route   GET /api/admin/events
 // @desc    Get all events (admin view with full details)
@@ -473,7 +490,7 @@ router.get('/fraud-analytics', protect, admin, async (req, res) => {
 // Enhanced: Send notification to all users or users of a specific event
 router.post('/notify', protect, admin, async (req, res) => {
   try {
-    const { message, eventId } = req.body;
+    const { message, eventId, group, priority = 'normal', schedule } = req.body;
     if (!message || !message.trim()) {
       return res.status(400).json({ error: 'Message is required' });
     }
@@ -483,6 +500,14 @@ router.post('/notify', protect, admin, async (req, res) => {
       const tickets = await require('../models/Ticket').find({ eventId }, 'userId');
       const userIds = [...new Set(tickets.map(t => t.userId.toString()))];
       users = await require('../models/User').find({ _id: { $in: userIds }, role: 'user' }, '_id');
+    } else if (group) {
+      // Find users by group (e.g., city, subscription, etc.)
+      // Example: group could be a city name or subscription plan
+      // You may want to adjust this logic based on your group definition
+      users = await require('../models/User').find({ $or: [
+        { city: group },
+        { 'subscription.plan': group }
+      ], role: 'user' }, '_id');
     } else {
       // All users (excluding admins)
       users = await require('../models/User').find({ role: 'user' }, '_id');
@@ -490,7 +515,13 @@ router.post('/notify', protect, admin, async (req, res) => {
     if (!users.length) {
       return res.status(404).json({ error: 'No users found to notify.' });
     }
-    const notifications = users.map(u => ({ userId: u._id, message }));
+    const notifications = users.map(u => ({
+      userId: u._id,
+      message,
+      group: group || undefined,
+      priority,
+      scheduledFor: schedule ? new Date(schedule) : undefined
+    }));
     await require('../models/Notification').insertMany(notifications);
     res.json({ success: true, count: notifications.length });
   } catch (err) {

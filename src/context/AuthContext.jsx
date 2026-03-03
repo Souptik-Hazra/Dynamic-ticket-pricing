@@ -41,12 +41,14 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Signup
-  const signup = async (name, email, password) => {
+  const signup = async (name, email, password, city, plan) => {
     try {
       const response = await axios.post(`${API_URL}/auth/signup`, {
         name,
         email,
-        password
+        password,
+        city,
+        plan
       });
 
       const { token, user } = response.data;

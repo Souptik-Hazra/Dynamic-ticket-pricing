@@ -43,7 +43,7 @@ router.post('/signup', async (req, res) => {
   try {
     console.log('📝 Signup request received:', { name: req.body.name, email: req.body.email });
     
-    const { name, email, password } = req.body;
+    const { name, email, password, city, plan } = req.body;
 
     // Validation
     if (!name || !email || !password) {
@@ -74,7 +74,9 @@ router.post('/signup', async (req, res) => {
       name,
       email,
       password,
-      role: 'user'  // Default role
+      city: city || '',
+      role: 'user',  // Default role
+      subscription: { plan: plan || 'none' }
     });
 
     console.log('✅ User created successfully:', user._id);

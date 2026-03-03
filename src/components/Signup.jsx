@@ -9,7 +9,9 @@ function Signup({ onSwitchToLogin }) {
     name: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    city: '',
+    plan: 'none'
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -35,7 +37,7 @@ function Signup({ onSwitchToLogin }) {
 
     setLoading(true);
 
-    const result = await signup(formData.name, formData.email, formData.password);
+    const result = await signup(formData.name, formData.email, formData.password, formData.city, formData.plan);
 
     if (result.success) {
       // Navigation will be handled by App.jsx based on auth state
@@ -60,9 +62,9 @@ function Signup({ onSwitchToLogin }) {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="auth-form">
-          <div className="form-group">
-            <label htmlFor="name">Full Name</label>
+        <form onSubmit={handleSubmit} className="auth-form modern-signup-form">
+          <div className="form-group modern-form-group">
+            <label htmlFor="name"><span role="img" aria-label="user">👤</span> Full Name</label>
             <input
               type="text"
               id="name"
@@ -72,11 +74,13 @@ function Signup({ onSwitchToLogin }) {
               placeholder="John Doe"
               required
               disabled={loading}
+              autoComplete="name"
+              className="modern-input"
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="email">Email Address</label>
+          <div className="form-group modern-form-group">
+            <label htmlFor="email"><span role="img" aria-label="email">📧</span> Email Address</label>
             <input
               type="email"
               id="email"
@@ -86,41 +90,82 @@ function Signup({ onSwitchToLogin }) {
               placeholder="your@email.com"
               required
               disabled={loading}
+              autoComplete="email"
+              className="modern-input"
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
+          <div className="form-group modern-form-group">
+            <label htmlFor="password"><span role="img" aria-label="lock">🔒</span> Password</label>
             <input
               type="password"
               id="password"
               name="password"
               value={formData.password}
               onChange={handleChange}
-              placeholder="••••••••"
+              placeholder="At least 8 characters, letters & numbers"
               required
               disabled={loading}
               minLength="8"
+              autoComplete="new-password"
+              className="modern-input"
             />
-            <small>Must be at least 8 characters</small>
+            <small className="modern-helper">Must be at least 8 characters, include letters and numbers</small>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="confirmPassword">Confirm Password</label>
+          <div className="form-group modern-form-group">
+            <label htmlFor="confirmPassword"><span role="img" aria-label="lock">🔒</span> Confirm Password</label>
             <input
               type="password"
               id="confirmPassword"
               name="confirmPassword"
               value={formData.confirmPassword}
               onChange={handleChange}
-              placeholder="••••••••"
+              placeholder="Repeat your password"
               required
               disabled={loading}
               minLength="8"
+              autoComplete="new-password"
+              className="modern-input"
             />
           </div>
 
-          <button type="submit" className="auth-submit-btn" disabled={loading}>
+          <div className="form-group modern-form-group">
+            <label htmlFor="city"><span role="img" aria-label="city">🏙️</span> City</label>
+            <input
+              type="text"
+              id="city"
+              name="city"
+              value={formData.city}
+              onChange={handleChange}
+              placeholder="e.g. Mumbai, Delhi, Bangalore"
+              required
+              disabled={loading}
+              className="modern-input"
+            />
+          </div>
+
+          <div className="form-group modern-form-group">
+            <label htmlFor="plan"><span role="img" aria-label="plan">💳</span> Subscription Plan</label>
+            <select
+              id="plan"
+              name="plan"
+              value={formData.plan}
+              onChange={handleChange}
+              disabled={loading}
+              className="modern-input"
+            >
+              <option value="none">None</option>
+              <option value="7_days">7 Days</option>
+              <option value="30_days">30 Days</option>
+              <option value="3_months">3 Months</option>
+              <option value="6_months">6 Months</option>
+              <option value="1_year">1 Year</option>
+            </select>
+            <small className="modern-helper">Choose a plan now or later</small>
+          </div>
+
+          <button type="submit" className="auth-submit-btn modern-btn-send" disabled={loading}>
             {loading ? 'Creating Account...' : 'Sign Up'}
           </button>
         </form>

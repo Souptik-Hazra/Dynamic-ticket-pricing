@@ -18,6 +18,7 @@ function AdminDashboard() {
   const [editingEvent, setEditingEvent] = useState(null);
   // For notification tab
   const [notificationTabEvents, setNotificationTabEvents] = useState([]);
+  const [userGroups, setUserGroups] = useState([]);
 
   // Get auth headers
   const getAuthHeaders = () => {
@@ -35,8 +36,9 @@ function AdminDashboard() {
     } else if (view === 'fraud') {
       fetchFraudAnalytics();
     } else if (view === 'notifications') {
-      // For notification tab, fetch events for dropdown
+      // For notification tab, fetch events and user groups for dropdown
       fetchNotificationTabEvents();
+      fetchUserGroups();
     }
   }, [view]);
 
@@ -47,6 +49,17 @@ function AdminDashboard() {
       setNotificationTabEvents(res.data.events || []);
     } catch {
       setNotificationTabEvents([]);
+    }
+  };
+
+  const fetchUserGroups = async () => {
+    // Example: fetch unique cities and subscription plans as groups
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API_URL}/admin/user-groups`, { headers: { Authorization: `Bearer ${token}` } });
+      setUserGroups(res.data.groups || []);
+    } catch {
+      setUserGroups([]);
     }
   };
 
@@ -172,7 +185,7 @@ function AdminDashboard() {
               <h2 className="notification-title">Send Notification</h2>
             </div>
             <div className="notification-card">
-              <AdminNotificationForm events={notificationTabEvents} />
+              <AdminNotificationForm events={notificationTabEvents} userGroups={userGroups} />
             </div>
           </div>
         )}

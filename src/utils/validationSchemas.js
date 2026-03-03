@@ -12,6 +12,8 @@ export const signupSchema = Yup.object().shape({
   confirmPassword: Yup.string()
     .oneOf([Yup.ref('password'), null], 'Passwords must match')
     .required('Confirm password is required'),
+  city: Yup.string().required('City is required'),
+  plan: Yup.string().oneOf(['none', '7_days', '30_days', '3_months', '6_months', '1_year']),
 });
 
 export const eventFormSchema = Yup.object().shape({
