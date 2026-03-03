@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import WebSocketClient from '../utils/websocketClient';
 import { API_URL } from '../config/api';
 import './TicketPurchase.css';
 
 function TicketPurchase({ event, onBack, onSuccess }) {
   const { user, isAuthenticated } = useAuth();
+  const [wsClient, setWsClient] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [dynamicPrices, setDynamicPrices] = useState({});
   const [formData, setFormData] = useState({
@@ -16,6 +18,18 @@ function TicketPurchase({ event, onBack, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [priceLoading, setPriceLoading] = useState(true);
   const [purchasedTicket, setPurchasedTicket] = useState(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token && !wsClient) {
+      const client = new WebSocketClient(token);
+      client.connect();
+      setWsClient(client);
+    }
+    return () => {
+      if (wsClient) wsClient.disconnect();
+    };
+  }, []);
 
   // Fetch dynamic prices for all categories
   useEffect(() => {
@@ -178,6 +192,25 @@ function TicketPurchase({ event, onBack, onSuccess }) {
   const handlePrintPurchasedTicket = () => {
     window.print();
   };
+
+  // WebSocket for ticket sold notifications
+  useEffect(() => {
+    if (!event?._id || !wsClient) return;
+    wsClient.on('auth_success', () => {
+      wsClient.subscribeEvent(event._id);
+    });
+    wsClient.on('ticket_sold', (data) => {
+      if (data.eventId === event._id && data.data) {
+        // Show a toast notification for ticket sold update
+        alert(`Tickets sold update: ${data.data.remainingTickets} tickets left (${data.data.percentageSold}% sold)`);
+      }
+    });
+    return () => {
+      wsClient.unsubscribeEvent(event._id);
+      wsClient.off('auth_success');
+      wsClient.off('ticket_sold');
+    };
+  }, [event?._id, wsClient]);
 
   return (
     <div className="ticket-purchase-container bg-white dark:bg-gray-900 text-gray-900 dark:text-white min-h-screen">

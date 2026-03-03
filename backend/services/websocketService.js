@@ -20,23 +20,21 @@ class WebSocketService {
       let isAuthenticated = false;
 
       ws.on('message', (message) => {
+        console.log('WebSocket message received:', message);
         try {
           const data = JSON.parse(message);
           
           switch (data.type) {
             case 'auth':
-              // Authenticate user
               try {
                 const decoded = jwt.verify(data.token, JWT_SECRET);
                 userId = decoded.id;
                 isAuthenticated = true;
                 this.clients.set(userId, ws);
-                
                 ws.send(JSON.stringify({
                   type: 'auth_success',
                   message: 'Connected to real-time updates'
                 }));
-                
                 console.log(`✅ User ${userId} authenticated via WebSocket`);
               } catch (err) {
                 ws.send(JSON.stringify({
@@ -47,7 +45,6 @@ class WebSocketService {
               break;
 
             case 'subscribe_event':
-              // Subscribe to event price updates
               if (!isAuthenticated) {
                 ws.send(JSON.stringify({
                   type: 'error',
@@ -61,17 +58,18 @@ class WebSocketService {
                 this.eventSubscriptions.set(eventId, new Set());
               }
               this.eventSubscriptions.get(eventId).add(userId);
-              
               ws.send(JSON.stringify({
                 type: 'subscribed',
                 eventId: eventId,
                 message: `Subscribed to price updates for event ${eventId}`
               }));
+              console.log(`User ${userId} subscribed to event ${eventId}`);
               break;
 
             case 'unsubscribe_event':
               if (this.eventSubscriptions.has(data.eventId)) {
                 this.eventSubscriptions.get(data.eventId).delete(userId);
+                console.log(`User ${userId} unsubscribed from event ${data.eventId}`);
               }
               break;
 
@@ -87,11 +85,12 @@ class WebSocketService {
       ws.on('close', () => {
         if (userId) {
           this.clients.delete(userId);
-          // Remove from all event subscriptions
           this.eventSubscriptions.forEach((subscribers) => {
             subscribers.delete(userId);
           });
           console.log(`🔌 User ${userId} disconnected`);
+        } else {
+          console.log('WebSocket connection closed (unauthenticated user)');
         }
       });
 
@@ -107,21 +106,18 @@ class WebSocketService {
   broadcastPriceUpdate(eventId, priceData) {
     const subscribers = this.eventSubscriptions.get(eventId);
     if (!subscribers) return;
-
     const message = JSON.stringify({
       type: 'price_update',
       eventId: eventId,
       data: priceData,
       timestamp: new Date().toISOString()
     });
-
     subscribers.forEach((userId) => {
       const client = this.clients.get(userId);
       if (client && client.readyState === WebSocket.OPEN) {
         client.send(message);
       }
     });
-
     console.log(`📊 Price update broadcasted to ${subscribers.size} subscribers for event ${eventId}`);
   }
 
@@ -129,7 +125,6 @@ class WebSocketService {
   broadcastTicketSold(eventId, ticketData) {
     const subscribers = this.eventSubscriptions.get(eventId);
     if (!subscribers) return;
-
     const message = JSON.stringify({
       type: 'ticket_sold',
       eventId: eventId,
@@ -139,13 +134,13 @@ class WebSocketService {
       },
       timestamp: new Date().toISOString()
     });
-
     subscribers.forEach((userId) => {
       const client = this.clients.get(userId);
       if (client && client.readyState === WebSocket.OPEN) {
         client.send(message);
       }
     });
+    console.log(`Ticket sold broadcasted to ${subscribers.size} subscribers for event ${eventId}`);
   }
 
   // Send notification to specific user
@@ -153,14 +148,16 @@ class WebSocketService {
     const client = this.clients.get(userId);
     if (client && client.readyState === WebSocket.OPEN) {
       client.send(JSON.stringify(message));
+      console.log(`Sent message to user ${userId}:`, message);
     }
   }
 
   // Broadcast to all connected users
   broadcast(message) {
-    this.clients.forEach((client) => {
+    this.clients.forEach((client, userId) => {
       if (client.readyState === WebSocket.OPEN) {
         client.send(JSON.stringify(message));
+        console.log(`Broadcasted message to user ${userId}:`, message);
       }
     });
   }

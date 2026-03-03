@@ -1,17 +1,46 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { API_URL } from '../config/api';
+import WebSocketClient from '../utils/websocketClient';
 import './NotificationBell.css';
 
 export default function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const unreadCount = notifications.filter(n => !n.read).length;
+  const [wsClient, setWsClient] = useState(null);
 
-  // Fetch notifications on mount
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token && !wsClient) {
+      const client = new WebSocketClient(token);
+      client.connect();
+      setWsClient(client);
+    }
+    return () => {
+      if (wsClient) wsClient.disconnect();
+    };
+  }, []);
+
   useEffect(() => {
     fetchNotifications();
-  }, []);
+    if (!wsClient) return;
+    wsClient.on('auth_success', () => {
+      // Subscribe to user-specific notifications if needed
+    });
+    wsClient.on('notification', (data) => {
+      alert(`🔔 New notification: ${data.message}`);
+      setNotifications(prev => [{
+        message: data.message,
+        time: data.timestamp || new Date().toISOString(),
+        read: false
+      }, ...prev]);
+    });
+    return () => {
+      wsClient.off('auth_success');
+      wsClient.off('notification');
+    };
+  }, [wsClient]);
 
   const fetchNotifications = async () => {
     try {

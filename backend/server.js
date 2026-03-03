@@ -160,10 +160,20 @@ app.get('/api/health', async (req, res) => {
   });
 });
 
+
+// Create HTTP server and attach Express app
+const http = require('http');
+const server = http.createServer(app);
+
+// WebSocket setup
+const WebSocketService = require('./services/websocketService');
+const wsService = new WebSocketService(server);
+
 // Start server
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📊 API: http://localhost:${PORT}/api`);
+  console.log(`🔌 WebSocket: ws://localhost:${PORT}/ws`);
 });
 
