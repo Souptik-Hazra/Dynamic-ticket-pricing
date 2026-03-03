@@ -1,3 +1,4 @@
+const { updateUserFraudStats } = require('../services/fraudStatsService');
 const express = require('express');
 const router = express.Router();
 const Ticket = require('../models/Ticket');
@@ -176,6 +177,9 @@ router.post('/', protect, async (req, res) => {
     } catch (e) {
       // Cache errors are non-critical
     }
+
+    // Update fraud stats for this user
+    await updateUserFraudStats(req.user.id);
 
     res.status(201).json({
       message: 'Ticket purchased successfully',

@@ -9,12 +9,7 @@ const cacheService = require('../services/cacheService');
 // @access  Public (can be protected if needed)
 router.get('/', async (req, res) => {
   try {
-    // Try to get from cache first
-    const cacheKey = 'analytics:dashboard';
-    const cachedAnalytics = await cacheService.get(cacheKey);
-    if (cachedAnalytics) {
-      return res.json(cachedAnalytics);
-    }
+    // BYPASS CACHE: Always fetch fresh analytics
 
     // Get total events count
     const totalEvents = await Event.countDocuments();
@@ -86,8 +81,7 @@ router.get('/', async (req, res) => {
       userFraudStats: fraudStatsWithUser
     };
 
-    // Cache for 15 minutes
-    await cacheService.set(cacheKey, result, 900);
+
 
     res.json(result);
   } catch (error) {
