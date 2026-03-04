@@ -2,15 +2,16 @@
   "name": "dynamic-ticket-pricing",
   "private": true,
   "main": "electron-main.cjs",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
-  "description": "Dynamic Ticket Pricing System with ML-powered price predictions",
+  "description": "Dynamic Ticket Pricing System with ML-powered price predictions. Frontend built with React and Vite, Electron integration.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "start": "vite",
+    "test": "echo \"No tests specified\" && exit 0",
     "electron:dev": "vite build && npx electron .",
     "electron:serve": "npx electron .",
     "package": "electron-builder",
@@ -48,5 +49,13 @@
       "electron-main.cjs",
       "backend/**/*"
     ]
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Souptik-Hazra/Dynamic-ticket-pricing"
+  },
+  "bugs": {
+    "url": "https://github.com/Souptik-Hazra/Dynamic-ticket-pricing/issues"
+  },
+  "homepage": "https://github.com/Souptik-Hazra/Dynamic-ticket-pricing#readme"
 }

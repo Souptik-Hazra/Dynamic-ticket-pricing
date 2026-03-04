@@ -1,83 +1,301 @@
-# 🎫 Dynamic Ticket Pricing System - MERN Stack with ML
+# 🎫 Dynamic Ticket Pricing System
 
-A comprehensive full-stack event ticketing platform with intelligent dynamic pricing powered by Machine Learning. Built with MongoDB, Express.js, React, Node.js, and Python for ML capabilities.
+A full-stack event ticketing platform with intelligent, ML-powered dynamic pricing. Built using MongoDB, Express.js, React, Node.js, and Python (Flask) for machine learning.
 
-## ✨ Key Features
+## ✨ Features
 
 ### 🔐 Authentication & Security
-- JWT-based authentication with bcrypt password hashing
-- Role-based access control (Admin/User)
-- Protected routes with middleware
-- Persistent sessions using localStorage
-- Secure API endpoints
+- JWT authentication, bcrypt password hashing
+- Role-based access (Admin/User)
+- Protected routes, secure API endpoints
 
 ### 🎭 Event Management
-- Multiple ticket categories per event (Standard, VIP, Premium, Balcony, Economy)
-- Category-specific pricing and seat allocation
-- Real-time availability tracking
-- Event creation with detailed information
-- Status management (Upcoming, Ongoing, Completed, Cancelled)
+- Multiple ticket categories (Standard, VIP, Premium, Balcony, Economy)
+- Category-specific pricing, seat allocation
+- Real-time availability, event status management
 
 ### 💰 Dynamic Pricing
-- ML-powered price predictions using Random Forest
-- Real-time price adjustments based on demand
-- Historical price tracking and analytics
-- Considers 8 key factors: demand, capacity, days until event, popularity, competitor prices, historical sales, seasonality, and day of week
+- ML-powered price predictions (Random Forest)
+- Real-time price adjustments, historical price tracking
+- 8 key factors: demand, capacity, days until event, popularity, competitor prices, historical sales, seasonality, day of week
 
 ### 👥 User Experience
-- Modern, responsive UI with beautiful design
-- Intuitive event browsing and search
-- Category-based filtering
-- Seamless ticket booking process
-- Order summary and confirmation
+- Modern, responsive UI
+- Event browsing, search, filtering
+- Seamless ticket booking, order summary
 
 ### 📊 Admin Dashboard
-- Comprehensive event management interface
-- Real-time statistics and analytics
-- Revenue tracking per event and category
-- User management
-- Recent ticket purchase monitoring
+- Event management, analytics, revenue tracking
+- User management, ticket monitoring
 
 ### 🏗️ Microservices Architecture
-- Redis distributed caching for performance
-- RabbitMQ message queuing for async operations
-- Distributed locking for concurrency control
-- Optimistic locking for ticket purchases
-- Graceful degradation when services unavailable
+- Redis caching, RabbitMQ queuing
+- Distributed/optimistic locking for concurrency
+- Graceful degradation for unavailable services
 
-## 🏛️ System Architecture
+## 🏛️ Architecture & Stack
 
-### Technology Stack
+**Frontend:** React 19.2, Vite, Context API, Axios, React Router, custom CSS
+**Backend:** Node.js, Express.js, MongoDB (Mongoose), JWT, Redis, RabbitMQ
+**ML Model:** Python 3.13, Flask, scikit-learn, pandas, numpy, joblib
+**Database:** MongoDB (users, events, tickets, pricehistories, mlmodels, predictionlogs)
 
-**Frontend:**
-- React 19.2.0 with Vite
-- Context API for state management
-- Axios for API communication
-- React Router for navigation
-- Custom CSS with responsive design (no Tailwind)
+## 📁 Project Structure
 
-**Backend:**
-- Node.js with Express.js
-- MongoDB with Mongoose ODM
-- JWT for authentication
-- Redis for caching
-- RabbitMQ for message queuing
-- Concurrency control services
+```
+Dynamic-Ticket-Pricing/
+├── ml-model/         # Python ML Service
+│   ├── train_model_enhanced.py
+│   ├── app.py
+│   ├── requirements.txt
+│   ├── model.pkl
+│   └── scaler.pkl
+│
+├── backend/         # Node.js Backend
+│   ├── server.js
+│   ├── package.json
+│   ├── models/
+│   ├── middleware/
+│   ├── routes/
+│   └── services/
+│
+└── Dynamic-ticket-pricing/ # React Frontend
+    ├── src/
+    │   ├── App.jsx
+    │   ├── context/
+    │   ├── components/
+    │   └── App.css
+    └── package.json
+```
 
-**ML Model:**
-- Python 3.13 with Flask
-- scikit-learn for Random Forest model
-- pandas & numpy for data processing
-- joblib for model persistence
+## 🚀 Quick Start
 
-**Database:**
-- MongoDB with 6 collections:
-  - users (authentication)
-  - events (ticket categories, availability)
-  - tickets (purchase history)
-  - pricehistories (price tracking)
-  - mlmodels (model metadata)
-  - predictionlogs (prediction tracking)
+### Prerequisites
+- Python 3.8+
+- Node.js 16+
+- MongoDB 4.4+
+- Redis, RabbitMQ (optional)
+
+### 1. Setup Python ML Model
+```bash
+cd ml-model
+pip install -r requirements.txt
+python train_model_enhanced.py
+```
+
+### 2. Start ML API Server
+```bash
+python app.py
+# Runs on http://localhost:5000
+```
+
+### 3. Setup Backend Server
+```bash
+cd backend
+npm install
+npm start
+# Runs on http://localhost:3001
+```
+
+### 4. Setup Frontend
+```bash
+cd Dynamic-ticket-pricing
+npm install
+npm run dev
+# Runs on http://localhost:5173
+```
+
+### 5. Create Admin Account
+```powershell
+Invoke-RestMethod -Uri "http://localhost:3001/api/auth/create-admin" -Method POST -ContentType "application/json" -Body '{"name":"Admin","email":"admin@example.com","password":"admin123"}'
+```
+Default Admin: admin@example.com / admin123
+
+## 📖 User Guide
+
+### Admin Workflow
+1. Login as admin
+2. Go to Admin Panel
+3. Create events, add ticket categories
+4. View stats, manage events
+
+### User Workflow
+1. Sign up, login
+2. Browse events, filter/search
+3. Book tickets, view analytics
+
+## 🔌 API Reference
+
+### Authentication
+POST /api/auth/signup
+POST /api/auth/signin
+GET  /api/auth/me
+POST /api/auth/create-admin
+
+### Events
+GET    /api/events
+GET    /api/events/:id
+POST   /api/events
+PUT    /api/events/:id
+DELETE /api/events/:id
+GET    /api/events/:id/price
+
+### Admin
+GET    /api/admin/events
+POST   /api/admin/events
+PUT    /api/admin/events/:id
+DELETE /api/admin/events/:id
+GET    /api/admin/stats
+
+### Tickets
+POST   /api/tickets
+GET    /api/tickets/user
+
+### ML API (Port 5000)
+POST   /predict
+POST   /batch-predict
+GET    /health
+
+## 🧠 ML Model Details
+
+**Features:** demand, capacity, days_until_event, event_popularity, competitor_price, historical_sales, season, day_of_week
+**Algorithm:** Random Forest Regressor
+**Training R²:** ~0.99, **Test R²:** ~0.93
+
+**Sample Request:**
+```json
+{
+  "demand": 150,
+  "capacity": 500,
+  "days_until_event": 30,
+  "event_popularity": 0.8,
+  "competitor_price": 150,
+  "historical_sales": 80,
+  "season": 2,
+  "day_of_week": 5
+}
+```
+
+## 🛠️ Tech Stack
+
+**Backend:** Node.js, Express.js, MongoDB, JWT, Redis, RabbitMQ, Axios
+**Frontend:** React, Vite, React Router, Axios, Context API, CSS
+**ML Service:** Python, Flask, scikit-learn, pandas, numpy, joblib
+
+## ⚠️ Security Note
+Do not commit real secrets or production credentials. Use example .env files for sharing.
+
+## 💡 Key Features Explained
+
+### Multiple Ticket Categories
+Standard, VIP, Premium, Balcony, Economy
+
+### Concurrency Control
+Distributed/optimistic locking, Redis caching, RabbitMQ queuing
+
+### Dynamic Pricing
+Real-time ML predictions, historical/competitor data
+
+### Authentication Flow
+JWT tokens, bcrypt hashing, role-based access
+
+## 📱 Application Flow
+
+**Admin:** Login → Dashboard → Stats → Create Event → Add Categories → Set Prices → Publish → Monitor Sales → Revenue
+**User:** Sign Up → Login → Browse → Filter/Search → Details → Select Tickets → Info → Review → Purchase → Confirmation
+
+## 🔧 Configuration
+
+### Backend .env
+```env
+MONGODB_URI=mongodb://localhost:27017/dynamic-ticket-pricing
+PORT=3001
+ML_API_URL=http://localhost:5000
+JWT_SECRET=your-256-bit-secret-key-change-in-production
+JWT_EXPIRE=7d
+REDIS_URL=redis://localhost:6379
+RABBITMQ_URL=amqp://localhost
+```
+
+### ML Model
+model.pkl, scaler.pkl, 1000 samples, 8 features, RandomForestRegressor
+
+## 🚀 Deployment
+
+**Production Checklist:**
+- Change JWT_SECRET
+- Enable HTTPS/SSL
+- Use managed DB (MongoDB Atlas)
+- Configure Redis, RabbitMQ
+- Use environment configs
+- Enable rate limiting
+- Monitoring/logging
+- Backups
+- CORS whitelist
+
+**Recommended Hosting:**
+- Frontend: Vercel, Netlify
+- Backend: Heroku, AWS EC2, DigitalOcean
+- Database: MongoDB Atlas
+- ML API: AWS Lambda, Google Cloud Run
+- Caching: Redis Cloud
+- Queue: CloudAMQP
+
+## 📊 Architecture Diagram
+```
+┌─────────────┐
+│   React     │  (Port 5173)
+│  Frontend   │
+└──────┬──────┘
+  │ HTTP/REST
+  ▼
+┌─────────────┐     ┌──────────┐
+│   Express   │────→│ MongoDB  │
+│   Backend   │     │ Database │
+│ (Port 3001) │     └──────────┘
+└──────┬──────┘
+  │ HTTP
+  ├────────────┐
+  │            │
+  ▼            ▼
+┌─────────┐   ┌──────────┐
+│  Redis  │   │ RabbitMQ │
+│  Cache  │   │  Queue   │
+└─────────┘   └──────────┘
+  │
+  │ HTTP/REST
+  ▼
+┌─────────────┐
+│   Flask     │
+│   ML API    │
+│ (Port 5000) │
+└─────────────┘
+```
+
+## 🤝 Contributing
+1. Fork repo
+2. Create feature branch
+3. Commit changes
+4. Push branch
+5. Open PR
+
+## 📄 License
+MIT License
+
+## 👨‍💻 Author
+Built for dynamic ticket pricing in India 🇮🇳
+
+## 🙏 Acknowledgments
+- scikit-learn, MERN Stack, MongoDB, React
+
+## 📞 Support
+- Create an issue
+- Check docs
+- Review API endpoints
+
+---
+
+**Note:** MongoDB must be running before backend, and ML model must be trained before ML API server starts.
 
 ## 📁 Project Structure
 

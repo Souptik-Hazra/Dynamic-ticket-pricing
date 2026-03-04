@@ -1,0 +1,345 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{longtable}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{setspace}
+\usepackage{hyperref}
+
+\onehalfspacing
+
+\title{\textbf{SOFTWARE REQUIREMENTS SPECIFICATION (SRS)}}
+\author{Dynamic Ticket Pricing System}
+\date{Version 1.0 -- Draft}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+%====================================================
+\section{Introduction}
+
+\subsection{Purpose}
+
+This Software Requirements Specification (SRS) describes the requirements for the Dynamic Ticket Pricing System (DTPS), version 1.0. DTPS is a web-based platform for event organizers to manage events and ticket sales, using machine learning to adjust ticket prices dynamically based on demand, time, user behavior, and other relevant factors. The technology stack includes React (frontend), Vite, Node.js/Express (backend), MongoDB (database), Python (Flask microservice for ML), Redis, and RabbitMQ. This document guides stakeholders through the system’s objectives, features, and constraints prior to implementation.
+
+\subsection{Document Conventions}
+
+This document uses standard LaTeX formatting. Requirements are uniquely identified as REQ-\#, with priorities stated as High, Medium, or Low. Hyperlinks reference related documents and resources. Technical terms, acronyms, and abbreviations are defined in the Glossary. Requirements are written to be clear, concise, and verifiable. Placeholders for future information are marked as ``TBD'' (To Be Determined).
+
+\author{Dynamic Ticket Pricing System}
+
+This SRS is intended for:
+\begin{itemize}
+    \item \textbf{Developers}: For system design and future implementation.
+    \item \textbf{Project Managers}: For planning, tracking, and aligning with business goals.
+    \item \textbf{Testers/QA Engineers}: For preparing test cases based on requirements.
+    \item \textbf{Event Organizers/End Users}: For understanding planned system capabilities.
+    \item \textbf{Documentation Writers}: For preparing user manuals and help resources.
+    \item \textbf{Stakeholders}: For reviewing and validating system objectives.
+\end{itemize}
+Readers should begin with the Introduction and Overall Description, then proceed to System Features and External Interface Requirements relevant to their role. Appendices provide supporting information and definitions.
+
+\subsection{Project Scope}
+DTPS is a full-stack event ticketing platform with ML-powered dynamic pricing. The system provides event organizers with tools to manage events and ticket sales, using machine learning for real-time price adjustments. The SRS covers the React frontend, Vite, Node.js/Express backend, MongoDB database, Python Flask ML microservice, Redis caching, RabbitMQ queuing, and concurrency controls. Key features include secure JWT authentication, role-based access, event management, ticket categories, real-time availability, admin dashboard, analytics, payment integration, notifications, and concurrency controls. The project will use an iterative waterfall model for phased development and validation.
+
+\subsection{Development Process Model}
+
+The project will use an \textbf{iterative waterfall model}, adapted for the Dynamic Ticket Pricing System. Development is organized into distinct phases: requirements analysis, system design, implementation, testing, deployment, and maintenance. After each phase, feedback is collected from stakeholders and users, allowing the team to revisit and refine previous work before moving forward. This cycle repeats for each major feature or module, ensuring continuous improvement and alignment with project goals.
+
+For DTPS, the process will include:
+\begin{itemize}
+    \item \textbf{Requirements Analysis:} Gather and document requirements for event management, dynamic pricing, authentication, ticketing, analytics, and notifications. Conduct stakeholder interviews and user research.
+    \item \textbf{System Design:} Create architecture diagrams, data flow models, and detailed design documents for each module. Plan integration points between frontend, backend, and ML microservice.
+    \item \textbf{Implementation:} Develop features in iterative cycles, starting with core modules. Use version control and code reviews. Integrate React frontend, Node.js/Express backend, Python ML microservice, and MongoDB database.
+    \item \textbf{Testing:} Perform unit, integration, and end-to-end testing for each feature. Validate ML model predictions and system performance. Address bugs and usability issues.
+    \item \textbf{Deployment:} Prepare deployment scripts and documentation. Deploy to cloud infrastructure. Monitor system health and performance.
+    \item \textbf{Maintenance:} Collect user feedback, monitor for issues, and update features as needed. Retrain ML models and optimize system components.
+\end{itemize}
+Each phase will produce deliverables such as updated requirements documents, design diagrams, tested code, deployment guides, and user manuals. The iterative approach enables phased releases, incremental delivery, and ongoing adaptation to user needs and business objectives.
+
+\subsection{References}
+\begin{itemize}
+    \item Project overview and setup instructions.
+    \item API documentation for REST endpoints and usage.
+    \item Machine learning model specifications and features.
+    \item System architecture diagrams.
+    \item Planned software and frameworks for development: React (frontend), Vite, Node.js/Express (backend), Python (Flask microservice for ML), MongoDB (database), Redis, RabbitMQ.
+    \item Project documentation, including API documentation, system architecture diagrams, and user manuals, is created and maintained throughout the development lifecycle to support implementation, testing, and future maintenance.
+    \item Frontend build and deployment documentation.
+    \item Database schema and operations documentation.
+\end{itemize}
+\end{itemize}
+
+\subsection{Acronyms and Abbreviations}
+
+\begin{longtable}{|p{3cm}|p{10cm}|}
+\hline
+\textbf{Acronym} & \textbf{Meaning} \\
+\hline
+SRS & Software Requirements Specification \\
+\hline
+DTPS & Dynamic Ticket Pricing System \\
+\hline
+ML & Machine Learning \\
+\hline
+API & Application Programming Interface \\
+\hline
+JWT & JSON Web Token \\
+\hline
+UI & User Interface \\
+\hline
+QA & Quality Assurance \\
+\hline
+GDPR & General Data Protection Regulation \\
+\hline
+\end{longtable}
+
+%====================================================
+\section{Overall Description}
+\begin{itemize}
+     \item \textbf{Authentication \/ Security:} JWT authentication, bcrypt password hashing, role-based access (Admin\/User), protected routes, secure API endpoints.
+     \item \textbf{Event Management:} Multiple ticket categories, category-specific pricing, seat allocation, real-time availability, event status management.
+     \item \textbf{Dynamic Pricing:} ML-powered price predictions (Random Forest, XGBoost), real-time price adjustments, historical price tracking, 8 key factors (demand, capacity, days until event, popularity, competitor prices, historical sales, seasonality, day of week).
+     \item \textbf{User Experience:} Modern, responsive UI, event browsing, search, filtering, seamless ticket booking, order summary.
+     \item \textbf{Admin Dashboard:} Event management, analytics, revenue tracking, user management, ticket monitoring.
+     \item \textbf{Microservices Architecture:} Redis caching, RabbitMQ queuing, distributed\/optimistic locking for concurrency, graceful degradation for unavailable services.
+     \item \textbf{Notifications:} Automated emails for confirmations, reminders, and updates.
+     \item \textbf{Real-time Updates:} WebSocket-based notifications for ticket availability and price changes.
+     \item \textbf{RESTful API:} Well-documented endpoints for frontend-backend and third-party integrations.
+     \item \textbf{Fraud Detection:} ML-based detection of suspicious activities and transactions.
+\end{itemize}
+
+\subsection{Operating Environment}
+\begin{itemize}
+    \item \textbf{Hardware:} Cloud deployment with scalable servers.
+    \item \textbf{Operating Systems:} Windows, Linux, macOS.
+    \item \textbf{Software:} Node.js (v16+), Python 3.8+, MongoDB (v5+).
+    \item \textbf{Browsers:} Latest Chrome, Firefox, Edge, Safari.
+    \item \textbf{Network:} Reliable internet connection required.
+\end{itemize}
+
+\subsection{Design and Implementation Constraints}
+\begin{itemize}
+    \item Frontend to be implemented in React.
+    \item Backend to use Node.js with Express.
+    \item ML components to be developed in Python.
+    \item MongoDB as the database.
+    \item All services to be containerized using Docker.
+    \item System must comply with GDPR and relevant regulations.
+    \item RESTful API design principles to be followed.
+    \item Payment processing to use PCI-compliant third-party services.
+    \item Code must adhere to project coding standards and pass linting.
+\end{itemize}
+Will enable users to securely register, log in, and manage sessions. Ensures only authorized access. Priority: High.
+\subsection{User Documentation}
+\begin{itemize}
+    \item Comprehensive user manual.
+    \item Contextual online help, tooltips, and walkthroughs in the UI.
+    \item API documentation via Swagger/OpenAPI.
+\end{itemize}
+
+\subsection{Assumptions and Dependencies}
+\begin{itemize}
+    \item Users will have reliable internet and modern browsers.
+    \item Payment processing will be managed by a secure, third-party provider.
+    \item ML model will be retrained and updated periodically.
+    \item System will rely on MongoDB, email, and payment services.
+    \item External APIs/services will maintain backward compatibility.
+    \item Third-party libraries and dependencies will be actively maintained.
+\end{itemize}
+
+%====================================================
+\section{System Features}
+
+\subsection{User Authentication}
+\subsubsection{Description and Priority}
+Will enable users to securely register, log in, and manage sessions. Ensures only authorized access. Priority: High.
+\subsubsection{Stimulus/Response Sequences}
+User submits signup/login form $\rightarrow$ System validates $\rightarrow$ User is authenticated or error is shown.
+\subsubsection{Functional Requirements}
+\begin{itemize}
+    \item \textbf{REQ-1:} The system shall allow users to register with email and password.
+    \item \textbf{REQ-2:} The system shall authenticate users and maintain sessions.
+    \item \textbf{REQ-3:} The system shall allow users to view and manage their profile information.
+    \item \textbf{REQ-4:} The system shall allow creation of admin users.
+    \item \textbf{REQ-5:} The system shall hash and securely store passwords using industry-standard algorithms.
+    \item \textbf{REQ-6:} The system shall use JWT-based authentication for secure access control.
+\end{itemize}
+
+\subsection{Event Management}
+\subsubsection{Description and Priority}
+Organizers will be able to create, update, and delete events, including event details, ticket types, and schedules. Priority: High.
+\subsubsection{Stimulus/Response Sequences}
+Organizer submits event form $\rightarrow$ System validates and saves event $\rightarrow$ Event appears in listings.
+\subsubsection{Functional Requirements}
+\begin{itemize}
+    \item \textbf{REQ-7:} The system shall allow organizers to view a list of all events.
+    \item \textbf{REQ-8:} The system shall provide detailed information for each event.
+    \item \textbf{REQ-9:} The system shall allow organizers to create new events.
+    \item \textbf{REQ-10:} The system shall allow organizers to update event details.
+    \item \textbf{REQ-11:} The system shall allow organizers to delete events.
+    \item \textbf{REQ-12:} The system shall provide machine learning-based price predictions for event tickets.
+\end{itemize}
+
+\subsection{Dynamic Ticket Pricing}
+\subsubsection{Description and Priority}
+Ticket prices will be dynamically adjusted using ML models, optimizing for revenue and attendance. Priority: High.
+\subsubsection{Stimulus/Response Sequences}
+User views ticket $\rightarrow$ System queries ML API $\rightarrow$ Price is displayed/updated.
+\subsubsection{Functional Requirements}
+\begin{itemize}
+    \item \textbf{REQ-13:} The system shall request price predictions for tickets using a machine learning model.
+    \item \textbf{REQ-14:} The system shall monitor the health and availability of the machine learning service.
+    \item \textbf{REQ-15:} The system shall update ticket prices in real time and log all price changes for analytics.
+\end{itemize}
+
+\subsection{Ticket Purchase}
+\subsubsection{Description and Priority}
+Users will be able to browse events and purchase tickets securely, with instant confirmation and digital ticket delivery. Priority: High.
+\subsubsection{Stimulus/Response Sequences}
+User selects ticket $\rightarrow$ System processes payment $\rightarrow$ Ticket is issued.
+\subsubsection{Functional Requirements}
+\begin{itemize}
+    \item \textbf{REQ-16:} The system shall allow users to purchase tickets for available events.
+    \item \textbf{REQ-17:} The system shall allow users to view their purchased tickets.
+    \item \textbf{REQ-18:} The system shall process payments securely using a third-party payment gateway.
+    \item \textbf{REQ-19:} The system shall send digital tickets to users via email upon successful purchase.
+\end{itemize}
+
+\subsection{Admin Dashboard and Analytics}
+\subsubsection{Description and Priority}
+Admins and organizers will access dashboards to view analytics, monitor system health, and manage users/events. Priority: Medium.
+\subsubsection{Stimulus/Response Sequences}
+Admin logs in $\rightarrow$ Dashboard displays analytics $\rightarrow$ Admin manages users/events.
+\subsubsection{Functional Requirements}
+\begin{itemize}
+    \item \textbf{REQ-20:} The system shall allow admins to view, create, update, and delete all events.
+    \item \textbf{REQ-21:} The system shall provide system statistics and usage analytics to admins.
+    \item \textbf{REQ-22:} The system shall provide advanced analytics and reporting features.
+    \item \textbf{REQ-23:} The system shall send notifications to users and admins.
+    \item \textbf{REQ-24:} The system shall allow management of user subscriptions.
+    \item \textbf{REQ-25:} The system shall provide access to machine learning model metadata and retraining status.
+\end{itemize}
+
+%====================================================
+\section{External Interface Requirements}
+
+\subsection{User Interfaces}
+\begin{itemize}
+    \item Responsive and accessible web UI built with React, supporting desktop and mobile devices.
+    \item Admin dashboard with data visualizations, event management, and analytics.
+    \item Event listing, event detail, and ticket purchase screens with real-time updates.
+    \item Consistent error messages, notifications, and confirmation dialogs.
+    \item User profile management and order history views.
+    \item Support for internationalization (i18n) and accessibility (WCAG compliance).
+\end{itemize}
+
+\subsection{Hardware Interfaces}
+No direct hardware interfaces are planned, aside from standard server and client devices. The system is intended to be hardware-agnostic and cloud-ready.
+
+\subsection{Software Interfaces}
+\begin{itemize}
+    \item RESTful API (Node.js/Express backend) for business logic and data operations.
+    \item ML API (Python Flask) for price prediction and fraud detection.
+    \item MongoDB database for persistent storage.
+    \item Email service (SMTP or third-party, e.g., SendGrid) for notifications.
+    \item Payment gateway API (e.g., Stripe, PayPal) for secure transactions.
+    \item WebSocket service for real-time updates.
+\end{itemize}
+
+\subsection{Communications Interfaces}
+\begin{itemize}
+    \item HTTP/HTTPS for all web and API communications.
+    \item WebSockets for real-time updates.
+    \item SMTP or third-party email APIs for notifications.
+    \item All communications to be encrypted using TLS/SSL.
+\end{itemize}
+
+%====================================================
+\section{Other Nonfunctional Requirements}
+
+\subsection{Performance Requirements}
+\begin{itemize}
+    \item The system should support at least 1000 concurrent users with minimal latency.
+    \item Ticket price updates and event listings should reflect changes within 2 seconds.
+    \item Ticket purchases and confirmations should be processed within 5 seconds.
+    \item Backend and ML API should respond within 1 second under normal load.
+\end{itemize}
+
+\subsection{Safety Requirements}
+\begin{itemize}
+    \item The system should prevent double booking and overselling of tickets.
+    \item Sensitive user and payment data should be encrypted in transit and at rest.
+    \item Regular data backups and disaster recovery procedures should be established.
+    \item Critical actions should require explicit user confirmation.
+\end{itemize}
+
+\subsection{Security Requirements}
+\begin{itemize}
+    \item All user data must be protected in accordance with GDPR and applicable regulations.
+    \item Only authenticated users can access restricted features; sensitive operations require re-authentication.
+    \item Admin actions require elevated privileges and are logged for audit purposes.
+    \item The system should implement rate limiting and protection against common web vulnerabilities.
+    \item Passwords must be hashed using industry-standard algorithms.
+\end{itemize}
+
+\subsection{Software Quality Attributes}
+\begin{itemize}
+    \item \textbf{Availability:} Target 99.9\% uptime, with monitoring and alerting.
+    \item \textbf{Maintainability:} Modular, well-documented codebase.
+    \item \textbf{Usability:} Intuitive, accessible UI.
+    \item \textbf{Scalability:} Architecture should support horizontal scaling.
+    \item \textbf{Testability:} Automated tests for all modules.
+    \item \textbf{Interoperability:} Well-defined APIs for integration.
+    \item \textbf{Reliability:} Robust error handling.
+    \item \textbf{Portability:} Deployable on multiple platforms and cloud providers.
+\end{itemize}
+
+%====================================================
+\section{Other Requirements}
+
+\subsection{Backup and Disaster Recovery}
+The system is planned to implement automated backups for all critical data, with documented and regularly tested recovery procedures.
+
+\subsection{Data Retention and Archival}
+Retention periods for user, event, and transaction data will be defined. Old data will be archived securely and retrievable for compliance.
+
+\subsection{Scalability Planning}
+The architecture will support scaling to handle increased user load and data volume. Microservices and database sharding may be considered for future growth.
+
+\subsection{Testing and Quality Assurance}
+Automated unit, integration, and end-to-end testing will be planned. Code coverage targets and review processes will be defined.
+
+\subsection{User Privacy}
+User data collection and processing will be minimized and transparent. Users will be able to request data deletion or export.
+\appendix
+
+\section{Appendix A: Glossary}
+\begin{itemize}
+    \item \textbf{Event Organizer:} A user who creates, manages, and analyzes events and ticket sales.
+    \item \textbf{Ticket Buyer:} A user who browses events and purchases tickets.
+    \item \textbf{Admin:} A user with system-wide privileges.
+    \item \textbf{ML Model:} The machine learning component for price prediction and fraud detection.
+    \item \textbf{JWT:} JSON Web Token, used for authentication.
+    \item \textbf{API:} Application Programming Interface.
+    \item \textbf{GDPR:} General Data Protection Regulation.
+\end{itemize}
+
+\section{Appendix B: Analysis Models}
+
+Relevant analysis models, including data flow diagrams, entity-relationship diagrams, and ML feature mappings, will be provided as part of the project documentation and design deliverables. These documents will detail the planned structure of event data, user interactions, machine learning features, and the overall system architecture. All software quality attributes are described in this SRS and will be referenced in future project documentation.
+
+\section{Appendix C: Issues List}
+\begin{itemize}
+    \item TBD: Payment gateway integration details and provider selection.
+    \item TBD: Finalization of UI/UX design and accessibility review.
+    \item TBD: Selection and configuration of email service provider.
+    \item TBD: Load testing and performance optimization strategies.
+    \item TBD: Data retention and archival policies.
+\end{itemize}
+
+\end{document}
