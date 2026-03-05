@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import ErrorBoundary from './components/ErrorBoundary';
 import HomePage from './components/HomePage';
 import Login from './components/Login';
 import Signup from './components/Signup';
@@ -22,6 +23,25 @@ function AppContent() {
   const [events, setEvents] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Redirect to home page after logout
+  useEffect(() => {
+    if (!isAuthenticated && view !== 'home' && view !== 'login' && view !== 'signup') {
+      setView('home');
+    }
+  }, [isAuthenticated, view]);
+  // Redirect to events page after login
+  useEffect(() => {
+    if (isAuthenticated && view === 'login') {
+      setView('events');
+    }
+  }, [isAuthenticated, view]);
+
+  // Close mobile menu when view changes
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [view]);
 
   // Fetch events on initial load (public access)
   useEffect(() => {
@@ -74,7 +94,16 @@ function AppContent() {
           <span className="brand-icon">🎫</span>
           <span className="brand-name">FanFeverTickets</span>
         </div>
-        <div className="nav-links">
+        
+        <button 
+          className="mobile-menu-toggle" 
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          aria-label="Toggle menu"
+        >
+          {mobileMenuOpen ? '✕' : '☰'}
+        </button>
+        
+        <div className={`nav-links ${mobileMenuOpen ? 'mobile-open' : ''}`}>
           <button onClick={() => setView('home')} className={view === 'home' ? 'active' : ''}>
             Home
           </button>
@@ -91,7 +120,40 @@ function AppContent() {
               </button>
             </>
           )}
+          
+          {/* Mobile-only auth buttons */}
+          <div className="mobile-auth-buttons">
+            {!isAuthenticated ? (
+              <>
+                <button onClick={() => { setAuthView('login'); setView('login'); }} className="nav-login-btn">
+                  Login
+                </button>
+                <button onClick={() => { setAuthView('signup'); setView('signup'); }} className="nav-signup-btn">
+                  Sign Up
+                </button>
+              </>
+            ) : (
+              <>
+                <span className="mobile-user-name">{user?.name}</span>
+                {user?.subscription && user.subscription.isActive && user.subscription.plan !== 'none' && (
+                  <span className="nav-subscription-badge">
+                    {user.subscription.plan === '7_days' ? 'WEEKLY' :
+                     user.subscription.plan === '30_days' ? 'MONTHLY' :
+                     user.subscription.plan === '3_months' ? 'QUARTERLY' :
+                     user.subscription.plan === '6_months' ? 'BIANNUAL' :
+                     user.subscription.plan === '1_year' ? 'ANNUAL' : 'MEMBER'}
+                  </span>
+                )}
+                {!isAdmin() && (
+                  <button onClick={() => setView('subscription')} className="nav-profile-btn">Membership</button>
+                )}
+                <button onClick={() => setView('profile')} className="nav-profile-btn">Profile</button>
+                <button onClick={logout} className="nav-logout-btn">Logout</button>
+              </>
+            )}
+          </div>
         </div>
+        
         <div className="nav-actions">
           {!isAuthenticated ? (
             <>
@@ -193,9 +255,11 @@ function AppContent() {
 
 function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 

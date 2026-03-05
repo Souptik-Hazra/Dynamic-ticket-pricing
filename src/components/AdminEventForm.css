@@ -410,3 +410,73 @@
     width: 100%;
   }
 }
+
+/* ========================================
+   ENHANCED RESPONSIVE STYLES
+   ======================================== */
+
+/* Mobile Large */
+@media (max-width: 576px) {
+  .admin-event-form-overlay {
+    padding: 0.5rem;
+    align-items: flex-start;
+  }
+  
+  .admin-event-form-container {
+    border-radius: 12px;
+    max-height: 98vh;
+  }
+  
+  .form-header {
+    padding: 1rem;
+  }
+  
+  .form-header h2 {
+    font-size: 1.25rem;
+  }
+  
+  .close-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 1.25rem;
+  }
+  
+  .admin-event-form {
+    padding: 1rem;
+  }
+  
+  .form-group label {
+    font-size: 0.9rem;
+  }
+  
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    padding: 0.65rem;
+    font-size: 0.9rem;
+  }
+  
+  .form-actions {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .form-actions button {
+    width: 100%;
+  }
+}
+
+/* Mobile Small */
+@media (max-width: 375px) {
+  .form-header h2 {
+    font-size: 1.1rem;
+  }
+  
+  .category-card {
+    padding: 0.75rem;
+  }
+  
+  .category-fields input {
+    padding: 0.5rem;
+  }
+}

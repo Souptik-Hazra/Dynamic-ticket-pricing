@@ -75,7 +75,7 @@ function Login({ onSwitchToSignup }) {
               placeholder="••••••••"
               required
               disabled={loading}
-              minLength="6"
+              minLength="8"
             />
           </div>
 
@@ -95,12 +95,6 @@ function Login({ onSwitchToSignup }) {
               Sign Up
             </button>
           </p>
-        </div>
-
-        <div className="demo-credentials">
-          <p className="demo-title">Demo Credentials:</p>
-          <p><strong>Admin:</strong> admin@test.com / admin123</p>
-          <p><strong>User:</strong> user@test.com / user123</p>
         </div>
       </div>
     </div>

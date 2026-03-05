@@ -369,3 +369,63 @@
     font-size: 0.8rem;
   }
 }
+
+/* ========================================
+   ENHANCED RESPONSIVE STYLES
+   ======================================== */
+
+/* Mobile Large */
+@media (max-width: 576px) {
+  .peak-hours-section {
+    padding: 1rem;
+    border-radius: 8px;
+  }
+  
+  .peak-hours-section h2 {
+    font-size: 1.25rem;
+  }
+  
+  .summary-card {
+    padding: 1rem;
+  }
+  
+  .hourly-demand-chart {
+    grid-template-columns: repeat(8, 1fr);
+    height: 120px;
+    gap: 2px;
+    overflow-x: auto;
+  }
+  
+  .chart-container {
+    overflow-x: auto;
+  }
+  
+  .tip-card {
+    padding: 1rem;
+  }
+  
+  .tip-card h4 {
+    font-size: 0.95rem;
+  }
+  
+  .tip-card p {
+    font-size: 0.85rem;
+  }
+}
+
+/* Mobile Small */
+@media (max-width: 375px) {
+  .peak-hours-section h2 {
+    font-size: 1.1rem;
+  }
+  
+  .hourly-demand-chart {
+    grid-template-columns: repeat(6, 1fr);
+    height: 100px;
+  }
+  
+  .chart-legend {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

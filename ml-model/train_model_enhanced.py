@@ -317,22 +317,24 @@ def main():
     with open('model_info.json', 'w') as f:
         json.dump(model_info, f, indent=2)
 
-    # Sync with MongoDB if backend is running
-    print("\n🔗 Syncing model metadata with MongoDB...")
+    # Sync with MongoDB if backend is running (optional - not required for model to work)
+    print("\n🔗 Attempting to sync model metadata with MongoDB...")
     # Use environment variable for backend URL if available
     backend_url = os.getenv('BACKEND_URL', 'http://localhost:3001')
     try:
         response = requests.post(
             f'{backend_url}/api/ml-model/update-metadata',
             json=model_info,
-            timeout=10
+            timeout=5
         )
         if response.status_code == 200:
             print(f"   ✅ Successfully synced Version {model_version} to MongoDB")
         else:
-            print(f"   ⚠️ Sync failed with status: {response.status_code}")
+            print(f"   ⚠️ Sync skipped (backend returned status: {response.status_code})")
+    except requests.exceptions.ConnectionError:
+        print(f"   ⚠️ Backend not running - skipping MongoDB sync (this is OK)")
     except Exception as e:
-        print(f"   ⚠️ Could not sync with MongoDB: {e}")
+        print(f"   ⚠️ Could not sync (this is OK): {type(e).__name__}")
     
     print("\n" + "=" * 70)
     print("   ✅ Enhanced Model v2.0 Training Complete!")

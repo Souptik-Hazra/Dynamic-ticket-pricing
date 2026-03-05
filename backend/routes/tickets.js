@@ -4,8 +4,15 @@ const mongoose = require('mongoose');
 const Ticket = require('../models/Ticket');
 const Event = require('../models/Event');
 const { protect } = require('../middleware/auth');
-const messageQueueService = require('../services/messageQueueService');
 const cacheService = require('../services/cacheService');
+const messageQueueService = require('../services/messageQueueService');
+const concurrencyService = require('../services/concurrencyService');
+const notificationService = require('../services/notificationService');
+const { fetchWithRetry } = require('../utils/retry');
+const axios = require('axios');
+
+// ML API URL from environment variable
+const ML_API_URL = process.env.ML_API_URL || 'http://localhost:5000';
 
 // Get all tickets with caching
 router.get('/', protect, async (req, res) => {
@@ -26,14 +33,10 @@ router.get('/', protect, async (req, res) => {
     // Cache for 5 minutes
     await cacheService.set(cacheKey, tickets, 300);
     
-    res.json({
-      success: true,
-      message: 'Tickets retrieved successfully',
-      data: tickets
-    });
+    res.json(tickets);
   } catch (error) {
-    console.error('Fetch tickets error:', error);
-    res.status(500).json({ success: false, message: 'Failed to fetch tickets' });
+    console.error('Error fetching tickets:', error);
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
@@ -43,91 +46,190 @@ router.get('/:id', protect, async (req, res) => {
     const ticket = await Ticket.findById(req.params.id).populate('eventId');
     
     if (!ticket) {
-      return res.status(404).json({ success: false, message: 'Ticket not found' });
+      return res.status(404).json({ error: 'Ticket not found' });
     }
 
     // Check ownership
     if (ticket.userId.toString() !== req.user.id && req.user.role !== 'admin') {
-      return res.status(403).json({ success: false, message: 'Access denied' });
+      return res.status(403).json({ error: 'Access denied' });
     }
 
-    res.json({
-      success: true,
-      message: 'Ticket retrieved successfully',
-      data: ticket
-    });
+    res.json(ticket);
   } catch (error) {
-    console.error('Fetch ticket error:', error);
-    res.status(500).json({ success: false, message: 'Failed to fetch ticket' });
+    console.error('Error fetching ticket:', error);
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
-// Purchase ticket with concurrency control, distributed locking, and ML predictions
+// Ticket purchase endpoint with concurrency control (POST /)
 router.post('/', protect, async (req, res) => {
-  const { eventId, quantity } = req.body;
+  const { eventId, categoryId, categoryName, quantity, pricePerTicket, customerName, customerEmail } = req.body;
 
-  if (!eventId || !quantity || quantity < 1) {
-    return res.status(400).json({ message: 'Invalid request data' });
+  // Parse quantity as integer and validate
+  const parsedQuantity = parseInt(quantity, 10);
+  
+  if (!eventId || !parsedQuantity || parsedQuantity < 1 || isNaN(parsedQuantity)) {
+    return res.status(400).json({ error: 'Invalid request data - quantity must be a positive number' });
   }
 
+  if (parsedQuantity > 15) {
+    return res.status(400).json({ error: 'Maximum 15 tickets allowed per purchase' });
+  }
+
+  // Acquire distributed lock to prevent race conditions
+  const lockKey = `ticket-purchase:${eventId}`;
+  let lockAcquired = false;
+
   try {
-    // Use MongoDB transaction for atomic ticket purchase
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    lockAcquired = await concurrencyService.acquireLock(lockKey, 30);
+    
+    if (!lockAcquired) {
+      return res.status(429).json({ 
+        error: 'Too many concurrent requests for this event. Please try again.' 
+      });
+    }
 
-    try {
-      // Single atomic operation: check and decrement
-      const event = await Event.findOneAndUpdate(
-        { _id: eventId, availableTickets: { $gte: quantity } },
-        { $inc: { availableTickets: -quantity } },
-        { new: true, session }
-      );
+    console.log(`📝 Processing ticket purchase: Event=${eventId}, Category=${categoryName}, Quantity=${parsedQuantity}`);
 
-      if (!event) {
-        await session.abortTransaction();
-        return res.status(400).json({ message: 'Event not found or insufficient tickets' });
+    // Find the event
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    // Calculate gradual price increase factor based on demand
+    // Price starts at BASE and slowly increases to MAX
+    const occupancyRate = event.capacity > 0 ? event.ticketsSold / event.capacity : 0;
+    const daysUntilEvent = Math.max(1, Math.ceil((new Date(event.eventDate) - new Date()) / (1000 * 60 * 60 * 24)));
+    
+    // Calculate increase factor (0 to 1 range)
+    // Based on: occupancy rate (40%), days until event urgency (30%), popularity (30%)
+    const occupancyFactor = occupancyRate; // 0 to 1
+    const urgencyFactor = daysUntilEvent <= 7 ? (7 - daysUntilEvent) / 7 : 0;
+    const popularityFactor = event.eventPopularity || 0.5;
+    
+    const increaseFactor = (occupancyFactor * 0.4) + (urgencyFactor * 0.3) + (popularityFactor * 0.3);
+
+    // Calculate price with gradual increase
+    let price = pricePerTicket || event.currentPrice || event.basePrice;
+    let availableSeats = event.availableTickets;
+
+    if (categoryName && event.ticketCategories) {
+      const category = event.ticketCategories.find(c => c.name === categoryName);
+      if (category) {
+        if (category.availableSeats < parsedQuantity) {
+          return res.status(400).json({ error: `Only ${category.availableSeats} ${categoryName} tickets available` });
+        }
+        
+        // Apply gradual pricing: base + (increase factor * price range)
+        const basePrice = category.price;
+        const maxPrice = category.maxPrice || basePrice * 2;
+        const priceRange = maxPrice - basePrice;
+        
+        price = basePrice + (priceRange * increaseFactor);
+        price = Math.round(Math.min(maxPrice, Math.max(basePrice, price)) * 100) / 100;
+        availableSeats = category.availableSeats;
       }
+    } else {
+      // Apply gradual pricing to base price
+      const basePrice = price;
+      const maxPrice = basePrice * 2;
+      const priceRange = maxPrice - basePrice;
+      
+      price = basePrice + (priceRange * increaseFactor);
+      price = Math.round(Math.min(maxPrice, Math.max(basePrice, price)) * 100) / 100;
+    }
 
-      // Create ticket within transaction
-      const ticket = new Ticket({
-        eventId: event._id,
-        userId: req.user.id,
-        quantity,
-        price: event.ticketPrice,
-        totalAmount: event.ticketPrice * quantity,
-        purchaseDate: new Date(),
-        status: 'confirmed'
+    if (availableSeats < parsedQuantity) {
+      return res.status(400).json({ error: `Only ${availableSeats} tickets available` });
+    }
+
+    console.log(`✅ Creating ticket: Qty=${parsedQuantity}, Price=${price}, Total=${price * parsedQuantity}`);
+
+    // Use MongoDB transaction to ensure atomicity
+    const session = await mongoose.startSession();
+    let ticket = null;
+    
+    try {
+      await session.withTransaction(async () => {
+        // Create ticket within transaction
+        const ticketData = {
+          eventId: event._id,
+          userId: req.user.id,
+          quantity: parsedQuantity,
+          price: price,
+          totalAmount: price * parsedQuantity,
+          categoryName: categoryName || 'standard',
+          customerName: customerName,
+          customerEmail: customerEmail,
+          purchaseDate: new Date(),
+          status: 'confirmed',
+          bookingReference: `TKT-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
+        };
+        
+        const tickets = await Ticket.create([ticketData], { session });
+        ticket = tickets[0];
+
+        // Update event inventory within the same transaction
+        if (categoryName && event.ticketCategories) {
+          const categoryIndex = event.ticketCategories.findIndex(c => c.name === categoryName);
+          if (categoryIndex !== -1) {
+            event.ticketCategories[categoryIndex].availableSeats -= parsedQuantity;
+            console.log(`📉 Updated ${categoryName} seats: ${event.ticketCategories[categoryIndex].availableSeats + parsedQuantity} -> ${event.ticketCategories[categoryIndex].availableSeats}`);
+          }
+        }
+        
+        // Recalculate ticketsSold and availableTickets from category data
+        if (event.ticketCategories && event.ticketCategories.length > 0) {
+          const totalSeats = event.ticketCategories.reduce((sum, cat) => sum + cat.seats, 0);
+          const totalAvailable = event.ticketCategories.reduce((sum, cat) => sum + cat.availableSeats, 0);
+          event.capacity = totalSeats;
+          event.availableTickets = totalAvailable;
+          event.ticketsSold = totalSeats - totalAvailable;
+        } else {
+          event.availableTickets -= parsedQuantity;
+          event.ticketsSold += parsedQuantity;
+        }
+        
+        event.totalRevenue += ticket.totalAmount;
+        await event.save({ session });
       });
-
-      await ticket.save({ session });
-      await session.commitTransaction();
-
-      // Publish event asynchronously (outside transaction)
-      await messageQueueService.publishTicketPurchase({
-        ticketId: ticket._id,
-        eventId: event._id,
-        userId: req.user.id,
-        quantity,
-        totalAmount: ticket.totalAmount
-      });
-
-      res.status(201).json({
-        success: true,
-        message: 'Ticket purchased successfully',
-        data: ticket
-      });
-
-    } catch (txnError) {
-      await session.abortTransaction();
-      throw txnError;
     } finally {
       await session.endSession();
     }
 
+    // Clear cache (outside transaction - non-critical)
+    try {
+      await cacheService.invalidatePattern(`tickets:user:${req.user.id}`);
+      await cacheService.invalidatePattern(`event:${eventId}`);
+    } catch (e) {
+      // Cache errors are non-critical
+    }
+
+    res.status(201).json({
+      message: 'Ticket purchased successfully',
+      bookingReference: ticket.bookingReference,
+      ticket: ticket,
+      _id: ticket._id
+    });
+
   } catch (error) {
-    console.error('Error purchasing ticket:', error);
-    res.status(500).json({ message: 'Error processing ticket purchase' });
+    console.error('Error purchasing ticket:', error.message, error.stack);
+    res.status(500).json({ error: error.message || 'Error processing ticket purchase' });
+  } finally {
+    // Always release the lock
+    if (lockAcquired) {
+      await concurrencyService.releaseLock(lockKey);
+    }
   }
+});
+
+// Legacy /purchase endpoint - redirects to main POST / endpoint for backwards compatibility
+// @deprecated Use POST / instead
+router.post('/purchase', protect, (req, res, next) => {
+  console.log('⚠️ /purchase endpoint is deprecated, use POST /tickets instead');
+  // Forward to main ticket purchase handler
+  router.handle(Object.assign(req, { url: '/', method: 'POST' }), res, next);
 });
 
 // Batch purchase tickets with rate limiting
@@ -152,9 +254,10 @@ router.post('/purchase/batch', protect, async (req, res) => {
   }
 
   try {
-    // Process all purchases in parallel
-    const results = await Promise.all(
-      purchases.map(async (purchase) => {
+    // Process purchases with concurrency limit
+    const results = await concurrencyService.batchProcess(
+      purchases,
+      async (purchase) => {
         try {
           const response = await axios.post(
             'http://localhost:3001/api/tickets/purchase',
@@ -172,7 +275,8 @@ router.post('/purchase/batch', protect, async (req, res) => {
             error: error.response?.data?.message || error.message 
           };
         }
-      })
+      },
+      3 // Max 3 concurrent purchases
     );
 
     const successful = results.filter(r => r.success);
@@ -227,11 +331,12 @@ router.delete('/:id', protect, async (req, res) => {
         });
 
         // Invalidate caches
-        await cacheService.delete(`tickets:user:${req.user.id}`);
+        await cacheService.invalidatePattern(`tickets:user:${req.user.id}`);
+        await cacheService.invalidatePattern(`event:${ticket.eventId}`);
       }
     );
 
-    res.json({ success: true, message: 'Ticket cancelled successfully', data: null });
+    res.json({ message: 'Ticket cancelled successfully' });
   } catch (error) {
     console.error('Error cancelling ticket:', error);
     res.status(500).json({ message: 'Server error' });
@@ -264,16 +369,15 @@ router.get('/stats/overview', protect, async (req, res) => {
     ]);
 
     const result = {
-      success: true,
-      message: 'Ticket statistics retrieved',
-      data: { stats, timestamp: new Date() }
+      stats,
+      timestamp: new Date()
     };
 
     await cacheService.set(cacheKey, result, 600); // Cache for 10 minutes
     res.json(result);
   } catch (error) {
     console.error('Error fetching ticket stats:', error);
-    res.status(500).json({ success: false, message: 'Server error' });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 

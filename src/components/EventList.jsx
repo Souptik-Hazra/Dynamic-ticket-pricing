@@ -2,13 +2,20 @@ import React from 'react';
 import './EventList.css';
 import AutoPriceUpdater from './AutoPriceUpdater';
 
-function EventList({ events, onUpdatePrice, onSelectEvent, onRefresh }) {
-  const [brokenImages, setBrokenImages] = React.useState(new Set());
-
-  const handleImageError = (eventId) => {
-    setBrokenImages(prev => new Set([...prev, eventId]));
+// Get emoji based on event category
+const getCategoryEmoji = (category) => {
+  const emojiMap = {
+    concert: '🎵',
+    sports: '⚽',
+    theater: '🎭',
+    conference: '💼',
+    festival: '🎪',
+    other: '🎟️'
   };
+  return emojiMap[category?.toLowerCase()] || '🎟️';
+};
 
+function EventList({ events, onUpdatePrice, onSelectEvent, onRefresh }) {
   const formatDateTime = (date) => {
     if (!date) return '';
     const d = new Date(date);
@@ -74,16 +81,22 @@ function EventList({ events, onUpdatePrice, onSelectEvent, onRefresh }) {
           {events.map(event => (
             <div key={event._id} className="event-card">
               <div className="event-image">
-                {!brokenImages.has(event._id) ? (
+                {event.image ? (
                   <img 
                     src={event.image} 
                     alt="" 
-                    onError={() => handleImageError(event._id)}
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.nextSibling.style.display = 'flex';
+                    }}
                   />
-                ) : (
-                  <div className="image-fallback">🎬</div>
-                )}
-                <span className="event-category-badge">{event.category}</span>
+                ) : null}
+                <span 
+                  className="event-emoji-placeholder" 
+                  style={{ display: event.image ? 'none' : 'flex' }}
+                >
+                  {getCategoryEmoji(event.category)}
+                </span>
                 <span className="event-image-title">{event.name}</span>
                 <span className={`event-status ${event.status}`}>
                   {event.status}

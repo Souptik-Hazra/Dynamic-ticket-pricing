@@ -212,3 +212,69 @@
     font-size: 1.6rem;
   }
 }
+
+/* ========================================
+   ENHANCED RESPONSIVE STYLES
+   ======================================== */
+
+/* Mobile Large */
+@media (max-width: 576px) {
+  .auth-container {
+    padding: 1rem;
+  }
+  
+  .auth-card {
+    padding: 1.5rem;
+    border-radius: 12px;
+  }
+  
+  .auth-header h2 {
+    font-size: 1.5rem;
+  }
+  
+  .auth-header p {
+    font-size: 0.9rem;
+  }
+  
+  .form-group label {
+    font-size: 0.9rem;
+  }
+  
+  .form-group input {
+    padding: 0.75rem;
+    font-size: 0.95rem;
+  }
+  
+  .auth-submit-btn {
+    padding: 0.875rem 1.5rem;
+    font-size: 1rem;
+  }
+  
+  .auth-switch {
+    font-size: 0.9rem;
+  }
+}
+
+/* Mobile Small */
+@media (max-width: 375px) {
+  .auth-card {
+    padding: 1.25rem;
+  }
+  
+  .auth-header h2 {
+    font-size: 1.3rem;
+  }
+  
+  .form-group input {
+    padding: 0.65rem;
+  }
+  
+  .error-message {
+    padding: 0.75rem;
+    font-size: 0.85rem;
+  }
+  
+  .demo-credentials {
+    font-size: 0.8rem;
+  }
+}

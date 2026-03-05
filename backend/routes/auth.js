@@ -1,3 +1,19 @@
+// @route   POST /api/auth/logout
+// @desc    Logout user (clear cookies)
+// @access  Public
+router.post('/logout', (req, res) => {
+  res.clearCookie('token', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+  });
+  res.clearCookie('refreshToken', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+  });
+  res.json({ success: true, message: 'Logged out' });
+});
 
 const express = require('express');
 const router = express.Router();
@@ -29,7 +45,7 @@ router.put('/update-profile', protect, async (req, res) => {
     }
     
     await user.save();
-    res.json({ success: true, message: 'Profile updated successfully', data: user.toJSON() });
+    res.json({ success: true, user: user.toJSON() });
   } catch (error) {
     console.error('Update profile error:', error);
     res.status(500).json({ error: error.message || 'Server error' });
@@ -41,27 +57,32 @@ router.put('/update-profile', protect, async (req, res) => {
 // @access  Public
 router.post('/signup', async (req, res) => {
   try {
-
+    console.log('📝 Signup request received:', { name: req.body.name, email: req.body.email });
+    
     const { name, email, password } = req.body;
 
     // Validation
     if (!name || !email || !password) {
-      return res.status(400).json({ success: false, message: 'Please provide all required fields' });
+      console.log('❌ Validation failed: Missing fields');
+      return res.status(400).json({ error: 'Please provide all required fields' });
     }
 
     if (password.length < 8) {
-      return res.status(400).json({ success: false, message: 'Password must be at least 8 characters' });
+      console.log('❌ Validation failed: Password too short');
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
     }
     
     // Check for at least one number and one letter
     if (!/\d/.test(password) || !/[a-zA-Z]/.test(password)) {
-      return res.status(400).json({ success: false, message: 'Password must contain at least one letter and one number' });
+      console.log('❌ Validation failed: Password must contain letters and numbers');
+      return res.status(400).json({ error: 'Password must contain at least one letter and one number' });
     }
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ success: false, message: 'User already exists with this email' });
+      console.log('❌ User already exists:', email);
+      return res.status(400).json({ error: 'User already exists with this email' });
     }
 
     // Create user
@@ -72,13 +93,21 @@ router.post('/signup', async (req, res) => {
       role: 'user'  // Default role
     });
 
-    // Store user in session
-    req.session.user = user.toJSON();
+    console.log('✅ User created successfully:', user._id);
+
+    // Generate tokens
+    const { generateRefreshToken } = require('../middleware/auth');
+    const token = generateToken(user._id);
+    const refreshToken = generateRefreshToken(user._id);
+
+    console.log('✅ Tokens generated, sending response');
 
     res.status(201).json({
       success: true,
       message: 'User registered successfully',
-      data: {
+      token,
+      refreshToken,
+      user: {
         id: user._id,
         name: user.name,
         email: user.email,
@@ -100,44 +129,59 @@ router.post('/signin', async (req, res) => {
 
     // Validation
     if (!email || !password) {
-      return res.status(400).json({ success: false, message: 'Please provide email and password' });
+      return res.status(400).json({ error: 'Please provide email and password' });
     }
 
     // Find user (include password for comparison)
     const user = await User.findOne({ email }).select('+password');
     
     if (!user) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+      return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     // Check if user is active
     if (!user.isActive) {
-      return res.status(401).json({ success: false, message: 'Account is inactive. Please contact support.' });
+      return res.status(401).json({ error: 'Account is inactive. Please contact support.' });
     }
 
     // Check password
     const isMatch = await user.comparePassword(password);
     
     if (!isMatch) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+      return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     // Update last login
     user.lastLogin = Date.now();
     await user.save();
 
-    // Store user in session
-    req.session.user = user.toJSON();
+    // Generate tokens
+    const { generateRefreshToken } = require('../middleware/auth');
+    const token = generateToken(user._id);
+    const refreshToken = generateRefreshToken(user._id);
+
+    // Set tokens as HttpOnly cookies
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 60 * 60 * 1000 // 1 hour
+    });
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
 
     res.json({
       success: true,
       message: 'Login successful',
-      data: {
+      user: {
         id: user._id,
         name: user.name,
         email: user.email,
-        role: user.role,
-        subscription: user.subscription?.plan || 'free'
+        role: user.role
       }
     });
   } catch (error) {
@@ -155,8 +199,7 @@ router.get('/me', protect, async (req, res) => {
 
     res.json({
       success: true,
-      message: 'User data retrieved',
-      data: {
+      user: {
         id: user._id,
         name: user.name,
         email: user.email,
@@ -175,17 +218,29 @@ router.get('/me', protect, async (req, res) => {
   }
 });
 
-// @route   POST /api/auth/logout
-// @desc    Logout user
+// @route   POST /api/auth/refresh
+// @desc    Refresh access token using refresh token
 // @access  Public
-router.post('/logout', (req, res) => {
-  req.session.destroy((err) => {
-    if (err) {
-      return res.status(500).json({ error: 'Could not log out, please try again' });
+router.post('/refresh', async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+    
+    if (!refreshToken) {
+      return res.status(400).json({ error: 'Refresh token is required' });
     }
-    res.clearCookie('connect.sid'); // default express-session cookie name
-    res.json({ success: true, message: 'Logged out successfully', data: null });
-  });
+    
+    const { refreshAccessToken } = require('../middleware/auth');
+    const result = await refreshAccessToken(refreshToken);
+    
+    res.json({
+      success: true,
+      token: result.token,
+      user: result.user
+    });
+  } catch (error) {
+    console.error('Token refresh error:', error);
+    res.status(401).json({ error: 'Invalid or expired refresh token' });
+  }
 });
 
 module.exports = router;

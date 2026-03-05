@@ -459,25 +459,147 @@
   font-size: 1.2rem;
 }
 
-/* Responsive */
+/* ========================================
+   RESPONSIVE STYLES
+   ======================================== */
+
+/* Tablet Landscape */
+@media (max-width: 1024px) {
+  .hero-section {
+    height: 500px;
+  }
+  
+  .hero-title {
+    font-size: 3rem;
+  }
+  
+  .category-container h2 {
+    font-size: 2rem;
+  }
+  
+  .events-section {
+    padding: 3rem 1.5rem;
+  }
+  
+  .events-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Tablet Portrait */
 @media (max-width: 768px) {
+  .hero-section {
+    height: 450px;
+  }
+  
   .hero-title {
     font-size: 2.5rem;
   }
 
   .hero-subtitle {
     font-size: 1.1rem;
+    margin-bottom: 1.5rem;
   }
 
   .hero-search {
     flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .search-input {
+    padding: 0.875rem 1.25rem;
+  }
+  
+  .search-button {
+    padding: 0.875rem 2rem;
+    justify-content: center;
+  }
+  
+  .category-section {
+    padding: 2rem 1rem;
+  }
+  
+  .category-container h2 {
+    font-size: 1.75rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .category-buttons {
+    gap: 0.5rem;
+  }
+  
+  .category-btn {
+    padding: 0.6rem 1.25rem;
+    font-size: 0.9rem;
   }
 
+  .events-section {
+    padding: 2rem 1rem;
+  }
+  
   .events-grid {
     grid-template-columns: 1fr;
+    gap: 1.5rem;
   }
 
   .features-grid {
     grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+}
+
+/* Mobile Large */
+@media (max-width: 576px) {
+  .hero-section {
+    height: 400px;
+  }
+  
+  .hero-content {
+    padding: 0 1rem;
+  }
+  
+  .hero-title {
+    font-size: 2rem;
+  }
+  
+  .hero-subtitle {
+    font-size: 1rem;
+  }
+  
+  .search-input {
+    font-size: 0.9rem;
+  }
+  
+  .search-button {
+    font-size: 0.9rem;
+  }
+  
+  .category-container h2 {
+    font-size: 1.5rem;
+  }
+  
+  .category-btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+  }
+}
+
+/* Mobile Small */
+@media (max-width: 375px) {
+  .hero-section {
+    height: 350px;
+  }
+  
+  .hero-title {
+    font-size: 1.75rem;
+  }
+  
+  .hero-subtitle {
+    font-size: 0.9rem;
+  }
+  
+  .category-btn {
+    flex: 1 1 calc(50% - 0.5rem);
+    text-align: center;
   }
 }

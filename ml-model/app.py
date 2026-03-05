@@ -7,6 +7,7 @@ import json
 from datetime import datetime
 from dotenv import load_dotenv
 from fraud_detector import check_fraud
+from peak_hour_detector import predict_event_demand, detect_peak_hours
 
 # Load environment variables from root .env
 load_dotenv(os.path.join(os.path.dirname(__file__), '../.env'))
@@ -352,6 +353,20 @@ def batch_check_fraud():
 
 # ==================== PEAK HOUR DETECTION ROUTES ====================
 
+@app.route('/peak-hours/predict', methods=['GET'])
+def predict_peak_hours():
+    """Get peak hours prediction for ticket sales"""
+    try:
+        peak_hours = detect_peak_hours()
+        
+        return jsonify({
+            'success': True,
+            'peak_hours': peak_hours,
+            'timestamp': datetime.now().isoformat()
+        })
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
 
 
 @app.route('/peak-hours/event-demand', methods=['POST'])
@@ -385,6 +400,7 @@ def predict_event_demand_route():
         return jsonify({'error': str(e)}), 400
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
+    # Use ML_PORT for Flask, fall back to 5000 (PORT is reserved for Express backend)
+    port = int(os.environ.get('ML_PORT', 5000))
     debug_mode = os.environ.get('FLASK_DEBUG', '0') == '1'
     app.run(host='0.0.0.0', port=port, debug=debug_mode)
