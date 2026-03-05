@@ -1,8 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { API_URL, ML_API_URL } from '../config/api';
+import { API_URL} from '../config/api';
 import './Analytics.css';
+import Footer from './Footer';
 
 function Analytics() {
   const [analytics, setAnalytics] = useState(null);
@@ -67,8 +68,6 @@ function Analytics() {
     </div>
   );
 }
-
-import Footer from './Footer';
 
 export default function AnalyticsWrapper(props) {
   return (

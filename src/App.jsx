@@ -26,7 +26,15 @@ function AppContent() {
 
   // Redirect to home page after logout
   useEffect(() => {
-    if (!isAuthenticated && view !== 'home' && view !== 'login' && view !== 'signup') {
+    // Allow public access to home, login, signup, events, and purchase
+    if (
+      !isAuthenticated &&
+      view !== 'home' &&
+      view !== 'login' &&
+      view !== 'signup' &&
+      view !== 'events' &&
+      view !== 'purchase'
+    ) {
       setView('home');
     }
   }, [isAuthenticated, view]);

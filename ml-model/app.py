@@ -7,7 +7,7 @@ import json
 from datetime import datetime
 from dotenv import load_dotenv
 from fraud_detector import check_fraud
-from peak_hour_detector import predict_event_demand, detect_peak_hours
+from fraud_detector import check_fraud
 
 # Load environment variables from root .env
 load_dotenv(os.path.join(os.path.dirname(__file__), '../.env'))
