@@ -4,6 +4,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const axios = require('axios');
 const path = require('path');
+const cookieParser = require('cookie-parser');
 
 // Load environment variables from root .env
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
@@ -105,6 +106,7 @@ app.use(cors({
 // 4. Body parsing with size limits (prevent large payload attacks)
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(cookieParser());
 
 // 5. Input Sanitization Middleware
 app.use((req, res, next) => {
@@ -221,33 +223,10 @@ app.get('/api/health', async (req, res) => {
 });
 
 
-// HTTPS setup for local development
-const fs = require('fs');
-const https = require('https');
-const HTTPS_PORT = process.env.HTTPS_PORT || 3443;
-
-if (process.env.NODE_ENV === 'production') {
-  // In production, you should use a reverse proxy (like Nginx) to handle HTTPS
-  const PORT = process.env.PORT || 3001;
-  app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`📊 API: http://localhost:${PORT}/api`);
-  });
-} else {
-  // For local development, use self-signed certs
-  const keyPath = path.join(__dirname, 'server.key');
-  const certPath = path.join(__dirname, 'server.cert');
-  if (!fs.existsSync(keyPath) || !fs.existsSync(certPath)) {
-    console.error('Missing server.key or server.cert. Run `node generate-cert.js` in backend directory.');
-    process.exit(1);
-  }
-  const options = {
-    key: fs.readFileSync(keyPath),
-    cert: fs.readFileSync(certPath)
-  };
-  https.createServer(options, app).listen(HTTPS_PORT, () => {
-    console.log(`🚀 HTTPS server running on port ${HTTPS_PORT}`);
-    console.log(`📊 API: https://localhost:${HTTPS_PORT}/api`);
-  });
-}
+// Start HTTP server for all environments
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📊 API: http://localhost:${PORT}/api`);
+});
 

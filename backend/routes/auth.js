@@ -1,3 +1,7 @@
+const express = require('express');
+const router = express.Router();
+const User = require('../models/User');
+
 // @route   POST /api/auth/logout
 // @desc    Logout user (clear cookies)
 // @access  Public
@@ -14,10 +18,6 @@ router.post('/logout', (req, res) => {
   });
   res.json({ success: true, message: 'Logged out' });
 });
-
-const express = require('express');
-const router = express.Router();
-const User = require('../models/User');
 const { generateToken, protect } = require('../middleware/auth');
 const bcryptjs = require('bcryptjs');
 
