@@ -127,7 +127,7 @@ const eventSchema = new mongoose.Schema({
   },
   image: {
     type: String,
-    default: 'https://via.placeholder.com/400x250'
+    default: '/default-event.png'
   },
   ticketsSold: {
     type: Number,

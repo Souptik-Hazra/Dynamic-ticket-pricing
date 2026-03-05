@@ -67,7 +67,14 @@ export const AuthProvider = ({ children }) => {
 
   // Load user data
   const loadUser = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setUser(null);
+      setLoading(false);
+      return;
+    }
     try {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       const response = await axios.get(`${API_URL}/auth/me`);
       setUser(response.data.user);
     } catch (error) {

@@ -89,10 +89,6 @@ function AppContent() {
   }
 
   const handleNavigate = (page, data = null) => {
-    if (page === 'booking' && !isAuthenticated) {
-      setView('login');
-      return;
-    }
     setView(page);
     if (data) setSelectedEvent(data);
   };

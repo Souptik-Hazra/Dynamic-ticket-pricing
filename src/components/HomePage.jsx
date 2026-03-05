@@ -90,7 +90,7 @@ const HomePage = ({ onNavigate }) => {
           ) : (
             <div className="events-grid">
               {filteredEvents.map(event => (
-                <div key={event._id} className="event-card" onClick={() => onNavigate('booking', event)}>
+                <div key={event._id} className="event-card" onClick={() => onNavigate('purchase', event)}>
                   <div className="event-image">
                     <div className="event-badge">{event.category}</div>
                     <div className={`event-status-badge ${event.status}`}>{event.status}</div>
