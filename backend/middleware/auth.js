@@ -16,14 +16,17 @@ const JWT_EXPIRE = process.env.JWT_EXPIRE || '1h';
 const JWT_REFRESH_EXPIRE = process.env.JWT_REFRESH_EXPIRE || '7d';
 
 // Protect middleware: verify JWT and attach user
-// SECURITY: Only accept token from Authorization header (Bearer token)
+// Accept token from Authorization header (Bearer) or cookies
 const protect = async (req, res, next) => {
   let token = null;
-  
-  // Only accept token from Authorization header for security
+
+  // Prefer Authorization header, fallback to cookie
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
     token = req.headers.authorization.split(' ')[1];
+  } else if (req.cookies && req.cookies.token) {
+    token = req.cookies.token;
   }
+
   if (!token) {
     return res.status(401).json({ error: 'Not authorized, no token' });
   }

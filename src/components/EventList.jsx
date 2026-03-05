@@ -85,10 +85,7 @@ function EventList({ events, onUpdatePrice, onSelectEvent, onRefresh }) {
                   <img 
                     src={event.image} 
                     alt="" 
-                    onError={(e) => {
-                      e.target.style.display = 'none';
-                      e.target.nextSibling.style.display = 'flex';
-                    }}
+                    onError={(e) => { e.target.src = '/default-event.png'; }}
                   />
                 ) : null}
                 <span 

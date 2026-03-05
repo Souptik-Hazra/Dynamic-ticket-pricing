@@ -117,7 +117,7 @@ function TicketPurchase({ event, onBack, onSuccess }) {
 
       <div className="purchase-content">
         <div className="event-summary">
-          <img src={event.image} alt={event.name} />
+          <img src={event.image} alt={event.name} onError={e => { e.target.src = '/default-event.png'; }} />
           <h2>{event.name}</h2>
           <p className="venue">📍 {event.venue}</p>
           <p className="date">
