@@ -1,0 +1,16 @@
+@startuml
+' --- Admin Event Creation ---
+
+actor Admin
+participant "Frontend" as FE
+participant "Backend" as BE
+participant "MongoDB" as DB
+
+Admin -> FE: Fill event form
+FE -> BE: POST /admin/events
+BE -> DB: Insert new event
+DB --> BE: Insert result
+BE --> FE: Success/failure
+FE --> Admin: Show confirmation
+
+@enduml

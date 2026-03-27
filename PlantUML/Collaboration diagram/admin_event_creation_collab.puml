@@ -1,0 +1,27 @@
+@startuml
+title Collaboration Diagram: Admin Event Creation
+left to right direction
+skinparam linetype ortho
+skinparam objectBorderColor #2E86C1
+skinparam objectBackgroundColor #D6EAF8
+skinparam objectFontColor #154360
+skinparam objectFontSize 13
+skinparam nodesep 80
+skinparam ranksep 80
+
+object Admin as "Admin"
+object FE as "Frontend"
+object BE as "Backend"
+object DB as "Database"
+
+Admin -[#0000FF]-> FE : 1. Fill event form
+FE -[#0000FF]-> BE : 2. POST /admin/events
+BE -[#0000FF]-> BE : 3. Validate fields
+BE -[#0000FF]-> BE : 4. Check event date
+BE -[#0000FF]-> BE : 5. Set availableTickets
+BE -[#0000FF]-> DB : 6. Insert new event
+DB -[#0000FF]-> BE : 7. Insert result
+BE -[#0000FF]-> FE : 8. Success/failure
+FE -[#0000FF]-> Admin : 9. Show confirmation
+
+@enduml

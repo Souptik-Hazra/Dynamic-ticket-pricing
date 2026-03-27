@@ -1,0 +1,27 @@
+@startuml
+title Collaboration Diagram: User Login
+left to right direction
+skinparam linetype ortho
+skinparam objectBorderColor #2E86C1
+skinparam objectBackgroundColor #D6EAF8
+skinparam objectFontColor #154360
+skinparam objectFontSize 13
+skinparam nodesep 80
+skinparam ranksep 80
+
+object User as "User"
+object FE as "Frontend"
+object BE as "Backend"
+object DB as "Database"
+
+User -[#0000FF]-> FE : 1. Enter credentials
+FE -[#0000FF]-> BE : 2. POST /login
+BE -[#0000FF]-> BE : 3. Validate input
+BE -[#0000FF]-> DB : 4. Query user by email
+DB -[#0000FF]-> BE : 5. User data
+BE -[#0000FF]-> BE : 6. Verify password hash
+BE -[#0000FF]-> BE : 7. Generate JWT token
+BE -[#0000FF]-> FE : 8. Auth result
+FE -[#0000FF]-> User : 9. Show dashboard or error
+
+@enduml

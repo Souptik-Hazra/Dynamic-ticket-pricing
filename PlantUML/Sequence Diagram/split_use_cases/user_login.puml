@@ -1,0 +1,16 @@
+@startuml
+' --- User Login ---
+
+actor User
+participant "Frontend" as FE
+participant "Backend" as BE
+participant "MongoDB" as DB
+
+User -> FE: Enter credentials
+FE -> BE: POST /login
+BE -> DB: Query user
+DB --> BE: User data
+BE -> FE: Auth result (success/fail)
+FE -> User: Show dashboard or error
+
+@enduml

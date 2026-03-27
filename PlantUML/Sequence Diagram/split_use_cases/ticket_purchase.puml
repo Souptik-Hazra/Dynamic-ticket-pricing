@@ -1,0 +1,19 @@
+@startuml
+' --- Ticket Purchase ---
+
+actor User
+participant "Frontend" as FE
+participant "Backend" as BE
+participant "ML" as ML
+participant "MongoDB" as DB
+
+User -> FE: Select event, buy ticket
+FE -> BE: POST /purchase
+BE -> ML: Predict price/fraud
+ML --> BE: Prediction result
+BE -> DB: Create ticket, log purchase
+DB --> BE: Confirmation
+BE -> FE: Purchase result
+FE -> User: Show ticket/confirmation
+
+@enduml
