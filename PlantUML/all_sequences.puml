@@ -57,7 +57,7 @@ FE --> User : Update UI price
 ' --- Ticket Purchase ---
 User -> FE: Select event, buy ticket
 FE -> BE: POST /purchase
-BE -> ML: Predict price/fraud
+BE -> ML: Predict price
 ML --> BE: Prediction result
 BE -> DB: Create ticket, log purchase
 DB --> BE: Confirmation

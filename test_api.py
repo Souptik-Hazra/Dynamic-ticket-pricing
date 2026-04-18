@@ -14,9 +14,6 @@ if not token:
 
 headers = {'Authorization': f'Bearer {token}'}
 
-# Step 2: Test admin fraud analytics endpoint
-r2 = requests.get(f'{BASE_URL}/api/admin/fraud-analytics', headers=headers)
-print("Fraud Analytics Response:", r2.status_code, r2.text)
 
 # Step 3: Test admin events endpoint
 r3 = requests.get(f'{BASE_URL}/api/admin/events', headers=headers)

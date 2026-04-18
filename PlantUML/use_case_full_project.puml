@@ -1,6 +1,5 @@
 @startuml
 left to right direction
-left to right direction
 
 skinparam shadowing false
 skinparam usecaseBorderColor #2E86C1
@@ -16,7 +15,6 @@ actor Admin
 actor "Database" as DB
 actor "ML Service" as ML
 
-rectangle "Dynamic Ticket Pricing System" {
 rectangle "Dynamic Ticket Pricing System" {
 
     (Register) as UC1
@@ -49,7 +47,6 @@ rectangle "Dynamic Ticket Pricing System" {
     (Store Prediction Logs) as UD6
 
     (Predict Price) as UM1
-    (Detect Fraud) as UM2
     (Analyze Demand) as UM3
     (Log Prediction) as UM4
 }
@@ -109,11 +106,9 @@ DB -down- UD5
 DB -down- UD6
 
 ML -right- UM1
-ML -right- UM2
 ML -right- UM3
 ML -right- UM4
 ML -down- UM1
-ML -down- UM2
 ML -down- UM3
 ML -down- UM4
 

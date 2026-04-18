@@ -127,7 +127,6 @@ class Admin {
     +deleteEvent()
     +viewStats()
     +viewTickets()
-    +viewFraudAnalytics()
     +manageUsers()
     +manageMLModel()
 }
@@ -155,6 +154,7 @@ class MLModel {
     +train()
     +predict()
     +update()
+}
 class MonthlySubscription {
 }
 class AnnualSubscription {
