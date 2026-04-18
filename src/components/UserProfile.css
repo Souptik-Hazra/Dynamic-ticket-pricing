@@ -28,6 +28,23 @@
   align-items: center;
   gap: 1.5rem;
   padding: 2.5rem 2rem;
+  flex-wrap: wrap; /* Added for mobile */
+}
+
+@media (max-width: 600px) {
+  .profile-header-content {
+    flex-direction: column;
+    text-align: center;
+    padding: 2rem 1rem;
+  }
+  
+  .profile-avatar {
+    margin: 0 auto;
+  }
+
+  .profile-meta {
+    justify-content: center;
+  }
 }
 
 .profile-avatar {
@@ -49,6 +66,7 @@
 
 .profile-header-info {
   flex: 1;
+  min-width: 200px; /* Ensure content doesn't get too squeezed */
 }
 
 .profile-display-name {
@@ -95,16 +113,18 @@
   background: #1e1e2e;
   border-radius: 14px;
   padding: 0.35rem;
+  flex-wrap: wrap; /* Fixed: Allow wrapping on mobile */
 }
 
 .profile-tab {
   flex: 1;
-  padding: 0.85rem 1.2rem;
+  min-width: 120px; /* Fixed: Ensure content has enough room */
+  padding: 0.85rem 0.5rem;
   border: none;
   border-radius: 11px;
   background: transparent;
   color: #aaa;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.25s ease;
@@ -112,6 +132,14 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+}
+
+@media (max-width: 480px) {
+  .profile-tab {
+    font-size: 0.8rem;
+    padding: 0.75rem 0.25rem;
+    min-width: 100px;
+  }
 }
 
 .profile-tab:hover {
@@ -1042,6 +1070,68 @@
 .status-badge.completed {
   background: rgba(16, 185, 129, 0.15);
   color: #10b981;
+}
+
+/* ===== Responsive Mobile Styles ===== */
+@media (max-width: 768px) {
+  .payments-table-container {
+    background: none;
+    border: none;
+  }
+
+  .payments-table thead {
+    display: none; /* Hide headers on mobile */
+  }
+
+  .payments-table, 
+  .payments-table tbody, 
+  .payments-table tr, 
+  .payments-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .payments-table tr {
+    margin-bottom: 1rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 0.5rem;
+  }
+
+  .payments-table td {
+    text-align: right;
+    padding: 0.75rem 1rem;
+    position: relative;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .payments-table td:last-child {
+    border-bottom: none;
+  }
+
+  /* Use data-label for row labels */
+  .payments-table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: #888;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .transaction-id {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .payment-method-badge {
+    padding: 0.2rem 0.5rem;
+  }
 }
 
 .status-badge.pending {

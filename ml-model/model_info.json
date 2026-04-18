@@ -1,5 +1,5 @@
 {
-  "modelVersion": "v2.0.20260302",
+  "modelVersion": "v2.0.20260418",
   "modelType": "XGBRegressor (XGBoost)",
   "features": [
     "demand",
@@ -31,7 +31,7 @@
     "subsample": 0.9
   },
   "metadata": {
-    "trainedAt": "2026-03-02T09:55:48.924289",
+    "trainedAt": "2026-04-18T14:55:46.188878",
     "currency": "INR"
   }
 }

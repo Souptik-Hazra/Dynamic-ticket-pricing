@@ -24,6 +24,7 @@
   font-size: 1.6rem;
   font-weight: 700;
   margin: 0;
+  color: #000 !important; /* Enforced Black Font */
 }
 
 .unread-badge {
@@ -179,5 +180,5 @@
   .notif-item-message { color: #aaa; }
   .notif-action-btn   { background: #2a2a3a; border-color: #444; color: #eee; }
   .notif-action-btn:hover { background: #333; }
-  .notif-title-row h2 { color: #eee; }
+  /* Title remains black for contrast */
 }

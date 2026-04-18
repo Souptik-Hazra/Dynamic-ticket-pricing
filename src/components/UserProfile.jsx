@@ -600,27 +600,27 @@ const UserProfile = () => {
                 <tbody>
                   {payments.map((p) => (
                     <tr key={p._id}>
-                      <td>
+                      <td data-label="Date">
                         {p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-IN', {
                           day: 'numeric', month: 'short'
                         }) : '—'}
                       </td>
-                      <td style={{ fontWeight: 600 }}>{p.eventId?.name || 'Ticket Purchase'}</td>
-                      <td>
+                      <td data-label="Event" style={{ fontWeight: 600 }}>{p.eventId?.name || 'Ticket Purchase'}</td>
+                      <td data-label="Transaction">
                         <code className="transaction-id" title={p.transactionId || p._id}>
                           {(p.transactionId || p._id).substring(0, 10)}...
                         </code>
                       </td>
-                      <td>
+                      <td data-label="Method">
                         <span className="payment-method-badge">
                           {p.paymentMethod === 'card' ? '💳' : '📱'} {p.paymentMethod}
                         </span>
                       </td>
-                      <td className="payment-amount">₹{p.amount?.toFixed(2)}</td>
-                      <td>
+                      <td data-label="Amount" className="payment-amount">₹{p.amount?.toFixed(2)}</td>
+                      <td data-label="Status">
                         <span className={`status-badge ${p.status}`}>{p.status}</span>
                       </td>
-                      <td>
+                      <td data-label="Action">
                         {p.status === 'completed' && (
                           <button
                             className="refund-btn"

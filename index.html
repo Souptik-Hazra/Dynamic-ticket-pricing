@@ -8,7 +8,9 @@
     <script>
       // Console Sanitizer: Silences unavoidable errors from browser extensions
       window.addEventListener('error', function(e) {
-        if (e.message.includes('querySelector') || e.filename.includes('extension')) {
+        if (e.message?.includes('querySelector') || 
+            e.message?.includes('disconnected port') || 
+            e.filename?.includes('extension')) {
           e.stopImmediatePropagation();
         }
       }, true);
@@ -16,7 +18,8 @@
       // Silence specifically the one from the logs
       const originalConsoleError = console.error;
       console.error = function() {
-        if (arguments[0] && typeof arguments[0] === 'string' && arguments[0].includes('querySelector')) return;
+        const msg = (arguments[0] && typeof arguments[0] === 'string') ? arguments[0] : '';
+        if (msg?.includes('querySelector') || msg?.includes('disconnected port')) return;
         originalConsoleError.apply(console, arguments);
       };
     </script>
