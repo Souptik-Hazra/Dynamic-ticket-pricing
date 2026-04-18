@@ -148,7 +148,6 @@ export default function EventListWrapper(props) {
   return (
     <>
       <EventList {...props} />
-      <Footer />
     </>
   );
 }

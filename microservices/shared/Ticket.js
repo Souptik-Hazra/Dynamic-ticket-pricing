@@ -42,4 +42,4 @@ TicketSchema.pre('save', function(next) {
   next();
 });
 
-export default mongoose.model('Ticket', TicketSchema);
+export default mongoose.models.Ticket || mongoose.model('Ticket', TicketSchema);

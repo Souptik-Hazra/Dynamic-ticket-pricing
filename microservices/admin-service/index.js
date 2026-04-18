@@ -98,24 +98,31 @@ app.get('/api/admin/events', auth, async (req, res, next) => {
 });
 
 app.post('/api/admin/events', auth, async (req, res, next) => {
+  console.log('[AdminService] Creating event with body:', JSON.stringify(req.body, null, 2));
   try {
     const event = await Event.create(req.body);
+    console.log('[AdminService] Event created successfully:', event._id);
     // Invalidate all event list versions
     cacheDelPattern(CACHE_KEYS.EVENT_LIST_ALL);
     res.status(201).json({ event });
-  } catch (err) { next(err); }
+  } catch (err) {
+    console.error('[AdminService] Event creation error:', err.message, err.stack);
+    next(err);
+  }
 });
 
 app.put('/api/admin/events/:id', auth, async (req, res, next) => {
   try {
-    const event = await Event.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true,
-    });
+    const id = req.params.id;
+    const event = await Event.findById(id);
     if (!event) return res.status(404).json({ error: 'Event not found' });
     
+    // Apply updates and trigger pre-save hook for financial recalculation
+    Object.assign(event, req.body);
+    await event.save();
+    
     // Invalidate detail and all lists
-    cacheDel(CACHE_KEYS.EVENT_DETAIL(req.params.id));
+    cacheDel(CACHE_KEYS.EVENT_DETAIL(id));
     cacheDelPattern(CACHE_KEYS.EVENT_LIST_ALL);
     res.json({ event });
   } catch (err) { next(err); }
@@ -160,89 +167,6 @@ app.get('/api/admin/tickets', auth, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   FRAUD ANALYTICS
-═══════════════════════════════════════════════════════════════════════════ */
-app.get('/api/admin/fraud-analytics', auth, async (req, res, next) => {
-  try {
-    // Per-user purchase aggregation
-    const userAgg = await Ticket.aggregate([
-      { $match: { status: 'confirmed' } },
-      {
-        $group: {
-          _id:            '$userId',
-          totalPurchases: { $sum: 1 },
-          totalTickets:   { $sum: '$quantity' },
-          totalSpent:     { $sum: '$totalAmount' },
-          avgQty:         { $avg: '$quantity' },
-          maxQty:         { $max: '$quantity' },
-          emails:         { $addToSet: '$customerEmail' },
-          names:          { $addToSet: '$customerName' },
-        },
-      },
-      { $sort: { totalTickets: -1 } },
-      { $limit: 50 },
-    ]);
-
-    const rankings = userAgg.map((u) => {
-      let score = 0;
-      const reasons = [];
-      if (u.totalTickets > 30)  { score += 40; reasons.push('Very high ticket volume (>30)'); }
-      else if (u.totalTickets > 15) { score += 20; reasons.push('High ticket volume (>15)'); }
-      if (u.maxQty >= 15)  { score += 30; reasons.push('Max-per-purchase limit reached'); }
-      if (u.totalPurchases > 10) { score += 20; reasons.push('Frequent buyer (>10 orders)'); }
-      if (u.avgQty > 8)    { score += 10; reasons.push('High average qty per order'); }
-
-      return {
-        userId:               u._id,
-        userName:             u.names[0]  || 'Unknown',
-        userEmail:            u.emails[0] || 'Unknown',
-        totalPurchases:       u.totalPurchases,
-        totalTickets:         u.totalTickets,
-        totalSpent:           u.totalSpent,
-        avgTicketsPerPurchase: parseFloat(u.avgQty.toFixed(1)),
-        fraudScore:           score,
-        flaggedReasons:       reasons,
-        riskLevel:            score >= 50 ? 'high' : score >= 20 ? 'medium' : 'low',
-      };
-    });
-
-    // Timeline — last 30 days bucketed by day
-    const since = new Date(Date.now() - 30 * 86400000);
-    const timelineAgg = await Ticket.aggregate([
-      { $match: { purchaseDate: { $gte: since } } },
-      {
-        $group: {
-          _id:   { $dateToString: { format: '%Y-%m-%d', date: '$purchaseDate' } },
-          total: { $sum: 1 },
-        },
-      },
-      { $sort: { _id: 1 } },
-    ]);
-    const timeline = timelineAgg.map((d) => ({
-      date:   d._id,
-      total:  d.total,
-      high:   0,
-      medium: 0,
-      low:    d.total,
-    }));
-
-    const summary = {
-      totalUsers:             rankings.length,
-      highRiskUsers:          rankings.filter((u) => u.riskLevel === 'high').length,
-      mediumRiskUsers:        rankings.filter((u) => u.riskLevel === 'medium').length,
-      lowRiskUsers:           rankings.filter((u) => u.riskLevel === 'low').length,
-      avgFraudScore:          rankings.length
-        ? (rankings.reduce((s, u) => s + u.fraudScore, 0) / rankings.length).toFixed(1)
-        : '0.0',
-      suspiciousActivityRate: rankings.length
-        ? ((rankings.filter((u) => u.riskLevel !== 'low').length / rankings.length) * 100).toFixed(1)
-        : '0.0',
-    };
-
-    res.json({ fraudAnalytics: { summary, userRankings: rankings, timeline } });
-  } catch (err) { next(err); }
-});
 
 /* ═══════════════════════════════════════════════════════════════════════════
    USERS

@@ -57,26 +57,44 @@ const eventSchema = new mongoose.Schema(
 );
 
 /* ── Pre-save: default availableSeats, maxPrice, sync derived fields ─────── */
-eventSchema.pre('save', function (next) {
-  if (this.ticketCategories?.length > 0) {
+eventSchema.pre('save', async function () {
+  if (this.ticketCategories && this.ticketCategories.length > 0) {
     // Initialise defaults on new sub-docs
     this.ticketCategories.forEach((cat) => {
-      if (cat.availableSeats == null) cat.availableSeats = cat.seats;
-      if (!cat.maxPrice) cat.maxPrice = cat.price * 2;
+      if (cat.availableSeats == null) cat.availableSeats = cat.seats || 0;
+      if (!cat.maxPrice) cat.maxPrice = (cat.price || 0) * 2;
     });
 
-    this.capacity         = this.ticketCategories.reduce((s, c) => s + c.seats, 0);
-    this.availableTickets = this.ticketCategories.reduce((s, c) => s + (c.availableSeats ?? c.seats), 0);
-    this.ticketsSold      = this.capacity - this.availableTickets;
-    this.basePrice        = Math.min(...this.ticketCategories.map((c) => c.price));
-    this.currentPrice     = this.basePrice;
+    const categoriesWithPrice = this.ticketCategories.filter(c => typeof c.price === 'number' && !isNaN(c.price));
+    
+    this.capacity         = this.ticketCategories.reduce((s, c) => s + (Number(c.seats) || 0), 0);
+    this.availableTickets = this.ticketCategories.reduce((s, c) => s + (Number(c.availableSeats) || 0), 0);
+    this.ticketsSold      = Math.max(0, this.capacity - this.availableTickets);
+    
+    if (categoriesWithPrice.length > 0) {
+      this.basePrice = Math.min(...categoriesWithPrice.map((c) => c.price));
+    } else {
+      this.basePrice = 0;
+    }
+    
+    this.currentPrice     = this.currentPrice || this.basePrice || 0;
     
     // Financial calculations
-    this.baseRevenue      = this.basePrice * this.ticketsSold;
-    this.profitAmount     = Math.max(0, this.totalRevenue - this.baseRevenue);
+    // baseRevenue is the sum of (originalPrice * ticketsSoldInCategory) for all categories
+    this.baseRevenue = this.ticketCategories.reduce((sum, cat) => {
+      const soldInCategory = Math.max(0, (cat.seats || 0) - (cat.availableSeats || 0));
+      return sum + (soldInCategory * (cat.price || 0));
+    }, 0);
+
+    this.profitAmount     = Math.max(0, (this.totalRevenue || 0) - this.baseRevenue);
     this.profitPercentage = this.baseRevenue > 0 ? (this.profitAmount / this.baseRevenue) * 100 : 0;
+  } else {
+    // defaults if no categories
+    this.capacity = 0;
+    this.availableTickets = 0;
+    this.ticketsSold = 0;
+    this.basePrice = 0;
   }
-  next();
 });
 
 const Event = mongoose.models.Event || mongoose.model('Event', eventSchema);

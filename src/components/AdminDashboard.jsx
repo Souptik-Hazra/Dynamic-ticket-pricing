@@ -15,10 +15,12 @@ function AdminDashboard() {
   const [events, setEvents]               = useState([]);
   const [tickets, setTickets]             = useState([]);
   const [users, setUsers]                 = useState([]);
-  const [fraudAnalytics, setFraudAnalytics] = useState(null);
   const [loading, setLoading]             = useState(false);
   const [showEventForm, setShowEventForm] = useState(false);
   const [editingEvent, setEditingEvent]   = useState(null);
+  const [userSearch, setUserSearch]       = useState(''); 
+  const [eventSearch, setEventSearch]     = useState(''); 
+  const [roleFilter, setRoleFilter]         = useState('all');
 
   // Real-time: refresh stats when a ticket is sold
   useEffect(() => {
@@ -36,7 +38,6 @@ function AdminDashboard() {
     if (view === 'stats')   fetchStats();
     if (view === 'events')  fetchEvents();
     if (view === 'tickets') fetchTickets();
-    if (view === 'fraud')   fetchFraudAnalytics();
     if (view === 'users')   fetchUsers();
   }, [view]);
 
@@ -73,16 +74,6 @@ function AdminDashboard() {
     } finally { setLoading(false); }
   };
 
-  const fetchFraudAnalytics = async () => {
-    try {
-      setLoading(true);
-      const { data } = await axios.get(buildUrl(ENDPOINTS.ADMIN_FRAUD), authHeaders());
-      setFraudAnalytics(data.fraudAnalytics);
-    } catch (err) {
-      console.error('Fraud error:', err);
-      alert('Failed to fetch fraud analytics');
-    } finally { setLoading(false); }
-  };
 
   const fetchUsers = async () => {
     try {
@@ -115,6 +106,24 @@ function AdminDashboard() {
   const fmtDate = (d) =>
     new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
+  const getAvatarColor = (name) => {
+    const colors = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b', '#fa709a'];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    return colors[Math.abs(hash) % colors.length];
+  };
+
+  const getInitials = (name) => {
+    return name?.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2) || '?';
+  };
+
+  const filteredUsers = users.filter(u => {
+    const matchesSearch = u.name?.toLowerCase().includes(userSearch.toLowerCase()) || 
+                          u.email?.toLowerCase().includes(userSearch.toLowerCase());
+    const matchesRole = roleFilter === 'all' || u.role === roleFilter;
+    return matchesSearch && matchesRole;
+  });
+
   return (
     <div className="admin-dashboard">
       <header className="admin-header">
@@ -132,7 +141,6 @@ function AdminDashboard() {
         <button className={view === 'events'  ? 'active' : ''} onClick={() => setView('events')}>🎭 Manage Events</button>
         <button className={view === 'tickets' ? 'active' : ''} onClick={() => setView('tickets')}>🎟️ Ticket Buyers</button>
         <button className={view === 'users'   ? 'active' : ''} onClick={() => setView('users')}>👥 Users</button>
-        <button className={view === 'fraud'   ? 'active' : ''} onClick={() => setView('fraud')}>🚨 Fraud Analytics</button>
       </nav>
 
       <main className="admin-content">
@@ -175,58 +183,100 @@ function AdminDashboard() {
         {/* ── Events ────────────────────────────────────────────────────── */}
         {view === 'events' && (
           <div className="events-view">
-            <div className="events-header">
-              <h2>Event Management</h2>
-              <button className="create-event-btn" onClick={() => { setEditingEvent(null); setShowEventForm(true); }}>
-                ➕ Create New Event
-              </button>
+            <div className="view-header-row">
+              <h2 className="view-title">System Event Management</h2>
+              <div className="header-actions">
+                <div className="search-box-container">
+                  <span className="search-icon">🔍</span>
+                  <input 
+                    type="text" 
+                    placeholder="Search all events by name or venue..." 
+                    className="admin-search-input"
+                    value={eventSearch}
+                    onChange={(e) => setEventSearch(e.target.value)}
+                  />
+                  {eventSearch && (
+                    <button className="clear-search" onClick={() => setEventSearch('')}>✕</button>
+                  )}
+                </div>
+                <button className="create-event-btn" onClick={() => { setEditingEvent(null); setShowEventForm(true); }}>
+                  ➕ Create New Event
+                </button>
+              </div>
             </div>
+
             {showEventForm && (
               <AdminEventForm event={editingEvent} onClose={handleEventFormClose} />
             )}
+
             {!showEventForm && (
               <div className="events-list">
-                {events.length === 0 ? (
-                  <p className="no-events">No events found. Create one to get started!</p>
+                {events.filter(ev => 
+                  ev.name.toLowerCase().includes(eventSearch.toLowerCase()) || 
+                  ev.venue.toLowerCase().includes(eventSearch.toLowerCase())
+                ).length === 0 ? (
+                  <div className="no-data">
+                    <p>{eventSearch ? 'No global events match your search.' : 'No events in the system.'}</p>
+                  </div>
                 ) : (
-                  <table className="events-table">
+                  <table className="admin-table events-table high-contrast-table">
                     <thead>
                       <tr>
-                        <th>Event Name</th><th>Venue</th><th>Date</th>
-                        <th>Capacity</th><th>Sold</th><th>Base Revenue</th>
-                        <th>Actual Revenue</th><th>Profit Margin</th><th>Status</th><th>Actions</th>
+                        <th>Event Details</th>
+                        <th>Date & Time</th>
+                        <th>Sold</th>
+                        <th>Base Revenue</th>
+                        <th>Collected Revenue</th>
+                        <th>Profit Margin</th>
+                        <th>Status</th>
+                        <th>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {events.map((event) => (
+                      {events
+                        .filter(ev => 
+                          ev.name.toLowerCase().includes(eventSearch.toLowerCase()) || 
+                          ev.venue.toLowerCase().includes(eventSearch.toLowerCase())
+                        )
+                        .map((event) => (
                         <tr key={event._id}>
-                          <td><strong>{event.name}</strong></td>
-                          <td>{event.venue}</td>
-                          <td>
-                            {event.startDate
-                              ? (() => {
-                                  const fmt = { month: 'short', day: 'numeric', year: 'numeric' };
-                                  const s = new Date(event.startDate).toLocaleDateString('en-US', fmt);
-                                  const e = event.endDate ? new Date(event.endDate).toLocaleDateString('en-US', fmt) : null;
-                                  return e && e !== s ? `${s} – ${e}` : s;
-                                })()
-                              : 'N/A'}
+                          <td className="event-info-cell">
+                            <div className="event-name-bold">{event.name}</div>
+                            <div className="event-venue-sub">📍 {event.venue}</div>
                           </td>
-                          <td>{event.capacity}</td>
-                          <td>{event.ticketsSold}</td>
-                          <td>₹{event.baseRevenue?.toFixed(2) || '0.00'}</td>
-                          <td>₹{event.totalRevenue?.toFixed(2) || '0.00'}</td>
-                          <td>
-                            <span className={`profit-badge ${(event.profitAmount || 0) > 0 ? 'positive' : (event.profitAmount || 0) < 0 ? 'negative' : 'neutral'}`}>
-                              {(event.profitAmount || 0) > 0 ? '+' : ''}₹{event.profitAmount?.toFixed(2) || '0.00'}
-                              <small> ({event.profitPercentage?.toFixed(1) || 0}%)</small>
-                            </span>
+                          <td className="date-cell">
+                            <div className="date-main">{new Date(event.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                            <div className="date-sub">{new Date(event.startDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
                           </td>
-                          <td><span className={`status-badge ${event.status}`}>{event.status}</span></td>
+                          <td className="sold-cell">
+                            <div className="sold-count">
+                              <span className="count-pill">{event.ticketsSold}</span> / {event.capacity}
+                            </div>
+                            <div className="sold-progress-bg">
+                              <div className="sold-progress-fill" style={{ width: `${(event.ticketsSold / event.capacity) * 100}%` }}></div>
+                            </div>
+                          </td>
+                          <td>
+                            <div className="amount-dim">₹{event.baseRevenue?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+                          </td>
+                          <td className="revenue-cell">
+                            <div className="amount-bold">₹{event.totalRevenue?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+                          </td>
+                          <td>
+                            <div className={`profit-amount ${(event.profitAmount || 0) > 0 ? 'positive' : 'neutral'}`}>
+                              +₹{event.profitAmount?.toFixed(2) || '0.00'}
+                            </div>
+                            <div className="profit-percent">
+                              ({event.profitPercentage?.toFixed(1) || '0.0'}%)
+                            </div>
+                          </td>
+                          <td>
+                            <span className={`status-pill ${event.status}`}>{event.status.toUpperCase()}</span>
+                          </td>
                           <td>
                             <div className="action-buttons">
-                              <button className="edit-btn" onClick={() => { setEditingEvent(event); setShowEventForm(true); }}>✏️</button>
-                              <button className="delete-btn" onClick={() => handleDeleteEvent(event._id)}>🗑️</button>
+                              <button className="edit-btn" onClick={() => { setEditingEvent(event); setShowEventForm(true); }} title="Edit">✏️</button>
+                              <button className="delete-btn" onClick={() => handleDeleteEvent(event._id)} title="Delete">🗑️</button>
                             </div>
                           </td>
                         </tr>
@@ -290,100 +340,108 @@ function AdminDashboard() {
         {view === 'users' && (
           <div className="users-view">
             <div className="view-header">
-              <h2>👥 Registered Users</h2>
-              <button className="refresh-btn" onClick={fetchUsers}>🔄 Refresh</button>
+              <div className="title-group">
+                <h2>👥 Registered Users</h2>
+                <span className="count-pill">{users.length} total</span>
+              </div>
+              <div className="user-controls">
+                <div className="search-bar">
+                  <span className="search-icon">🔍</span>
+                  <input 
+                    type="text" 
+                    placeholder="Search by name or email..." 
+                    value={userSearch}
+                    onChange={(e) => setUserSearch(e.target.value)}
+                  />
+                </div>
+                <select 
+                  className="role-select"
+                  value={roleFilter}
+                  onChange={(e) => setRoleFilter(e.target.value)}
+                >
+                  <option value="all">All Roles</option>
+                  <option value="admin">Admins</option>
+                  <option value="organizer">Organizers</option>
+                  <option value="user">Members</option>
+                </select>
+                <button className="refresh-btn" onClick={fetchUsers}>🔄 Refresh</button>
+              </div>
             </div>
-            {users.length === 0 && !loading ? (
-              <div className="no-data"><p>No users found.</p></div>
+
+            {filteredUsers.length === 0 && !loading ? (
+              <div className="no-data">
+                <div className="no-data-icon">🔍</div>
+                <p>{userSearch || roleFilter !== 'all' ? 'No users match your criteria' : 'No users found.'}</p>
+                {(userSearch || roleFilter !== 'all') && (
+                  <button className="clear-filter-btn" onClick={() => { setUserSearch(''); setRoleFilter('all'); }}>
+                    Clear Filters
+                  </button>
+                )}
+              </div>
             ) : (
               <>
-                <div className="tickets-table-container">
+                <div className="tickets-table-container user-table-container">
                   <table className="admin-table">
                     <thead>
                       <tr>
-                        <th>Name</th><th>Email</th><th>Role</th>
-                        <th>Subscription</th><th>City</th><th>Joined</th>
+                        <th>User Identity</th><th>Role</th>
+                        <th>Subscription</th><th>Location</th><th>Joined</th><th>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {users.map((u) => (
+                      {filteredUsers.map((u) => (
                         <tr key={u._id}>
-                          <td><strong>{u.name}</strong></td>
-                          <td>{u.email}</td>
-                          <td><span className={`status-badge ${u.role}`}>{u.role}</span></td>
+                          <td>
+                            <div className="user-cell">
+                              <div className="user-avatar" style={{ backgroundColor: getAvatarColor(u.name) }}>
+                                {getInitials(u.name)}
+                              </div>
+                              <div className="user-name-group">
+                                <span className="user-name">{u.name}</span>
+                                <span className="user-email-sub">{u.email}</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td><span className={`role-badge ${u.role}`}>{u.role}</span></td>
                           <td>
                             {u.subscription?.plan && u.subscription.plan !== 'none'
-                              ? <span className="category-badge">{u.subscription.plan.replace(/_/g, ' ').toUpperCase()}
-                                  {u.subscription.isActive ? ' ✓' : ' ✗'}
-                                </span>
-                              : <span className="status-badge">Free</span>}
+                              ? <div className="sub-badge active">
+                                  <span className="sub-icon">⭐</span>
+                                  {u.subscription.plan.replace(/_/g, ' ').toUpperCase()}
+                                </div>
+                              : <span className="sub-badge free">Free Member</span>}
                           </td>
-                          <td>{u.city || '—'}</td>
-                          <td>{fmtDate(u.createdAt)}</td>
+                          <td className="city-cell">{u.city || '—'}</td>
+                          <td className="date-cell">{fmtDate(u.createdAt)}</td>
+                          <td>
+                            <button className="manage-btn" title="Manage User">⚙️</button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
                 <div className="tickets-summary">
-                  <div className="summary-card"><span className="label">Total Users</span><span className="value">{users.length}</span></div>
-                  <div className="summary-card"><span className="label">Subscribers</span><span className="value">{users.filter(u => u.subscription?.isActive).length}</span></div>
-                  <div className="summary-card"><span className="label">Free Users</span><span className="value">{users.filter(u => !u.subscription?.isActive).length}</span></div>
+                  <div className="summary-card">
+                    <span className="label">Total System Users</span>
+                    <span className="value">{users.length}</span>
+                  </div>
+                  <div className="summary-card">
+                    <span className="label">Active Subscribers</span>
+                    <span className="value highlighting">{users.filter(u => u.subscription?.isActive).length}</span>
+                  </div>
+                  <div className="summary-card">
+                    <span className="label">Growth Ratio</span>
+                    <span className="value">
+                      {users.length > 0 ? ((users.filter(u => u.subscription?.isActive).length / users.length) * 100).toFixed(0) : 0}%
+                    </span>
+                  </div>
                 </div>
               </>
             )}
           </div>
         )}
 
-        {/* ── Fraud ─────────────────────────────────────────────────────── */}
-        {view === 'fraud' && fraudAnalytics && (
-          <div className="fraud-view">
-            <h2>🚨 Fraud Risk Analytics</h2>
-            <div className="fraud-summary-grid">
-              {[
-                { icon: '👥', label: 'Total Users',       val: fraudAnalytics.summary.totalUsers },
-                { icon: '🔴', label: 'High Risk',         val: fraudAnalytics.summary.highRiskUsers,   cls: 'high-risk' },
-                { icon: '🟡', label: 'Medium Risk',       val: fraudAnalytics.summary.mediumRiskUsers, cls: 'medium-risk' },
-                { icon: '🟢', label: 'Low Risk',          val: fraudAnalytics.summary.lowRiskUsers,    cls: 'low-risk' },
-                { icon: '📊', label: 'Avg Fraud Score',   val: fraudAnalytics.summary.avgFraudScore },
-                { icon: '⚠️', label: 'Suspicious Rate',  val: `${fraudAnalytics.summary.suspiciousActivityRate}%` },
-              ].map(({ icon, label, val, cls }) => (
-                <div key={label} className={`fraud-card ${cls || ''}`}>
-                  <div className="card-icon">{icon}</div>
-                  <div className="card-content"><h4>{label}</h4><p className="card-value">{val}</p></div>
-                </div>
-              ))}
-            </div>
-            <div className="fraud-user-rankings">
-              <h3>User Fraud Risk Rankings (Top 50)</h3>
-              <div className="fraud-table-container">
-                <table className="fraud-ranking-table">
-                  <thead>
-                    <tr>
-                      <th>Risk</th><th>Name</th><th>Email</th><th>Score</th>
-                      <th>Purchases</th><th>Tickets</th><th>Avg Qty</th><th>Spent</th><th>Flags</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {fraudAnalytics.userRankings.map((u, i) => (
-                      <tr key={i} className={`risk-${u.riskLevel}`}>
-                        <td><span className={`risk-badge ${u.riskLevel}`}>{u.riskLevel.toUpperCase()}</span></td>
-                        <td>{u.userName}</td>
-                        <td>{u.userEmail}</td>
-                        <td>{u.fraudScore}</td>
-                        <td>{u.totalPurchases}</td>
-                        <td>{u.totalTickets}</td>
-                        <td>{u.avgTicketsPerPurchase}</td>
-                        <td>₹{u.totalSpent.toFixed(2)}</td>
-                        <td>{u.flaggedReasons.length > 0 ? u.flaggedReasons.join('; ') : '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
       </main>
     </div>
   );
@@ -391,9 +449,8 @@ function AdminDashboard() {
 
 export default function AdminDashboardWrapper(props) {
   return (
-    <>
+    <div className="admin-page-container" style={{ paddingBottom: '100px' }}>
       <AdminDashboard {...props} />
-      <Footer />
-    </>
+    </div>
   );
 }

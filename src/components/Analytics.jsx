@@ -76,7 +76,6 @@ export default function AnalyticsWrapper(props) {
   return (
     <>
       <Analytics {...props} />
-      <Footer />
     </>
   );
 }

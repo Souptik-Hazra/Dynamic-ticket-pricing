@@ -169,7 +169,6 @@ export default function HomePageWrapper(props) {
   return (
     <>
       <HomePage {...props} />
-      <Footer />
     </>
   );
 }

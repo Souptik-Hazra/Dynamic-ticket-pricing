@@ -44,12 +44,95 @@ const getDynamicPrice = (category, event) => {
   return Math.round(basePrice * Math.min(multiplier, maxMult));
 };
 
-// ── Health ─────────────────────────────────────────────────────────────────
+/* ── Health ───────────────────────────────────────────────────────────────── */
 app.get('/health', (_req, res) =>
   res.json({ status: 'ok', service: 'organizer-service', ts: new Date().toISOString() })
 );
 
-/* ── Public event routes ────────────────────────────────────────────────── */
+/* ── Organizer Router ─────────────────────────────────────────────────────── */
+const organizerRouter = express.Router();
+
+// Health check within router
+organizerRouter.get('/health', (req, res) => {
+  console.log('[OrganizerRouter] Health check reached');
+  res.json({ status: 'ok', message: 'Organizer router is active' });
+});
+
+// GET /api/organizers/stats
+organizerRouter.get('/stats', jwtMiddleware, requireDB, async (req, res, next) => {
+  console.log(`[OrganizerRouter] Fetching stats for organizer: ${req.user.id}`);
+  try {
+    const events = await Event.find({ organizerId: req.user.id });
+    const eventIds = events.map(e => e._id);
+    
+    const [ticketAgg, recentTickets] = await Promise.all([
+      Ticket.aggregate([
+        { $match: { eventId: { $in: eventIds }, status: 'confirmed' } },
+        { $group: { _id: null, totalRevenue: { $sum: '$totalAmount' }, totalTickets: { $sum: '$quantity' } } }
+      ]),
+      Ticket.find({ eventId: { $in: eventIds } })
+        .populate('eventId', 'name')
+        .sort({ purchaseDate: -1 })
+        .limit(10)
+    ]);
+
+    const { totalRevenue = 0, totalTickets = 0 } = ticketAgg[0] || {};
+
+    res.json({
+      stats: {
+        totalRevenue,
+        totalTickets,
+        totalEvents: events.length,
+        averageRevenuePerEvent: events.length ? (totalRevenue / events.length).toFixed(2) : 0
+      },
+      recentTransactions: recentTickets.map(t => ({
+        _id: t._id,
+        event: { name: t.eventId?.name || 'Unknown' },
+        customerName: t.customerName,
+        quantity: t.quantity,
+        totalAmount: t.totalAmount,
+        purchaseDate: t.purchaseDate
+      }))
+    });
+  } catch (err) {
+    console.error('[OrganizerRouter] Stats error:', err);
+    next(err);
+  }
+});
+
+// GET /api/organizers/events
+organizerRouter.get('/events', jwtMiddleware, requireDB, async (req, res, next) => {
+  console.log(`[OrganizerRouter] Fetching events for organizer: ${req.user.id}`);
+  try {
+    const events = await Event.find({ organizerId: req.user.id }).sort({ createdAt: -1 });
+    res.json({ events });
+  } catch (err) {
+    console.error('[OrganizerRouter] Events fetch error:', err);
+    next(err);
+  }
+});
+
+// GET /api/organizers/tickets
+organizerRouter.get('/tickets', jwtMiddleware, requireDB, async (req, res, next) => {
+  console.log(`[OrganizerRouter] Fetching tickets for organizer: ${req.user.id}`);
+  try {
+    const events = await Event.find({ organizerId: req.user.id }).select('_id');
+    const eventIds = events.map(e => e._id);
+    
+    const tickets = await Ticket.find({ eventId: { $in: eventIds } })
+      .populate('eventId', 'name venue startDate')
+      .sort({ purchaseDate: -1 });
+      
+    res.json({ tickets });
+  } catch (err) {
+    console.error('[OrganizerRouter] Tickets fetch error:', err);
+    next(err);
+  }
+});
+
+app.use('/api/organizers', organizerRouter);
+
+/* ── Public Event Routes ─────────────────────────────────────────────────── */
 
 app.get('/api/events', async (req, res, next) => {
   try {
@@ -62,7 +145,6 @@ app.get('/api/events', async (req, res, next) => {
     if (req.query.status)   filter.status   = req.query.status;
     const events = await Event.find(filter).sort({ startDate: 1 });
 
-    // Cache event list for 60 seconds
     cacheSet(cacheKey, events, 60);
     res.json(events);
   } catch (err) { next(err); }
@@ -94,26 +176,30 @@ app.get('/api/events/:id/dynamic-prices', async (req, res, next) => {
       });
     }
 
-    const totalCap  = event.ticketCategories?.reduce((s, c) => s + c.seats, 0) || 0;
-    const totalSold = event.ticketCategories?.reduce((s, c) => s + (c.seats - (c.availableSeats ?? c.seats)), 0) || 0;
+    const totalCap  = event.ticketCategories?.reduce((s, c) => s + Number(c.seats), 0) || 0;
+    const totalSold = event.ticketCategories?.reduce((s, c) => s + (Number(c.seats) - (Number(c.availableSeats) ?? Number(c.seats))), 0) || 0;
     const occupancyRate = totalCap ? ((totalSold / totalCap) * 100).toFixed(1) : '0.0';
 
-    // Broadcast real-time price update to connected clients
     wsPriceUpdate(req.params.id, prices, occupancyRate);
-
     res.json({ prices, occupancyRate });
   } catch (err) { next(err); }
 });
 
-/* ── Protected event CRUD ────────────────────────────────────────────────── */
+/* ── Protected Event CRUD ────────────────────────────────────────────────── */
 
 app.post('/api/events', jwtMiddleware, requireDB, async (req, res, next) => {
+  console.log('[OrganizerService] Creating event with body:', JSON.stringify(req.body, null, 2));
   try {
-    const event = await Event.create({ ...req.body, organizerId: req.user.id });
-    // Invalidate ALL list versions (filtered and unfiltered)
+    const eventData = { ...req.body, organizerId: req.user.id };
+    const event = await Event.create(eventData);
+    console.log('[OrganizerService] Event created successfully:', event._id);
+    
     cacheDelPattern(CACHE_KEYS.EVENT_LIST_ALL);
     res.status(201).json({ event });
-  } catch (err) { next(err); }
+  } catch (err) {
+    console.error('[OrganizerService] Event creation error:', err.message, err.stack);
+    next(err);
+  }
 });
 
 app.put('/api/events/:id', jwtMiddleware, requireDB, async (req, res, next) => {
@@ -121,152 +207,16 @@ app.put('/api/events/:id', jwtMiddleware, requireDB, async (req, res, next) => {
     const event = await Event.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
     if (!event) return res.status(404).json({ error: 'Event not found' });
     
-    // Invalidate details and all lists
     cacheDel(CACHE_KEYS.EVENT_DETAIL(req.params.id));
     cacheDelPattern(CACHE_KEYS.EVENT_LIST_ALL);
     res.json({ event });
   } catch (err) { next(err); }
 });
 
-app.delete('/api/events/:id', jwtMiddleware, requireDB, async (req, res, next) => {
-  try {
-    const event = await Event.findByIdAndDelete(req.params.id);
-    if (!event) return res.status(404).json({ error: 'Event not found' });
-
-    // Invalidate details and all lists
-    cacheDel(CACHE_KEYS.EVENT_DETAIL(req.params.id));
-    cacheDelPattern(CACHE_KEYS.EVENT_LIST_ALL);
-    res.json({ message: 'Event deleted successfully' });
-  } catch (err) { next(err); }
-});
-
-/* ── Ticket purchase — ATOMIC + full inter-service wiring ──────────────── */
-
-app.post('/api/tickets', jwtMiddleware, requireDB, async (req, res, next) => {
-  try {
-    const { eventId, categoryId, categoryName, customerName, customerEmail, quantity, pricePerTicket } = req.body;
-
-    if (!eventId || !customerName || !customerEmail || !quantity || pricePerTicket == null)
-      return res.status(400).json({ error: 'eventId, customerName, customerEmail, quantity and pricePerTicket are required' });
-
-    const qty = Number(quantity);
-    if (!Number.isInteger(qty) || qty < 1 || qty > 15)
-      return res.status(400).json({ error: 'quantity must be a whole number between 1 and 15' });
-
-    const eventCheck = await Event.findById(eventId).select('status ticketCategories capacity availableTickets name venue startDate');
-    if (!eventCheck) return res.status(404).json({ error: 'Event not found' });
-    if (eventCheck.status === 'cancelled' || eventCheck.status === 'completed')
-      return res.status(400).json({ error: `Cannot buy tickets for a ${eventCheck.status} event` });
-
-    const totalAmount = Number(pricePerTicket) * qty;
-    let updatedEvent;
-    let resolvedCategoryName = (categoryName || 'standard').toLowerCase();
-
-    if (eventCheck.ticketCategories?.length > 0) {
-      // ── Atomic $inc — prevents overselling under concurrent load ─────────
-      const catFilter = categoryId
-        ? { _id: eventId, 'ticketCategories._id': categoryId, 'ticketCategories.availableSeats': { $gte: qty } }
-        : { _id: eventId, 'ticketCategories.name': resolvedCategoryName, 'ticketCategories.availableSeats': { $gte: qty } };
-
-      updatedEvent = await Event.findOneAndUpdate(
-        catFilter,
-        { $inc: { 'ticketCategories.$.availableSeats': -qty, ticketsSold: qty, totalRevenue: totalAmount } },
-        { new: true }
-      );
-
-      if (!updatedEvent) {
-        const fresh = await Event.findById(eventId).select('ticketCategories');
-        const cat   = fresh?.ticketCategories?.find(c =>
-          categoryId ? c._id.toString() === categoryId : c.name === resolvedCategoryName
-        );
-        if (!cat) return res.status(400).json({ error: 'Ticket category not found' });
-        return res.status(409).json({ error: `Only ${cat.availableSeats} seat(s) left in ${cat.name}` });
-      }
-
-      const updatedCat = updatedEvent.ticketCategories.find(c =>
-        categoryId ? c._id.toString() === categoryId : c.name === resolvedCategoryName
-      );
-      resolvedCategoryName = updatedCat?.name || resolvedCategoryName;
-
-      // Broadcast seat update to all connected clients (live seat counter)
-      wsTicketSold(eventId, resolvedCategoryName, updatedCat?.availableSeats ?? 0);
-
-    } else {
-      updatedEvent = await Event.findOneAndUpdate(
-        { _id: eventId, availableTickets: { $gte: qty } },
-        { $inc: { availableTickets: -qty, ticketsSold: qty, totalRevenue: totalAmount } },
-        { new: true }
-      );
-      if (!updatedEvent) {
-        const fresh = await Event.findById(eventId).select('availableTickets');
-        return res.status(409).json({ error: `Only ${fresh?.availableTickets ?? 0} ticket(s) remaining` });
-      }
-      // Broadcast seat update
-      wsTicketSold(eventId, 'standard', updatedEvent.availableTickets ?? 0);
-    }
-
-    // ── Create ticket record ────────────────────────────────────────────────
-    const ticket = await Ticket.create({
-      eventId, userId: req.user.id,
-      categoryId: categoryId || undefined,
-      categoryName: resolvedCategoryName,
-      customerName, customerEmail,
-      pricePerTicket: Number(pricePerTicket), quantity: qty, totalAmount,
-    });
-
-    // Invalidate cached event and all lists (seat counts/availability changed)
-    cacheDel(CACHE_KEYS.EVENT_DETAIL(eventId));
-    cacheDelPattern(CACHE_KEYS.EVENT_LIST_ALL);
-
-    // ── Inter-service: notification + email (fire-and-forget) ─────────────
-    const eventName = eventCheck.name;
-    const eventDate = eventCheck.startDate
-      ? new Date(eventCheck.startDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
-      : 'TBA';
-
-    // 1. Persist in-app notification
-    notify(
-      req.user.id,
-      'ticket_purchase',
-      `🎫 Booking Confirmed — ${eventName}`,
-      `You've booked ${qty} ${resolvedCategoryName} ticket(s) for ₹${totalAmount}. Ref: ${ticket.bookingReference}`
-    );
-
-    // 2. Push real-time WebSocket notification to the user
-    wsNotifyUser(
-      req.user.id,
-      'ticket_purchase',
-      `🎫 Booking Confirmed!`,
-      `${qty}× ${resolvedCategoryName} for ${eventName} — ₹${totalAmount}`
-    );
-
-    // 3. Send confirmation email
-    sendEmailTemplate(customerEmail, 'ticket_confirmation', {
-      customerName,
-      eventName,
-      venue:            eventCheck.venue || '',
-      startDate:        eventDate,
-      categoryName:     resolvedCategoryName,
-      quantity:         qty,
-      totalAmount,
-      bookingReference: ticket.bookingReference,
-    });
-
-    res.status(201).json({ ticket });
-  } catch (err) { next(err); }
-});
-
-/* ── Revert Purchase (Internal) ─────────────────────────────────────────── */
+// ── Ticket reversion ───────────────────────────────────────────────────────
 app.post('/api/tickets/revert', requireDB, async (req, res, next) => {
+  const { eventId, categoryName: catName, quantity: qty, amount: amt } = req.body;
   try {
-    const { eventId, categoryName, quantity, amount } = req.body;
-    if (!eventId || !quantity) return res.status(400).json({ error: 'Missing required fields' });
-
-    const qty = Number(quantity);
-    const amt = Number(amount) || 0;
-    const catName = (categoryName || 'standard').toLowerCase();
-
-    // Use atomic $inc to revert inventory and revenue
     const updatedEvent = await Event.findOneAndUpdate(
       { _id: eventId, 'ticketCategories.name': catName },
       { $inc: { 'ticketCategories.$.availableSeats': qty, ticketsSold: -qty, totalRevenue: -amt } },
@@ -274,19 +224,105 @@ app.post('/api/tickets/revert', requireDB, async (req, res, next) => {
     );
 
     if (!updatedEvent) {
-      // Fallback for events without categories
       await Event.findByIdAndUpdate(eventId, {
         $inc: { availableTickets: qty, ticketsSold: -qty, totalRevenue: -amt }
       });
     }
 
-    // Broadcast update and invalidate cache
     wsTicketSold(eventId, catName, (updatedEvent?.ticketCategories?.find(c => c.name === catName)?.availableSeats) || 0);
     cacheDel(CACHE_KEYS.EVENT_DETAIL(eventId));
     cacheDelPattern(CACHE_KEYS.EVENT_LIST_ALL);
 
     res.json({ success: true, message: 'Inventory and revenue reverted' });
   } catch (err) { next(err); }
+});
+
+// POST /api/tickets — buy a ticket
+app.post('/api/tickets', jwtMiddleware, requireDB, async (req, res, next) => {
+  const { eventId, categoryName: catName, quantity: qty, customerName, customerEmail, pricePerTicket } = req.body;
+  
+  if (!eventId || !qty || qty < 1) {
+    return res.status(400).json({ error: 'Invalid purchase request' });
+  }
+
+  try {
+    const event = await Event.findById(eventId);
+    if (!event) return res.status(404).json({ error: 'Event not found' });
+
+    // 1. Find the specific category
+    const category = event.ticketCategories?.find(c => c.name === catName);
+    if (catName && !category) return res.status(400).json({ error: 'Invalid ticket category' });
+
+    // 2. Check availability
+    if (category) {
+      if (category.availableSeats < qty) return res.status(400).json({ error: 'Not enough seats available' });
+    } else {
+      const avail = (event.capacity || 0) - (event.ticketsSold || 0);
+      if (avail < qty) return res.status(400).json({ error: 'Sold out' });
+    }
+
+    // 3. Update inventory & revenue (Atomic)
+    const amount = (pricePerTicket || getDynamicPrice(category, event)) * qty;
+    
+    if (category) {
+      await Event.findOneAndUpdate(
+        { _id: eventId, 'ticketCategories.name': catName },
+        { 
+          $inc: { 
+            'ticketCategories.$.availableSeats': -qty, 
+            ticketsSold: qty, 
+            totalRevenue: amount 
+          } 
+        }
+      );
+    } else {
+      await Event.findByIdAndUpdate(
+        eventId,
+        { $inc: { ticketsSold: qty, totalRevenue: amount } }
+      );
+    }
+
+    // 4. Force sync financial fields (triggers pre-save hook)
+    const finalEvent = await Event.findById(eventId);
+    await finalEvent.save();
+
+    // 5. Create Ticket
+    const ticket = await Ticket.create({
+      eventId,
+      userId: req.user.id,
+      categoryName: catName || 'standard',
+      customerName,
+      customerEmail,
+      pricePerTicket: pricePerTicket || getDynamicPrice(category, event),
+      quantity: qty,
+      totalAmount: amount,
+      status: 'confirmed'
+    });
+
+    // 6. side effects
+    const newAvail = (category 
+      ? finalEvent.ticketCategories.find(c => c.name === catName)?.availableSeats 
+      : (finalEvent.capacity - finalEvent.ticketsSold)) || 0;
+      
+    wsTicketSold(eventId, catName || 'standard', newAvail);
+    notify(req.user.id, 'Ticket Purchased', `You successfully bought ${qty} ticket(s) for ${event.name}`);
+    sendEmailTemplate(customerEmail, 'TICKET_CONFIRMATION', {
+      customerName,
+      eventName: event.name,
+      quantity: qty,
+      totalAmount: amount,
+      bookingReference: ticket.bookingReference
+    });
+
+    // Invalidate caches
+    cacheDel(CACHE_KEYS.EVENT_DETAIL(eventId));
+    cacheDelPattern(CACHE_KEYS.EVENT_LIST_ALL);
+
+    res.status(201).json({ success: true, ticket });
+  } catch (err) {
+    console.error('[OrganizerService] Purchase error:', err);
+    next(err);
+  }
 });
 
 // GET /api/tickets — user's own tickets
@@ -298,10 +334,6 @@ app.get('/api/tickets', jwtMiddleware, requireDB, async (req, res, next) => {
     res.json(tickets);
   } catch (err) { next(err); }
 });
-
-app.post('/api/organizers/register', (_req, res) =>
-  res.status(301).json({ message: 'Use /api/auth/signup with role=organizer' })
-);
 
 // ── Error handling ─────────────────────────────────────────────────────────
 app.use(notFound);

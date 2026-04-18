@@ -8,7 +8,8 @@ function Signup({ onSwitchToLogin }) {
     name: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    role: 'user'
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -38,7 +39,7 @@ function Signup({ onSwitchToLogin }) {
 
     setLoading(true);
 
-    const result = await signup(formData.name, formData.email, formData.password);
+    const result = await signup(formData.name, formData.email, formData.password, formData.role);
 
     if (result.success) {
       // Navigation will be handled by App.jsx based on auth state
@@ -121,6 +122,22 @@ function Signup({ onSwitchToLogin }) {
               disabled={loading}
               minLength="8"
             />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="role">Account Type</label>
+            <select
+              id="role"
+              name="role"
+              value={formData.role}
+              onChange={handleChange}
+              required
+              disabled={loading}
+              className="role-select"
+            >
+              <option value="user">🎟️ Attendee (Buy Tickets)</option>
+              <option value="organizer">🎭 Organizer (List Events)</option>
+            </select>
           </div>
 
           <button type="submit" className="auth-submit-btn" disabled={loading}>

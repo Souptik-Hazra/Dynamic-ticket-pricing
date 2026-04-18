@@ -93,9 +93,9 @@ export const AuthProvider = ({ children }) => {
   };
 
   // ── Signup ────────────────────────────────────────────────────────────────
-  const signup = async (name, email, password) => {
+  const signup = async (name, email, password, role = 'user') => {
     try {
-      const response = await axios.post(buildUrl(ENDPOINTS.SIGNUP), { name, email, password });
+      const response = await axios.post(buildUrl(ENDPOINTS.SIGNUP), { name, email, password, role });
       if (response.data.token) {
         localStorage.setItem('token', response.data.token);
         setAxiosToken(response.data.token);

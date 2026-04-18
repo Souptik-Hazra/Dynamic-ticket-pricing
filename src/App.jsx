@@ -15,6 +15,7 @@ import './App.css';
 import './components/NavBadge.css';
 import UserProfile from "./components/UserProfile.jsx";
 import Notifications from "./components/Notifications.jsx";
+import OrganizerDashboard from "./components/OrganizerDashboard.jsx";
 
 function AppContent() {
   const { user, loading: authLoading, logout, isAuthenticated, isAdmin } = useAuth();
@@ -141,6 +142,12 @@ function AppContent() {
               </button>
             </>
           )}
+
+          {isAuthenticated && user?.role === 'organizer' && (
+            <button onClick={() => setView('organizer')} className={view === 'organizer' ? 'active' : ''}>
+              Dashboard
+            </button>
+          )}
           
           {/* Mobile-only auth buttons */}
           <div className="mobile-auth-buttons">
@@ -256,6 +263,10 @@ function AppContent() {
 
       {view === 'admin' && isAuthenticated && isAdmin() && (
         <AdminDashboard />
+      )}
+
+      {view === 'organizer' && isAuthenticated && user?.role === 'organizer' && (
+        <OrganizerDashboard />
       )}
 
       {view === 'purchase' && selectedEvent && (

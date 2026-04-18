@@ -29,7 +29,7 @@ export const ENDPOINTS = {
   ADMIN_EVENTS:         '/admin/events',
   ADMIN_EVENT_BY_ID:    (id) => `/admin/events/${id}`,
   ADMIN_TICKETS:        '/admin/tickets',
-  ADMIN_FRAUD:          '/admin/fraud-analytics',
+  ADMIN_TICKETS:        '/admin/tickets',
   ADMIN_USERS:          '/admin/users',
 
   // Analytics (Analytics Service)
@@ -53,6 +53,11 @@ export const ENDPOINTS = {
   // ML Model
   ML_PREDICT: '/ml-model/predict',
   ML_HEALTH:  '/ml-model/health',
+
+  // Organizer Dashboard
+  ORGANIZER_STATS:   '/organizers/stats',
+  ORGANIZER_EVENTS:  '/organizers/events',
+  ORGANIZER_TICKETS: '/organizers/tickets',
 };
 
 // Helper — build full URL via gateway

@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 import { buildUrl, ENDPOINTS } from '../config/api';
 import './AdminEventForm.css';
 
 function AdminEventForm({ event, onClose }) {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const authHeader = () => {
     const token = localStorage.getItem('token');
     return token ? { headers: { Authorization: `Bearer ${token}` } } : {};
@@ -197,10 +200,16 @@ function AdminEventForm({ event, onClose }) {
       };
 
       if (event) {
-        await axios.put(buildUrl(`/admin/events/${event._id}`), eventData, authHeader());
+        const updateUrl = isAdmin 
+          ? buildUrl(`/admin/events/${event._id}`) 
+          : buildUrl(`/events/${event._id}`);
+        await axios.put(updateUrl, eventData, authHeader());
         alert('Event updated successfully!');
       } else {
-        await axios.post(buildUrl(ENDPOINTS.ADMIN_EVENTS), eventData, authHeader());
+        const createUrl = isAdmin 
+          ? buildUrl(ENDPOINTS.ADMIN_EVENTS) 
+          : buildUrl(ENDPOINTS.EVENTS);
+        await axios.post(createUrl, eventData, authHeader());
         alert('Event created successfully!');
       }
 
@@ -509,12 +518,12 @@ function AdminEventForm({ event, onClose }) {
             
             {imageSource === 'url' ? (
               <input
-                type="url"
+                type="text"
                 id="image"
                 name="image"
                 value={formData.image}
                 onChange={handleChange}
-                placeholder="https://example.com/image.jpg"
+                placeholder="https://example.com/image.jpg or /local-path.png"
                 disabled={loading}
               />
             ) : (

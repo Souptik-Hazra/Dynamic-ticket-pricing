@@ -1,0 +1,387 @@
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
+import AdminEventForm from './AdminEventForm';
+import Footer from './Footer';
+import { buildUrl, ENDPOINTS } from '../config/api';
+import { useWebSocket } from '../hooks/useWebSocket';
+import './AdminDashboard.css'; // Reusing admin styles for consistency
+
+function OrganizerDashboard() {
+  const { user } = useAuth();
+  const { connected, lastEvent } = useWebSocket();
+  const [view, setView]   = useState('stats');
+  const [stats, setStats] = useState(null);
+  const [events, setEvents]               = useState([]);
+  const [tickets, setTickets]             = useState([]);
+  const [loading, setLoading]             = useState(false);
+  const [showEventForm, setShowEventForm] = useState(false);
+  const [editingEvent, setEditingEvent]   = useState(null);
+  
+  // New: Search and Filtering state
+  const [eventSearch, setEventSearch]   = useState('');
+  const [ticketSearch, setTicketSearch] = useState('');
+
+  // Helpers for Avatars
+  const getInitials = (name) => {
+    if (!name) return '?';
+    const parts = name.split(' ');
+    return parts.map(p => p[0]).join('').toUpperCase().substring(0, 2);
+  };
+
+  const getAvatarColor = (name) => {
+    const colors = ['#6366f1', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6'];
+    let hash = 0;
+    for (let i = 0; i < (name?.length || 0); i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    return colors[Math.abs(hash) % colors.length];
+  };
+
+  // Real-time: refresh stats when a ticket is sold for any of this organizer's events
+  useEffect(() => {
+    if (!lastEvent) return;
+    if (lastEvent.type === 'ticket_sold' && view === 'stats') {
+      fetchStats();
+    }
+  }, [lastEvent]); // eslint-disable-line
+
+  const authHeaders = () => ({
+    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+  });
+
+  useEffect(() => {
+    if (view === 'stats')   fetchStats();
+    if (view === 'events')  fetchEvents();
+    if (view === 'tickets') fetchTickets();
+  }, [view]);
+
+  const fetchStats = async () => {
+    try {
+      setLoading(true);
+      const { data } = await axios.get(buildUrl(ENDPOINTS.ORGANIZER_STATS), authHeaders());
+      setStats(data.stats);
+    } catch (err) {
+      console.error('Stats error:', err);
+      // alert('Failed to fetch statistics');
+    } finally { setLoading(false); }
+  };
+
+  const fetchEvents = async () => {
+    try {
+      setLoading(true);
+      const { data } = await axios.get(buildUrl(ENDPOINTS.ORGANIZER_EVENTS), authHeaders());
+      setEvents(data.events);
+    } catch (err) {
+      console.error('Events error:', err);
+      alert('Failed to fetch your events');
+    } finally { setLoading(false); }
+  };
+
+  const fetchTickets = async () => {
+    try {
+      setLoading(true);
+      const { data } = await axios.get(buildUrl(ENDPOINTS.ORGANIZER_TICKETS), authHeaders());
+      setTickets(data.tickets);
+    } catch (err) {
+      console.error('Tickets error:', err);
+      alert('Failed to fetch ticket sales');
+    } finally { setLoading(false); }
+  };
+
+  const handleDeleteEvent = async (eventId) => {
+    if (!window.confirm('Are you sure you want to delete this event?')) return;
+    try {
+      await axios.delete(buildUrl(`/events/${eventId}`), authHeaders());
+      fetchEvents();
+    } catch (err) {
+      console.error('Delete error:', err);
+      alert('Failed to delete event');
+    }
+  };
+
+  const handleEventFormClose = (refresh) => {
+    setShowEventForm(false);
+    setEditingEvent(null);
+    if (refresh) fetchEvents();
+  };
+
+  const fmtDate = (d) =>
+    new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+  return (
+    <div className="admin-dashboard organizer-dashboard">
+      <header className="admin-header">
+        <div className="admin-header-content">
+          <h1>🎭 Organizer Dashboard</h1>
+          <div className="admin-user-info">
+             <span className={`ws-indicator ${connected ? 'ws-on' : 'ws-off'}`}
+                title={connected ? 'Live updates connected' : 'Offline'}>
+              {connected ? '🟢 Live' : '⚫ Offline'}
+            </span>
+          </div>
+        </div>
+      </header>
+
+      <nav className="admin-nav">
+        <button className={view === 'stats'   ? 'active' : ''} onClick={() => setView('stats')}>📊 Statistics</button>
+        <button className={view === 'events'  ? 'active' : ''} onClick={() => setView('events')}>🎭 My Events</button>
+        <button className={view === 'tickets' ? 'active' : ''} onClick={() => setView('tickets')}>🎟️ Sales History</button>
+      </nav>
+
+      <main className="admin-content">
+        {loading && <div className="loading">Loading...</div>}
+
+        {/* ── Stats ─────────────────────────────────────────────────────── */}
+        {view === 'stats' && stats && (
+          <div className="stats-view">
+            <h2 className="view-title">Dashboard Overview</h2>
+            <div className="stats-grid">
+              <div className="stat-card">
+                <div className="stat-icon stats-blue">🎭</div>
+                <div className="stat-info">
+                  <h3>My Events</h3>
+                  <p className="stat-value">{stats.totalEvents}</p>
+                </div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-icon stats-indigo">🎟️</div>
+                <div className="stat-info">
+                  <h3>Total Tickets Sold</h3>
+                  <p className="stat-value">{stats.totalTickets}</p>
+                </div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-icon stats-green">💰</div>
+                <div className="stat-info">
+                  <h3>Total Revenue</h3>
+                  <p className="stat-value">₹{stats.totalRevenue.toFixed(2)}</p>
+                </div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-icon stats-purple">📈</div>
+                <div className="stat-info">
+                  <h3>Avg. Conversion</h3>
+                  <p className="stat-value">{stats.totalEvents > 0 ? (stats.totalTickets / stats.totalEvents).toFixed(1) : '0'}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Events ────────────────────────────────────────────────────── */}
+        {view === 'events' && (
+          <div className="events-view">
+            <div className="view-header-row">
+              <h2 className="view-title">My Event Listings</h2>
+              <div className="header-actions">
+                <div className="search-box-container">
+                  <span className="search-icon">🔍</span>
+                  <input 
+                    type="text" 
+                    placeholder="Search by event name or venue..." 
+                    className="admin-search-input"
+                    value={eventSearch}
+                    onChange={(e) => setEventSearch(e.target.value)}
+                  />
+                  {eventSearch && (
+                    <button className="clear-search" onClick={() => setEventSearch('')}>✕</button>
+                  )}
+                </div>
+                <button className="create-event-btn" onClick={() => { setEditingEvent(null); setShowEventForm(true); }}>
+                  ➕ Create New Event
+                </button>
+              </div>
+            </div>
+
+            {showEventForm && (
+              <AdminEventForm event={editingEvent} onClose={handleEventFormClose} />
+            )}
+
+            {!showEventForm && (
+              <div className="events-list">
+                {events.filter(ev => 
+                  ev.name.toLowerCase().includes(eventSearch.toLowerCase()) || 
+                  ev.venue.toLowerCase().includes(eventSearch.toLowerCase())
+                ).length === 0 ? (
+                  <div className="no-data">
+                    <p>{eventSearch ? 'No events match your search.' : "You haven't created any events yet."}</p>
+                    {!eventSearch && <button className="link-btn" onClick={() => setShowEventForm(true)}>Host your first event</button>}
+                  </div>
+                ) : (
+                  <table className="admin-table events-table high-contrast-table">
+                    <thead>
+                      <tr>
+                        <th>Event Details</th>
+                        <th>Date & Time</th>
+                        <th>Sold</th>
+                        <th>Base Revenue</th>
+                        <th>Collected Revenue</th>
+                        <th>Profit Margin</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {events
+                        .filter(ev => 
+                          ev.name.toLowerCase().includes(eventSearch.toLowerCase()) || 
+                          ev.venue.toLowerCase().includes(eventSearch.toLowerCase())
+                        )
+                        .map((event) => (
+                        <tr key={event._id}>
+                          <td className="event-info-cell">
+                            <div className="event-name-bold">{event.name}</div>
+                            <div className="event-venue-sub">📍 {event.venue}</div>
+                          </td>
+                          <td className="date-cell">
+                            <div className="date-main">{new Date(event.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                            <div className="date-sub">{new Date(event.startDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
+                          </td>
+                          <td className="sold-cell">
+                            <div className="sold-count">
+                              <span className="count-pill">{event.ticketsSold}</span> / {event.capacity}
+                            </div>
+                            <div className="sold-progress-bg">
+                              <div className="sold-progress-fill" style={{ width: `${(event.ticketsSold / event.capacity) * 100}%` }}></div>
+                            </div>
+                          </td>
+                          <td className="base-revenue-cell">
+                            <div className="amount-dim">₹{(event.baseRevenue || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+                          </td>
+                          <td className="revenue-cell">
+                            <div className="amount-bold">₹{(event.totalRevenue || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+                          </td>
+                          <td>
+                            <div className={`profit-amount ${(event.profitAmount || 0) > 0 ? 'positive' : 'neutral'}`}>
+                              +₹{event.profitAmount?.toFixed(2) || '0.00'}
+                            </div>
+                            <div className="profit-percent">
+                              ({event.profitPercentage?.toFixed(1) || '0.0'}%)
+                            </div>
+                          </td>
+                          <td>
+                            <span className={`status-pill ${event.status}`}>{event.status.toUpperCase()}</span>
+                          </td>
+                          <td>
+                            <div className="action-buttons">
+                              <button className="edit-btn" onClick={() => { setEditingEvent(event); setShowEventForm(true); }} title="Edit">✏️</button>
+                              <button className="delete-btn" onClick={() => handleDeleteEvent(event._id)} title="Delete">🗑️</button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Tickets ───────────────────────────────────────────────────── */}
+        {view === 'tickets' && (
+          <div className="tickets-view">
+            <div className="view-header-row">
+              <h2 className="view-title">🎟️ Sales Transaction History</h2>
+              <div className="header-actions">
+                <div className="search-box-container">
+                  <span className="search-icon">🔍</span>
+                  <input 
+                    type="text" 
+                    placeholder="Search by customer name, email or ref..." 
+                    className="admin-search-input"
+                    value={ticketSearch}
+                    onChange={(e) => setTicketSearch(e.target.value)}
+                  />
+                  {ticketSearch && (
+                    <button className="clear-search" onClick={() => setTicketSearch('')}>✕</button>
+                  )}
+                </div>
+                <button className="refresh-btn" onClick={fetchTickets}>🔄 Refresh</button>
+              </div>
+            </div>
+
+            {tickets.filter(t => 
+              t.customerName?.toLowerCase().includes(ticketSearch.toLowerCase()) || 
+              t.customerEmail?.toLowerCase().includes(ticketSearch.toLowerCase()) ||
+              t.bookingReference?.toLowerCase().includes(ticketSearch.toLowerCase())
+            ).length === 0 ? (
+              <div className="no-data">
+                <p>{ticketSearch ? 'No transactions match your search.' : 'No tickets sold for your events yet.'}</p>
+              </div>
+            ) : (
+              <div className="tickets-table-container">
+                <table className="admin-table tickets-table high-contrast-table">
+                  <thead>
+                    <tr>
+                      <th>Booking Ref</th>
+                      <th>Customer</th>
+                      <th>Event & Category</th>
+                      <th>Qty</th>
+                      <th>Total Amount</th>
+                      <th>Status</th>
+                      <th>Purchase Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tickets
+                      .filter(t => 
+                        t.customerName?.toLowerCase().includes(ticketSearch.toLowerCase()) || 
+                        t.customerEmail?.toLowerCase().includes(ticketSearch.toLowerCase()) ||
+                        t.bookingReference?.toLowerCase().includes(ticketSearch.toLowerCase())
+                      )
+                      .map((t) => (
+                      <tr key={t._id}>
+                        <td className="booking-ref-cell">
+                          <code>{t.bookingReference}</code>
+                        </td>
+                        <td className="customer-cell">
+                          <div className="user-avatar-info">
+                            <div className="user-initials-circle" style={{ backgroundColor: getAvatarColor(t.customerName) }}>
+                              {getInitials(t.customerName)}
+                            </div>
+                            <div className="user-details-text">
+                              <div className="user-main-name">{t.customerName}</div>
+                              <div className="user-sub-email">{t.customerEmail}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="event-cat-cell">
+                          <div className="event-name-link">{t.eventId?.name || 'Unknown Event'}</div>
+                          <span className={`cat-pill ${t.categoryName || 'standard'}`}>
+                            {t.categoryName?.toUpperCase() || 'STANDARD'}
+                          </span>
+                        </td>
+                        <td className="qty-cell">
+                          <span className="qty-count">×{t.quantity}</span>
+                        </td>
+                        <td className="amount-cell">
+                          <div className="amount-highlight">₹{t.totalAmount?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+                        </td>
+                        <td>
+                          <span className={`status-pill ${t.status || 'confirmed'}`}>
+                            {(t.status || 'confirmed').toUpperCase()}
+                          </span>
+                        </td>
+                        <td className="date-cell-small">
+                          {fmtDate(t.purchaseDate)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
+
+export default function OrganizerDashboardWrapper(props) {
+  return (
+    <>
+      <OrganizerDashboard {...props} />
+    </>
+  );
+}
