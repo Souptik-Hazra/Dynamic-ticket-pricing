@@ -1,51 +1,185 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  Dynamic Ticket Pricing — .gitignore
+# ═══════════════════════════════════════════════════════════════════════════
+
+# ── Auto-generated AI context bundle (regenerate with: npx repomix) ─────────
+repomix-output.xml
+repomix-output.txt
+repomix-output.md
+
+# ── Dependencies ────────────────────────────────────────────────────────────
+# Root & frontend
 node_modules/
-*.pyc
-__pycache__/
-.DS_Store
+.pnp
+.pnp.js
+
+# Microservices — each has its own node_modules
+microservices/admin-service/node_modules/
+microservices/analytics-service/node_modules/
+microservices/api-gateway/node_modules/
+microservices/authentication-service/node_modules/
+microservices/cache-service/node_modules/
+microservices/concurrency-service/node_modules/
+microservices/email-service/node_modules/
+microservices/message-queue-service/node_modules/
+microservices/notification-service/node_modules/
+microservices/organizer-service/node_modules/
+microservices/payment-service/node_modules/
+microservices/shared/node_modules/
+microservices/subscription-service/node_modules/
+microservices/user-service/node_modules/
+microservices/websocket-service/node_modules/
+
+# ── Environment variables (NEVER commit secrets) ────────────────────────────
+# Root-level
+.env
+.env.*
+!.env.example          # allow example env templates to be committed
+
+# Per-microservice .env files (each service has its own secrets)
+microservices/admin-service/.env
+microservices/analytics-service/.env
+microservices/api-gateway/.env
+microservices/authentication-service/.env
+microservices/cache-service/.env
+microservices/concurrency-service/.env
+microservices/email-service/.env
+microservices/message-queue-service/.env
+microservices/notification-service/.env
+microservices/organizer-service/.env
+microservices/payment-service/.env
+microservices/subscription-service/.env
+microservices/user-service/.env
+microservices/websocket-service/.env
+
+# ── Build output ─────────────────────────────────────────────────────────────
 dist/
 build/
+out/
+.next/
+.nuxt/
+.output/
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+logs/
 *.log
-package-lock.json
-backend/node_modules/
-ml-model/__pycache__/
-ml-model/.ipynb_checkpoints/
-*.pyc
-*.pyo
-*.pyd
-*.swp
-*.swo
-*.bak
-*.tmp
-*.cache
 *.log.*
-test-results/
-tmp/
-coverage/
-.vscode/
-.idea/
-*.swp
-*.swo
-*.bak
-*.tmp
-*.cache
-*.log.*
-*.tgz
-*.tar.gz
-*.zip
-env/
-venv/
-.pytest_cache/
-*.egg-info/
-*.iml
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-package-lock.json
-pnpm-lock.yaml
-logs/
-tmp/
+pnpm-debug.log*
+lerna-debug.log*
+
+# ── Lock files (keep only ONE — commit what your team agrees on) ─────────────
+# Uncomment the ones you DON'T use:
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# ── OS artifacts ─────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ── Editor / IDE ─────────────────────────────────────────────────────────────
+.vscode/*
+!.vscode/extensions.json   # allow recommended extensions list
+!.vscode/settings.json     # allow shared project settings
+.idea/
+*.iml
+*.swp
+*.swo
+*~
+
+# ── Testing ───────────────────────────────────────────────────────────────────
+coverage/
+.nyc_output/
 test-results/
+playwright-report/
+cypress/videos/
+cypress/screenshots/
+*.lcov
+
+# ── Temporary / scratch ───────────────────────────────────────────────────────
+tmp/
+temp/
+*.tmp
+*.bak
 *.orig
-ml-model/model.pkl
+*.orig.*
+*.cache
+
+# ── Archives ──────────────────────────────────────────────────────────────────
+*.tgz
+*.tar.gz
+*.zip
+*.rar
+*.7z
+
+# ── Python (ML model) ─────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+*.pyo
+.pytest_cache/
+.mypy_cache/
+*.egg-info/
+dist-info/
+env/
+venv/
+.venv/
+*.egg
+
+# ── Jupyter Notebooks ─────────────────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# ── ML model artifacts (large binaries — use Git LFS or S3 instead) ──────────
+ml-model/*.pkl
+ml-model/*.h5
+ml-model/*.pt
+ml-model/*.pth
+ml-model/*.onnx
+ml-model/*.bin
+ml-model/model/
 *.pkl
-/MyApp-win32-x64
+*.h5
+*.pt
+*.pth
+
+# ── MongoDB ───────────────────────────────────────────────────────────────────
+data/db/
+mongod.lock
+*.bson
+*.dbpath
+
+# ── Docker ───────────────────────────────────────────────────────────────────
+.dockerignore   # fine to keep — but this line ignores docker override files:
+docker-compose.override.yml
+
+# ── Certificates / secrets ────────────────────────────────────────────────────
+*.pem
+*.key
+*.cert
+*.crt
+*.p12
+*.pfx
+
+# ── Electron build output ─────────────────────────────────────────────────────
+/MyApp-win32-x64/
+/MyApp-linux-x64/
+/MyApp-darwin-x64/
+release-builds/
+
+# ── Vite ──────────────────────────────────────────────────────────────────────
+.vite/
+vite.config.js.timestamp-*
+
+# ── Optional: local override config files ─────────────────────────────────────
+*.local

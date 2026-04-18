@@ -7,6 +7,7 @@ import jwtMiddleware from '../shared/jwtMiddleware.js';
 import Event from '../shared/models/Event.js';
 import Ticket from '../shared/models/Ticket.js';
 import User from '../shared/models/User.js';
+import { cacheDel } from '../shared/interservice.js';
 
 dotenv.config();
 
@@ -32,7 +33,7 @@ app.get('/health', (_req, res) =>
 /* ═══════════════════════════════════════════════════════════════════════════
    STATS
 ═══════════════════════════════════════════════════════════════════════════ */
-app.get('/api/admin/stats', auth, async (req, res) => {
+app.get('/api/admin/stats', auth, async (req, res, next) => {
   try {
     const [totalEvents, totalUsers, ticketAgg, recentTickets] = await Promise.all([
       Event.countDocuments(),
@@ -71,7 +72,7 @@ app.get('/api/admin/stats', auth, async (req, res) => {
 /* ═══════════════════════════════════════════════════════════════════════════
    EVENTS — full CRUD with revenue enrichment
 ═══════════════════════════════════════════════════════════════════════════ */
-app.get('/api/admin/events', auth, async (req, res) => {
+app.get('/api/admin/events', auth, async (req, res, next) => {
   try {
     const events = await Event.find().sort({ createdAt: -1 });
 
@@ -102,32 +103,33 @@ app.get('/api/admin/events', auth, async (req, res) => {
   } catch (err) { next(err); }
 });
 
-app.post('/api/admin/events', auth, async (req, res) => {
+app.post('/api/admin/events', auth, async (req, res, next) => {
   try {
     const event = await Event.create(req.body);
+    cacheDel('events:list:{}'); // invalidate public event list cache
     res.status(201).json({ event });
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
+  } catch (err) { next(err); }
 });
 
-app.put('/api/admin/events/:id', auth, async (req, res) => {
+app.put('/api/admin/events/:id', auth, async (req, res, next) => {
   try {
     const event = await Event.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
     });
     if (!event) return res.status(404).json({ error: 'Event not found' });
+    cacheDel(`event:${req.params.id}`);
+    cacheDel('events:list:{}');
     res.json({ event });
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
+  } catch (err) { next(err); }
 });
 
-app.delete('/api/admin/events/:id', auth, async (req, res) => {
+app.delete('/api/admin/events/:id', auth, async (req, res, next) => {
   try {
     const event = await Event.findByIdAndDelete(req.params.id);
     if (!event) return res.status(404).json({ error: 'Event not found' });
+    cacheDel(`event:${req.params.id}`);
+    cacheDel('events:list:{}');
     res.json({ message: 'Event deleted' });
   } catch (err) { next(err); }
 });
@@ -135,7 +137,7 @@ app.delete('/api/admin/events/:id', auth, async (req, res) => {
 /* ═══════════════════════════════════════════════════════════════════════════
    TICKETS — admin view of all purchases
 ═══════════════════════════════════════════════════════════════════════════ */
-app.get('/api/admin/tickets', auth, async (req, res) => {
+app.get('/api/admin/tickets', auth, async (req, res, next) => {
   try {
     const tickets = await Ticket.find()
       .populate('eventId', 'name')
@@ -162,7 +164,7 @@ app.get('/api/admin/tickets', auth, async (req, res) => {
 /* ═══════════════════════════════════════════════════════════════════════════
    FRAUD ANALYTICS
 ═══════════════════════════════════════════════════════════════════════════ */
-app.get('/api/admin/fraud-analytics', auth, async (req, res) => {
+app.get('/api/admin/fraud-analytics', auth, async (req, res, next) => {
   try {
     // Per-user purchase aggregation
     const userAgg = await Ticket.aggregate([
@@ -246,13 +248,11 @@ app.get('/api/admin/fraud-analytics', auth, async (req, res) => {
 /* ═══════════════════════════════════════════════════════════════════════════
    USERS
 ═══════════════════════════════════════════════════════════════════════════ */
-app.get('/api/admin/users', auth, async (req, res) => {
+app.get('/api/admin/users', auth, async (req, res, next) => {
   try {
     const users = await User.find({ role: { $ne: 'admin' } }).sort({ createdAt: -1 });
     res.json({ users });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { next(err); }
 });
 
 

@@ -4,6 +4,11 @@ import { buildUrl, ENDPOINTS } from '../config/api';
 import './AdminEventForm.css';
 
 function AdminEventForm({ event, onClose }) {
+  const authHeader = () => {
+    const token = localStorage.getItem('token');
+    return token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+  };
+
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -192,12 +197,10 @@ function AdminEventForm({ event, onClose }) {
       };
 
       if (event) {
-        // Update existing event
-        await axios.put(buildUrl(`/admin/events/${event._id}`), eventData);
+        await axios.put(buildUrl(`/admin/events/${event._id}`), eventData, authHeader());
         alert('Event updated successfully!');
       } else {
-        // Create new event
-        await axios.post(buildUrl(ENDPOINTS.ADMIN_EVENTS), eventData);
+        await axios.post(buildUrl(ENDPOINTS.ADMIN_EVENTS), eventData, authHeader());
         alert('Event created successfully!');
       }
 

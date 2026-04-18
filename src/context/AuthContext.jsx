@@ -1,67 +1,68 @@
 import React, { createContext, useState, useContext, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
-import { API_URL, ENDPOINTS, buildUrl } from '../config/api';
+import { buildUrl, ENDPOINTS } from '../config/api';
 
 const AuthContext = createContext();
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 };
+
+// ── Axios defaults ────────────────────────────────────────────────────────
+axios.defaults.withCredentials = false; // We use Bearer tokens, not cookies
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const refreshTimeoutRef = useRef(null);
 
-  // Schedule token refresh before expiration
-  const scheduleTokenRefresh = useCallback(() => {
-    if (refreshTimeoutRef.current) {
-      clearTimeout(refreshTimeoutRef.current);
-    }
+  // ── Token refresh ─────────────────────────────────────────────────────────
+  // JWT is set to 7d — schedule silent refresh at ~day 6 (so user never gets logged out)
+  const scheduleTokenRefresh = useCallback((token) => {
+    if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current);
+    if (!token) return;
 
-    const refreshToken = localStorage.getItem('refreshToken');
-    if (!refreshToken) return;
-
-    // Refresh 5 minutes before expiration (token expires in 1h, so refresh at ~55min)
-    const refreshTime = 55 * 60 * 1000;
+    // Refresh after 6 days (token expires in 7 days)
+    const SIX_DAYS_MS = 6 * 24 * 60 * 60 * 1000;
 
     refreshTimeoutRef.current = setTimeout(async () => {
       try {
-        const response = await axios.post(buildUrl(ENDPOINTS.REFRESH_TOKEN), {
-          refreshToken
-        });
-
+        const response = await axios.post(
+          buildUrl(ENDPOINTS.REFRESH_TOKEN),
+          {},
+          { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+        );
         if (response.data.token) {
           localStorage.setItem('token', response.data.token);
-          axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
+          setAxiosToken(response.data.token);
           if (response.data.user) setUser(response.data.user);
-
-          // Schedule next refresh
-          scheduleTokenRefresh();
+          scheduleTokenRefresh(response.data.token); // schedule next refresh
         }
-      } catch (error) {
-        console.error('Token refresh failed:', error);
-        logout();
+      } catch {
+        // Refresh failed — silently log out (token likely expired)
+        performLogout();
       }
-    }, refreshTime);
-  }, []);
+    }, SIX_DAYS_MS);
+  }, []); // eslint-disable-line
 
-  // Set axios defaults and load user on mount
+  const setAxiosToken = (token) => {
+    if (token) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    } else {
+      delete axios.defaults.headers.common['Authorization'];
+    }
+  };
+
+  // ── Load user on mount ────────────────────────────────────────────────────
   useEffect(() => {
-    axios.defaults.withCredentials = true;
     loadUser();
     return () => {
-      if (refreshTimeoutRef.current) {
-        clearTimeout(refreshTimeoutRef.current);
-      }
+      if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current);
     };
-  }, []);
+  }, []); // eslint-disable-line
 
-  // Load user data from stored token
   const loadUser = async () => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -70,118 +71,125 @@ export const AuthProvider = ({ children }) => {
       return;
     }
     try {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      setAxiosToken(token);
       const response = await axios.get(buildUrl(ENDPOINTS.ME));
       setUser(response.data.user);
+      scheduleTokenRefresh(token);
     } catch (error) {
-      console.error('Load user error:', error);
-      localStorage.removeItem('token');
-      localStorage.removeItem('refreshToken');
-      delete axios.defaults.headers.common['Authorization'];
-      setUser(null);
+      // Token is invalid/expired — clear it
+      const status = error.response?.status;
+      if (status === 401 || status === 403) {
+        localStorage.removeItem('token');
+        setAxiosToken(null);
+        setUser(null);
+      } else {
+        // Network error — keep token, try again later
+        console.warn('Could not verify session (network?):', error.message);
+        setUser(null); // Safe default
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  // Signup
+  // ── Signup ────────────────────────────────────────────────────────────────
   const signup = async (name, email, password) => {
     try {
-      const response = await axios.post(buildUrl(ENDPOINTS.SIGNUP), {
-        name,
-        email,
-        password
-      }, { withCredentials: true });
-
+      const response = await axios.post(buildUrl(ENDPOINTS.SIGNUP), { name, email, password });
       if (response.data.token) {
         localStorage.setItem('token', response.data.token);
-        axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
-      }
-      if (response.data.refreshToken) {
-        localStorage.setItem('refreshToken', response.data.refreshToken);
+        setAxiosToken(response.data.token);
+        scheduleTokenRefresh(response.data.token);
       }
       setUser(response.data.user);
       return { success: true };
     } catch (error) {
-      console.error('Signup error:', error);
       return {
         success: false,
-        error: error.response?.data?.error || 'Signup failed. Please try again.'
+        error: error.response?.data?.error || 'Signup failed. Please try again.',
       };
     }
   };
 
-  // Signin
+  // ── Signin ────────────────────────────────────────────────────────────────
   const signin = async (email, password) => {
     try {
-      const response = await axios.post(buildUrl(ENDPOINTS.LOGIN), {
-        email,
-        password
-      }, { withCredentials: true });
-
+      const response = await axios.post(buildUrl(ENDPOINTS.LOGIN), { email, password });
       if (response.data.token) {
         localStorage.setItem('token', response.data.token);
-        axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
-      }
-      if (response.data.refreshToken) {
-        localStorage.setItem('refreshToken', response.data.refreshToken);
+        setAxiosToken(response.data.token);
+        scheduleTokenRefresh(response.data.token);
       }
       setUser(response.data.user);
       return { success: true };
     } catch (error) {
-      console.error('Signin error:', error);
       return {
         success: false,
-        error: error.response?.data?.error || 'Login failed. Please try again.'
+        error: error.response?.data?.error || 'Login failed. Please check your credentials.',
       };
     }
   };
 
-  // Logout
-  const logout = async () => {
-    try {
-      await axios.post(buildUrl('/auth/logout'), {}, { withCredentials: true });
-    } catch (e) {
-      // Ignore logout endpoint errors
-    }
-    if (refreshTimeoutRef.current) {
-      clearTimeout(refreshTimeoutRef.current);
-    }
+  // ── Logout ────────────────────────────────────────────────────────────────
+  const performLogout = () => {
+    if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current);
     localStorage.removeItem('token');
-    localStorage.removeItem('refreshToken');
-    delete axios.defaults.headers.common['Authorization'];
+    setAxiosToken(null);
     setUser(null);
   };
 
-  // Check if user is admin
-  const isAdmin = () => {
-    return user?.role === 'admin';
+  const logout = async () => {
+    try {
+      // Fire-and-forget logout call (server-side is stateless, just for logs)
+      await axios.post(buildUrl(ENDPOINTS.LOGOUT));
+    } catch {
+      // Ignore — we always log out client-side regardless
+    }
+    performLogout();
   };
 
-  // Update user profile
+  // ── Update user profile ────────────────────────────────────────────────────
   const updateUser = async (profileData) => {
+    const token = localStorage.getItem('token');
+    const response = await axios.put(
+      buildUrl(ENDPOINTS.UPDATE_PROFILE),
+      profileData,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (response.data.user) setUser(response.data.user);
+    return response.data.user;
+    // Errors propagate to caller — let component handle them
+  };
+
+  // ── Refresh user from server (call after subscription change etc.) ─────────
+  const refreshUser = async () => {
     try {
-      const response = await axios.put(buildUrl(ENDPOINTS.UPDATE_PROFILE), profileData);
-      setUser(response.data.user);
-      return response.data.user;
-    } catch (error) {
-      throw error;
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const response = await axios.get(
+        buildUrl(ENDPOINTS.ME),
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (response.data.user) setUser(response.data.user);
+    } catch {
+      // Silently ignore — stale data is better than crashing
     }
   };
 
-  const value = {
-    user,
-    loading,
-    signup,
-    signin,
-    logout,
-    isAdmin,
-    isAuthenticated: !!user,
-    updateUser
-  };
+  const isAdmin = () => user?.role === 'admin';
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={{
+      user,
+      loading,
+      signup,
+      signin,
+      logout,
+      isAdmin,
+      isAuthenticated: !!user,
+      updateUser,
+      refreshUser,
+    }}>
       {children}
     </AuthContext.Provider>
   );

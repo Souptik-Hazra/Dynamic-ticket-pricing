@@ -2,10 +2,12 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext.jsx";
 import { buildUrl, ENDPOINTS } from "../config/api";
+import { useWebSocket } from "../hooks/useWebSocket";
 import "./UserProfile.css";
 
 const UserProfile = () => {
   const { user, updateUser } = useAuth();
+  const { lastEvent } = useWebSocket();
   const [activeTab, setActiveTab] = useState("profile");
   const [form, setForm] = useState({
     name: user?.name || "",
@@ -19,18 +21,27 @@ const UserProfile = () => {
   const [tickets, setTickets] = useState([]);
   const [ticketsLoading, setTicketsLoading] = useState(false);
   const [printTicket, setPrintTicket] = useState(null);
+  const [payments, setPayments] = useState([]);
+  const [paymentsLoading, setPaymentsLoading] = useState(false);
+  const [refundingId, setRefundingId] = useState(null);
 
   useEffect(() => {
-    if (activeTab === "tickets") {
+    if (activeTab === "tickets") fetchTickets();
+    if (activeTab === "payments") fetchPayments();
+  }, [activeTab]);
+
+  // Real-time: refresh ticket list when a new ticket_sold event arrives
+  useEffect(() => {
+    if (lastEvent?.type === 'ticket_sold' && activeTab === 'tickets') {
       fetchTickets();
     }
-  }, [activeTab]);
+  }, [lastEvent]); // eslint-disable-line
 
   const fetchTickets = async () => {
     try {
       setTicketsLoading(true);
       const token = localStorage.getItem("token");
-      const response = await axios.get(buildUrl('/tickets'), {
+      const response = await axios.get(buildUrl(ENDPOINTS.USER_TICKETS), {
         headers: { Authorization: `Bearer ${token}` },
       });
       setTickets(Array.isArray(response.data) ? response.data : []);
@@ -38,6 +49,39 @@ const UserProfile = () => {
       console.error("Error fetching tickets:", err);
     } finally {
       setTicketsLoading(false);
+    }
+  };
+
+  const fetchPayments = async () => {
+    try {
+      setPaymentsLoading(true);
+      const token = localStorage.getItem("token");
+      const { data } = await axios.get(buildUrl(ENDPOINTS.PAYMENTS), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setPayments(Array.isArray(data.payments) ? data.payments : Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Error fetching payments:", err);
+    } finally {
+      setPaymentsLoading(false);
+    }
+  };
+
+  const handleRefund = async (paymentId) => {
+    if (!window.confirm('Request a refund for this payment? This cannot be undone.')) return;
+    try {
+      setRefundingId(paymentId);
+      const token = localStorage.getItem("token");
+      await axios.post(
+        buildUrl(ENDPOINTS.PAYMENT_REFUND(paymentId)),
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      await fetchPayments(); // refresh list
+    } catch (err) {
+      alert(err.response?.data?.error || 'Refund request failed');
+    } finally {
+      setRefundingId(null);
     }
   };
 
@@ -129,6 +173,12 @@ const UserProfile = () => {
           onClick={() => setActiveTab("tickets")}
         >
           <span className="tab-icon">🎟️</span> My Tickets
+        </button>
+        <button
+          className={`profile-tab ${activeTab === "payments" ? "active" : ""}`}
+          onClick={() => setActiveTab("payments")}
+        >
+          <span className="tab-icon">💳</span> Payments
         </button>
       </div>
 
@@ -490,6 +540,73 @@ const UserProfile = () => {
               </button>
             </div>
           </div>
+        </div>
+      )}
+      {/* \u2500\u2500 Payments Tab \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */}
+      {activeTab === "payments" && (
+        <div className="profile-card">
+          <h2 className="card-title">\ud83d\udcb3 Payment History</h2>
+          <p className="card-subtitle">All your recorded payment transactions</p>
+
+          {paymentsLoading ? (
+            <div className="loading-spinner">\ud83d\udd04 Loading payments...</div>
+          ) : payments.length === 0 ? (
+            <div className="no-tickets-message">
+              <p>No payments found.</p>
+              <p style={{ fontSize: '0.85rem', color: '#999', marginTop: '0.5rem' }}>
+                Payments are recorded when you complete a checkout with the payment service.
+              </p>
+            </div>
+          ) : (
+            <div className="tickets-table-container" style={{ overflowX: 'auto', marginTop: '1.5rem' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                <thead>
+                  <tr style={{ background: '#f0f0f0', textAlign: 'left' }}>
+                    <th style={{ padding: '10px' }}>Transaction ID</th>
+                    <th style={{ padding: '10px' }}>Amount</th>
+                    <th style={{ padding: '10px' }}>Method</th>
+                    <th style={{ padding: '10px' }}>Status</th>
+                    <th style={{ padding: '10px' }}>Date</th>
+                    <th style={{ padding: '10px' }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {payments.map((p) => (
+                    <tr key={p._id} style={{ borderBottom: '1px solid #eee' }}>
+                      <td style={{ padding: '10px', fontFamily: 'monospace', fontSize: '0.8rem', color: '#666' }}>
+                        {p.transactionId || p._id}
+                      </td>
+                      <td style={{ padding: '10px', fontWeight: 700 }}>\u20b9{p.amount?.toFixed(2)}</td>
+                      <td style={{ padding: '10px', textTransform: 'capitalize' }}>{p.paymentMethod}</td>
+                      <td style={{ padding: '10px' }}>
+                        <span className={`status-badge ${p.status}`}>{p.status}</span>
+                      </td>
+                      <td style={{ padding: '10px', color: '#666' }}>
+                        {p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-IN', {
+                          day: 'numeric', month: 'short', year: 'numeric'
+                        }) : '\u2014'}
+                      </td>
+                      <td style={{ padding: '10px' }}>
+                        {p.status === 'completed' && (
+                          <button
+                            className="update-price-btn"
+                            style={{ fontSize: '0.8rem', padding: '4px 12px' }}
+                            disabled={refundingId === p._id}
+                            onClick={() => handleRefund(p._id)}
+                          >
+                            {refundingId === p._id ? 'Processing...' : '\ud83d\udcb8 Refund'}
+                          </button>
+                        )}
+                        {p.status === 'refunded' && (
+                          <span style={{ color: '#2ecc71', fontWeight: 600 }}>\u2713 Refunded</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
     </div>

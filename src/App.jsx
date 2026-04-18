@@ -14,6 +14,7 @@ import { buildUrl, ENDPOINTS } from './config/api';
 import './App.css';
 import './components/NavBadge.css';
 import UserProfile from "./components/UserProfile.jsx";
+import Notifications from "./components/Notifications.jsx";
 
 function AppContent() {
   const { user, loading: authLoading, logout, isAuthenticated, isAdmin } = useAuth();
@@ -26,7 +27,6 @@ function AppContent() {
 
   // Redirect to home page after logout
   useEffect(() => {
-    // Allow public access to home, login, signup, events, and purchase
     if (
       !isAuthenticated &&
       view !== 'home' &&
@@ -70,12 +70,17 @@ function AppContent() {
 
   const handleUpdatePrice = async (eventId) => {
     try {
-      const response = await axios.get(buildUrl(`/events/${eventId}/price`));
-      alert(`New dynamic price: ₹${response.data.current_price.toFixed(2)}`);
-      fetchEvents(); // Refresh events
+      const response = await axios.get(buildUrl(`/events/${eventId}/dynamic-prices`));
+      const prices = response.data.prices;
+      const occupancy = response.data.occupancyRate;
+      const priceText = prices
+        ? Object.entries(prices).map(([cat, price]) => `${cat}: ₹${price}`).join(' | ')
+        : 'N/A';
+      alert(`Dynamic Prices (${occupancy}% occupancy):\n${priceText}`);
+      fetchEvents();
     } catch (error) {
-      console.error('Error updating price:', error);
-      alert('Failed to update price. Make sure ML model is running.');
+      console.error('Error fetching dynamic prices:', error);
+      alert('Failed to fetch dynamic prices. Make sure the organizer service is running.');
     }
   };
 
@@ -162,6 +167,7 @@ function AppContent() {
                 {!isAdmin() && (
                   <button onClick={() => setView('subscription')} className="nav-profile-btn">Membership</button>
                 )}
+                <button onClick={() => setView('notifications')} className="nav-profile-btn">🔔</button>
                 <button onClick={() => setView('profile')} className="nav-profile-btn">Profile</button>
                 <button onClick={logout} className="nav-logout-btn">Logout</button>
               </>
@@ -194,6 +200,7 @@ function AppContent() {
               {!isAdmin() && (
                 <button onClick={() => setView('subscription')} className="nav-profile-btn">Membership</button>
               )}
+              <button onClick={() => setView('notifications')} className="nav-profile-btn" title="Notifications">🔔</button>
               <button onClick={() => setView('profile')} className="nav-profile-btn">Profile</button>
               <button onClick={logout} className="nav-logout-btn">Logout</button>
             </div>
@@ -259,6 +266,10 @@ function AppContent() {
             setView('events');
           }}
         />
+      )}
+
+      {view === 'notifications' && isAuthenticated && (
+        <Notifications />
       )}
 
       {view === 'profile' && isAuthenticated && (

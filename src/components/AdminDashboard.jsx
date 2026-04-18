@@ -4,28 +4,40 @@ import { useAuth } from '../context/AuthContext';
 import AdminEventForm from './AdminEventForm';
 import Footer from './Footer';
 import { buildUrl, ENDPOINTS } from '../config/api';
+import { useWebSocket } from '../hooks/useWebSocket';
 import './AdminDashboard.css';
 
 function AdminDashboard() {
   const { user, logout } = useAuth();
+  const { connected, lastEvent } = useWebSocket();
   const [view, setView]   = useState('stats');
   const [stats, setStats] = useState(null);
   const [events, setEvents]               = useState([]);
   const [tickets, setTickets]             = useState([]);
+  const [users, setUsers]                 = useState([]);
   const [fraudAnalytics, setFraudAnalytics] = useState(null);
   const [loading, setLoading]             = useState(false);
   const [showEventForm, setShowEventForm] = useState(false);
   const [editingEvent, setEditingEvent]   = useState(null);
+
+  // Real-time: refresh stats when a ticket is sold
+  useEffect(() => {
+    if (!lastEvent) return;
+    if (lastEvent.type === 'ticket_sold' && view === 'stats') {
+      fetchStats();
+    }
+  }, [lastEvent]); // eslint-disable-line
 
   const authHeaders = () => ({
     headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
   });
 
   useEffect(() => {
-    if (view === 'stats')  fetchStats();
-    if (view === 'events') fetchEvents();
+    if (view === 'stats')   fetchStats();
+    if (view === 'events')  fetchEvents();
     if (view === 'tickets') fetchTickets();
-    if (view === 'fraud')  fetchFraudAnalytics();
+    if (view === 'fraud')   fetchFraudAnalytics();
+    if (view === 'users')   fetchUsers();
   }, [view]);
 
   const fetchStats = async () => {
@@ -64,11 +76,22 @@ function AdminDashboard() {
   const fetchFraudAnalytics = async () => {
     try {
       setLoading(true);
-      const { data } = await axios.get(buildUrl('/admin/fraud-analytics'), authHeaders());
+      const { data } = await axios.get(buildUrl(ENDPOINTS.ADMIN_FRAUD), authHeaders());
       setFraudAnalytics(data.fraudAnalytics);
     } catch (err) {
       console.error('Fraud error:', err);
       alert('Failed to fetch fraud analytics');
+    } finally { setLoading(false); }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const { data } = await axios.get(buildUrl(ENDPOINTS.ADMIN_USERS), authHeaders());
+      setUsers(data.users || []);
+    } catch (err) {
+      console.error('Users error:', err);
+      alert('Failed to fetch users');
     } finally { setLoading(false); }
   };
 
@@ -97,6 +120,10 @@ function AdminDashboard() {
       <header className="admin-header">
         <div className="admin-header-content">
           <h1>🎫 Admin Dashboard</h1>
+          <span className={`ws-indicator ${connected ? 'ws-on' : 'ws-off'}`}
+                title={connected ? 'Live updates connected' : 'Offline'}>
+            {connected ? '🟢 Live' : '⚫ Offline'}
+          </span>
         </div>
       </header>
 
@@ -104,6 +131,7 @@ function AdminDashboard() {
         <button className={view === 'stats'   ? 'active' : ''} onClick={() => setView('stats')}>📊 Statistics</button>
         <button className={view === 'events'  ? 'active' : ''} onClick={() => setView('events')}>🎭 Manage Events</button>
         <button className={view === 'tickets' ? 'active' : ''} onClick={() => setView('tickets')}>🎟️ Ticket Buyers</button>
+        <button className={view === 'users'   ? 'active' : ''} onClick={() => setView('users')}>👥 Users</button>
         <button className={view === 'fraud'   ? 'active' : ''} onClick={() => setView('fraud')}>🚨 Fraud Analytics</button>
       </nav>
 
@@ -252,6 +280,55 @@ function AdminDashboard() {
                   <div className="summary-card"><span className="label">Total Tickets</span><span className="value">{tickets.reduce((s, t) => s + t.quantity, 0)}</span></div>
                   <div className="summary-card"><span className="label">Total Revenue</span><span className="value">₹{tickets.reduce((s, t) => s + (t.totalAmount || 0), 0).toFixed(2)}</span></div>
                   <div className="summary-card"><span className="label">Unique Buyers</span><span className="value">{new Set(tickets.map((t) => t.buyerEmail)).size}</span></div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ── Users ─────────────────────────────────────────────────────── */}
+        {view === 'users' && (
+          <div className="users-view">
+            <div className="view-header">
+              <h2>👥 Registered Users</h2>
+              <button className="refresh-btn" onClick={fetchUsers}>🔄 Refresh</button>
+            </div>
+            {users.length === 0 && !loading ? (
+              <div className="no-data"><p>No users found.</p></div>
+            ) : (
+              <>
+                <div className="tickets-table-container">
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>Name</th><th>Email</th><th>Role</th>
+                        <th>Subscription</th><th>City</th><th>Joined</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {users.map((u) => (
+                        <tr key={u._id}>
+                          <td><strong>{u.name}</strong></td>
+                          <td>{u.email}</td>
+                          <td><span className={`status-badge ${u.role}`}>{u.role}</span></td>
+                          <td>
+                            {u.subscription?.plan && u.subscription.plan !== 'none'
+                              ? <span className="category-badge">{u.subscription.plan.replace(/_/g, ' ').toUpperCase()}
+                                  {u.subscription.isActive ? ' ✓' : ' ✗'}
+                                </span>
+                              : <span className="status-badge">Free</span>}
+                          </td>
+                          <td>{u.city || '—'}</td>
+                          <td>{fmtDate(u.createdAt)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="tickets-summary">
+                  <div className="summary-card"><span className="label">Total Users</span><span className="value">{users.length}</span></div>
+                  <div className="summary-card"><span className="label">Subscribers</span><span className="value">{users.filter(u => u.subscription?.isActive).length}</span></div>
+                  <div className="summary-card"><span className="label">Free Users</span><span className="value">{users.filter(u => !u.subscription?.isActive).length}</span></div>
                 </div>
               </>
             )}

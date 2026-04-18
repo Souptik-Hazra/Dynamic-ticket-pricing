@@ -1,56 +1,105 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import { buildUrl } from '../config/api';
+import { buildUrl, ENDPOINTS } from '../config/api';
 import { subscriptionPlans } from '../utils/subscriptionPlans';
 import './Subscription.css';
 
 const Subscription = () => {
-  const { user, updateUser } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
+  const { user, refreshUser } = useAuth();
+  const [loading,    setLoading]    = useState(false);
+  const [fetchingLive, setFetchingLive] = useState(true);
+  const [liveSub,    setLiveSub]    = useState(null);   // fresh from API
+  const [message,   setMessage]    = useState({ text: '', isError: false });
 
-  const currentPlan = user?.subscription?.plan || 'none';
+  const authHeader = () => {
+    const token = localStorage.getItem('token');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
+
+  // Fetch live subscription on mount (GET /subscription)
+  useEffect(() => {
+    const fetchSub = async () => {
+      try {
+        const { data } = await axios.get(buildUrl(ENDPOINTS.SUBSCRIPTION), {
+          headers: authHeader(),
+        });
+        setLiveSub(data);
+      } catch (err) {
+        console.warn('Could not fetch live subscription:', err.message);
+        // Fallback to AuthContext snapshot
+        setLiveSub(user?.subscription || { plan: 'none', isActive: false });
+      } finally {
+        setFetchingLive(false);
+      }
+    };
+    fetchSub();
+  }, []); // eslint-disable-line
+
+  const currentPlan = liveSub?.plan || user?.subscription?.plan || 'none';
+  const isActive    = liveSub?.isActive ?? (user?.subscription?.isActive ?? false);
+  const endDate     = liveSub?.endDate || user?.subscription?.endDate;
 
   const handleSubscribe = async (planId) => {
     setLoading(true);
-    setMessage('');
+    setMessage({ text: '', isError: false });
     try {
-      const token = localStorage.getItem('token');
       const { data } = await axios.post(
-        buildUrl('/subscription/upgrade'),
+        buildUrl(ENDPOINTS.SUBSCRIPTION_UPGRADE),
         { plan: planId },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: authHeader() }
       );
-
       if (data.success) {
-        setMessage(`✅ Successfully subscribed to ${data.subscription.plan.replace(/_/g, ' ')}`);
-        // Refresh user object in context so the nav badge updates immediately
-        await updateUser({});
+        setLiveSub(data.subscription);                    // update local state immediately
+        setMessage({ text: `✅ Subscribed to ${data.subscription.plan.replace(/_/g, ' ')}`, isError: false });
+        await refreshUser();                             // sync AuthContext so nav badge updates
       }
     } catch (err) {
-      console.error('Subscription error:', err);
-      setMessage(err.response?.data?.error || 'Failed to upgrade subscription');
+      setMessage({
+        text: err.response?.data?.error || 'Failed to upgrade subscription',
+        isError: true,
+      });
     } finally {
       setLoading(false);
     }
   };
 
+  const daysLeft = endDate
+    ? Math.max(0, Math.ceil((new Date(endDate) - Date.now()) / 86400000))
+    : null;
+
   return (
     <div className="subscription-container">
       <h2>Select Your Membership Plan</h2>
-      {message && <div className="subscription-message">{message}</div>}
 
-      <div className="current-status">
-        Current Plan: <span className="status-badge">{currentPlan.replace(/_/g, ' ')}</span>
-        {user?.subscription?.endDate && (
-          <span> (Expires: {new Date(user.subscription.endDate).toLocaleDateString()})</span>
-        )}
-      </div>
+      {/* Live status banner */}
+      {fetchingLive ? (
+        <div className="subscription-loading">Loading your plan...</div>
+      ) : (
+        <div className={`current-status ${isActive && currentPlan !== 'none' ? 'active-status' : ''}`}>
+          <span>Current Plan:</span>
+          <span className="status-badge">
+            {currentPlan === 'none' ? 'Free' : currentPlan.replace(/_/g, ' ').toUpperCase()}
+          </span>
+          {isActive && endDate && daysLeft !== null && (
+            <span className="expiry-note">
+              {daysLeft > 0
+                ? `— Expires in ${daysLeft} day${daysLeft !== 1 ? 's' : ''} (${new Date(endDate).toLocaleDateString()})`
+                : '— Expired'}
+            </span>
+          )}
+        </div>
+      )}
+
+      {message.text && (
+        <div className={`subscription-message ${message.isError ? 'error' : 'success'}`}>
+          {message.text}
+        </div>
+      )}
 
       <div className="plans-grid">
         {subscriptionPlans.map((plan) => (
-          <div key={plan.id} className={`plan-card ${currentPlan === plan.id ? 'active-plan' : ''}`}>
+          <div key={plan.id} className={`plan-card ${currentPlan === plan.id && isActive ? 'active-plan' : ''}`}>
             <div className="plan-header">
               <h3>{plan.title}</h3>
               <div className="plan-price">{plan.price}</div>
@@ -61,10 +110,14 @@ const Subscription = () => {
             </ul>
             <button
               className="subscribe-btn"
-              disabled={loading || currentPlan === plan.id}
+              disabled={loading || (currentPlan === plan.id && isActive)}
               onClick={() => handleSubscribe(plan.id)}
             >
-              {loading ? 'Processing...' : currentPlan === plan.id ? 'Current Plan' : 'Subscribe Now'}
+              {loading
+                ? 'Processing...'
+                : (currentPlan === plan.id && isActive)
+                  ? '✓ Current Plan'
+                  : 'Subscribe Now'}
             </button>
           </div>
         ))}

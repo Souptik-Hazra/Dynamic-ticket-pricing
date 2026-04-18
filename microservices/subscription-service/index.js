@@ -6,6 +6,7 @@ import { errorHandler, notFound } from '../shared/errorHandler.js';
 import jwtMiddleware from '../shared/jwtMiddleware.js';
 import Subscription, { PLAN_DURATIONS_DAYS } from '../shared/models/Subscription.js';
 import User from '../shared/models/User.js';
+import { notify, wsNotifyUser, sendEmailTemplate } from '../shared/interservice.js';
 
 dotenv.config();
 
@@ -24,9 +25,19 @@ app.get('/api/subscription', jwtMiddleware, requireDB, async (req, res, next) =>
   try {
     const sub = await Subscription.findOne({ userId: req.user.id });
     if (!sub) return res.json({ plan: 'none', isActive: false });
+
+    // Auto-expire if past endDate
     if (sub.isActive && sub.endDate < new Date()) {
       sub.isActive = false;
       await sub.save();
+
+      // Notify user that subscription expired
+      notify(
+        req.user.id,
+        'subscription',
+        '⚠️ Subscription Expired',
+        `Your ${sub.plan.replace(/_/g, ' ')} plan has expired. Renew to keep your benefits.`
+      );
     }
     res.json(sub);
   } catch (err) { next(err); }
@@ -41,7 +52,7 @@ app.post('/api/subscription/upgrade', jwtMiddleware, requireDB, async (req, res,
     const durationDays = PLAN_DURATIONS_DAYS[plan];
     if (!durationDays) {
       return res.status(400).json({
-        error: `Invalid plan '${plan}'`,
+        error:      `Invalid plan '${plan}'`,
         validPlans: Object.keys(PLAN_DURATIONS_DAYS),
       });
     }
@@ -55,8 +66,41 @@ app.post('/api/subscription/upgrade', jwtMiddleware, requireDB, async (req, res,
       { upsert: true, new: true }
     );
 
-    // Sync snapshot onto User document
-    await User.findByIdAndUpdate(req.user.id, { subscription: { plan, isActive: true, endDate } });
+    // Sync snapshot onto User document (so AuthContext.user.subscription stays accurate)
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { subscription: { plan, isActive: true, endDate } },
+      { new: true }
+    );
+
+    const planLabel = plan.replace(/_/g, ' ');
+    const expiryStr = endDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    // ── Inter-service: notification + email ─────────────────────────────
+    // 1. Persistent in-app notification
+    notify(
+      req.user.id,
+      'subscription',
+      `⭐ Subscription Activated — ${planLabel}`,
+      `Your ${planLabel} plan is now active. Expires on ${expiryStr}.`
+    );
+
+    // 2. Real-time WebSocket push
+    wsNotifyUser(
+      req.user.id,
+      'subscription',
+      '⭐ Subscription Active!',
+      `Your ${planLabel} plan expires on ${expiryStr}.`
+    );
+
+    // 3. Confirmation email
+    if (user?.email) {
+      sendEmailTemplate(user.email, 'subscription_upgrade', {
+        name:    user.name,
+        plan:    planLabel,
+        endDate: expiryStr,
+      });
+    }
 
     res.json({ success: true, subscription });
   } catch (err) { next(err); }

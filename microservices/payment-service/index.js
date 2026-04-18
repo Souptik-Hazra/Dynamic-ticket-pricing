@@ -7,6 +7,7 @@ import { errorHandler, notFound } from '../shared/errorHandler.js';
 import jwtMiddleware from '../shared/jwtMiddleware.js';
 import Ticket from '../shared/models/Ticket.js';
 import Event from '../shared/models/Event.js';
+import { notify, wsNotifyUser, sendEmailTemplate } from '../shared/interservice.js';
 
 dotenv.config();
 
@@ -76,6 +77,17 @@ app.post('/api/payments', jwtMiddleware, requireDB, async (req, res, next) => {
       ticket,
       message: `Payment of ₹${ticket.totalAmount} processed for ${ticket.eventId.name}`,
     });
+
+    // ── Inter-service: notify + email (after response sent) ──────────────
+    const eventName = ticket.eventId.name;
+    notify(req.user.id, 'ticket_purchase',
+      `💳 Payment Successful — ${eventName}`,
+      `₹${ticket.totalAmount} paid via ${paymentMethod}. Transaction: ${payment.transactionId}`
+    );
+    wsNotifyUser(req.user.id, 'system',
+      '💳 Payment Confirmed',
+      `₹${ticket.totalAmount} paid for ${eventName}`
+    );
   } catch (err) { next(err); }
 });
 
@@ -115,7 +127,18 @@ app.post('/api/payments/:id/refund', jwtMiddleware, requireDB, async (req, res, 
     payment.status = 'refunded';
     await payment.save();
     await Ticket.findByIdAndUpdate(payment.ticketId, { status: 'refunded' });
+
     res.json({ message: 'Refund processed', payment });
+
+    // ── Inter-service: notify user about refund ──────────────────────────
+    notify(req.user.id, 'refund',
+      '💸 Refund Processed',
+      `₹${payment.amount} refunded. Transaction: ${payment.transactionId}`
+    );
+    wsNotifyUser(req.user.id, 'refund',
+      '💸 Refund Issued',
+      `Your ₹${payment.amount} refund is being processed.`
+    );
   } catch (err) { next(err); }
 });
 

@@ -16,7 +16,10 @@ function Analytics() {
   const fetchAnalytics = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(buildUrl(ENDPOINTS.ANALYTICS));
+      const token = localStorage.getItem('token');
+      const response = await axios.get(buildUrl(ENDPOINTS.ANALYTICS), {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       setAnalytics(response.data);
     } catch (error) {
       console.error('Error fetching analytics:', error);
@@ -29,7 +32,7 @@ function Analytics() {
   }
 
   if (!analytics) {
-    return <div className="error">Failed to load analytics</div>;
+    return <div className="error">Failed to load analytics. Make sure you are logged in as admin.</div>;
   }
 
   return (

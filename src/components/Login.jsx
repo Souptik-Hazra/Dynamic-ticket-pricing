@@ -75,7 +75,7 @@ function Login({ onSwitchToSignup }) {
               placeholder="••••••••"
               required
               disabled={loading}
-              minLength="8"
+              minLength="6"
             />
           </div>
 

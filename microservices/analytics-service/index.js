@@ -6,6 +6,7 @@ import { errorHandler, notFound } from '../shared/errorHandler.js';
 import jwtMiddleware from '../shared/jwtMiddleware.js';
 import Event from '../shared/models/Event.js';
 import Ticket from '../shared/models/Ticket.js';
+import { cacheGet, cacheSet } from '../shared/interservice.js';
 
 dotenv.config();
 
@@ -21,6 +22,13 @@ app.get('/health', (_req, res) =>
 
 app.get('/api/analytics', jwtMiddleware, requireDB, async (req, res, next) => {
   try {
+    if (req.user.role !== 'admin')
+      return res.status(403).json({ error: 'Admin access required' });
+
+    // Serve from cache for 2 minutes to avoid hammering DB
+    const cached = await cacheGet('analytics:summary');
+    if (cached) return res.json(cached);
+
     const now = new Date();
     const [totalEvents, upcomingEvents, ticketAgg, revenueAgg] = await Promise.all([
       Event.countDocuments(),
@@ -28,12 +36,16 @@ app.get('/api/analytics', jwtMiddleware, requireDB, async (req, res, next) => {
       Ticket.aggregate([{ $match: { status: 'confirmed' } }, { $group: { _id: null, totalTicketsSold: { $sum: '$quantity' } } }]),
       Ticket.aggregate([{ $match: { status: 'confirmed' } }, { $group: { _id: null, totalRevenue: { $sum: '$totalAmount' } } }]),
     ]);
-    res.json({
+
+    const result = {
       totalEvents,
       upcomingEvents,
       totalTicketsSold: ticketAgg[0]?.totalTicketsSold || 0,
       totalRevenue:     revenueAgg[0]?.totalRevenue    || 0,
-    });
+    };
+
+    cacheSet('analytics:summary', result, 120); // cache for 2 minutes
+    res.json(result);
   } catch (err) { next(err); }
 });
 

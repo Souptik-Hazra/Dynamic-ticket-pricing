@@ -29,6 +29,17 @@
   gap: 1rem;
 }
 
+/* WebSocket live indicator */
+.ws-indicator {
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  letter-spacing: 0.5px;
+}
+.ws-on  { background: rgba(38,222,129,0.25); color: #00e676; }
+.ws-off { background: rgba(200,200,200,0.2); color: #bbb; }
+
 .logout-btn {
   padding: 0.5rem 1.5rem;
   background: rgba(255, 255, 255, 0.2);
