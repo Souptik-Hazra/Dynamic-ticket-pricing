@@ -702,6 +702,35 @@
   font-weight: 600;
 }
 
+.sub-badge.delete-btn { background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); }
+.delete-btn:hover { background: #ef4444; color: #fff; }
+
+.complete-btn { 
+  background: rgba(16, 185, 129, 0.1); 
+  color: #10b981; 
+  border: 1px solid rgba(16, 185, 129, 0.2); 
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.complete-btn:hover { background: #10b981; color: #fff; transform: translateY(-1px); }
+
+/* ── Commissions View ────────────────────────────────── */
+.commissions-view {
+  animation: fadeIn 0.4s ease-out;
+}
+
+.highlighting {
+  color: #f1c40f !important;
+  text-shadow: 0 0 10px rgba(241, 196, 15, 0.3);
+}
+
+.amount-dim {
+  color: #888;
+  font-size: 0.85rem;
+}
+
 .sub-badge.active {
   background: #ebf8ff;
   color: #2b6cb0;

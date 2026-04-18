@@ -8,6 +8,7 @@ import crypto from 'crypto';
 import axios from 'axios';
 import Event from '../shared/models/Event.js';
 import Ticket from '../shared/models/Ticket.js';
+import User from '../shared/models/User.js';
 import {
   notify,
   wsNotifyUser,
@@ -33,17 +34,20 @@ connectDB('OrganizerService');
 
 // ── Dynamic price helper ───────────────────────────────────────────────────
 const getDynamicPrice = (category, event) => {
-  if (!category || !event) return 0;
+  if (!event) return 0;
   
+  // If no category (e.g. general capacity event), use event basePrice as base
+  const basePrice = category ? (Number(category.price) || 0) : (Number(event.basePrice) || 0);
+  if (basePrice <= 0) return 0;
+
   const categories = event.ticketCategories || [];
   const totalCap   = categories.reduce((s, c) => s + (Number(c.seats) || 0), 0) || Number(event.capacity) || 1;
   const totalSold  = categories.reduce((s, c) => s + (Number(c.seats) || 0) - (Number(c.availableSeats) ?? (Number(c.seats) || 0)), 0);
   
   const occupancy    = Math.max(0, Math.min(1, totalSold / totalCap));
   const multiplier   = Math.max(0.9, Math.min(2.0, 1 + occupancy * 0.5));
-  const basePrice    = Number(category.price) || 0;
-  const maxPrice     = Number(category.maxPrice) || (basePrice * 2);
-  const maxMult      = basePrice > 0 ? maxPrice / basePrice : 2;
+  const maxPrice     = category?.maxPrice || (basePrice * 2);
+  const maxMult      = maxPrice / basePrice;
   
   return Math.round(basePrice * Math.min(multiplier, maxMult));
 };
@@ -54,7 +58,7 @@ app.get('/health', (_req, res) =>
 );
 
 /* ── Organizer Router ─────────────────────────────────────────────────────── */
-const organizerRouter = express.Router();
+const organizerRouter = express.Router(); // Keep for legacy if needed by other components, but we'll use app for main routes
 
 // Health check within router
 organizerRouter.get('/health', (req, res) => {
@@ -62,12 +66,13 @@ organizerRouter.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Organizer router is active' });
 });
 
-// GET /api/organizers/stats
-organizerRouter.get('/stats', jwtMiddleware, requireDB, async (req, res, next) => {
+/**
+ * GET /api/organizers/stats
+ */
+app.get('/api/organizers/stats', jwtMiddleware, requireDB, async (req, res, next) => {
   if (req.user.role === 'staff') {
     return res.status(403).json({ error: 'Entry staff are not authorized to view statistics.' });
   }
-  console.log(`[OrganizerRouter] Fetching stats for organizer: ${req.user.id}`);
   try {
     const events = await Event.find({ organizerId: req.user.id });
     const eventIds = events.map(e => e._id);
@@ -101,49 +106,70 @@ organizerRouter.get('/stats', jwtMiddleware, requireDB, async (req, res, next) =
         purchaseDate: t.purchaseDate
       }))
     });
-  } catch (err) {
-    console.error('[OrganizerRouter] Stats error:', err);
-    next(err);
-  }
+  } catch (err) { next(err); }
 });
 
-// GET /api/organizers/events
-organizerRouter.get('/events', jwtMiddleware, requireDB, async (req, res, next) => {
-  if (req.user.role === 'staff') {
-    return res.status(403).json({ error: 'Entry staff are not authorized to view event management.' });
-  }
-  console.log(`[OrganizerRouter] Fetching events for organizer: ${req.user.id}`);
+/**
+ * GET /api/organizers/events
+ */
+app.get('/api/organizers/events', jwtMiddleware, requireDB, async (req, res, next) => {
+  if (req.user.role === 'staff') return res.status(403).json({ error: 'Entry staff unauthorized.' });
   try {
     const events = await Event.find({ organizerId: req.user.id }).sort({ createdAt: -1 });
     res.json({ events });
-  } catch (err) {
-    console.error('[OrganizerRouter] Events fetch error:', err);
-    next(err);
-  }
+  } catch (err) { next(err); }
 });
 
-// GET /api/organizers/tickets
-organizerRouter.get('/tickets', jwtMiddleware, requireDB, async (req, res, next) => {
-  if (req.user.role === 'staff') {
-    return res.status(403).json({ error: 'Entry staff are not authorized to view sales history.' });
-  }
-  console.log(`[OrganizerRouter] Fetching tickets for organizer: ${req.user.id}`);
+/**
+ * GET /api/organizers/tickets
+ */
+app.get('/api/organizers/tickets', jwtMiddleware, requireDB, async (req, res, next) => {
+  if (req.user.role === 'staff') return res.status(403).json({ error: 'Entry staff unauthorized.' });
   try {
     const events = await Event.find({ organizerId: req.user.id }).select('_id');
     const eventIds = events.map(e => e._id);
-    
     const tickets = await Ticket.find({ eventId: { $in: eventIds } })
       .populate('eventId', 'name venue startDate')
       .sort({ purchaseDate: -1 });
-      
     res.json({ tickets });
-  } catch (err) {
-    console.error('[OrganizerRouter] Tickets fetch error:', err);
-    next(err);
-  }
+  } catch (err) { next(err); }
 });
 
-app.use('/api/organizers', organizerRouter);
+/**
+ * POST /api/organizers/broadcast
+ */
+app.post('/api/organizers/broadcast', jwtMiddleware, requireDB, async (req, res, next) => {
+  try {
+    const { eventId, title, message } = req.body;
+    if (!eventId || !title || !message) return res.status(400).json({ error: 'Event ID, title and message required' });
+    const event = await Event.findOne({ _id: eventId, organizerId: req.user.id });
+    if (!event) return res.status(403).json({ error: 'You do not have permission to message attendees of this event' });
+    const tickets = await Ticket.find({ eventId, status: 'confirmed' }).select('userId');
+    const userIds = [...new Set(tickets.map(t => t.userId))];
+    userIds.forEach(uid => {
+      notify(uid, 'message', `🎭 ${event.name}: ${title}`, message);
+      wsNotifyUser(uid, 'message', `🎭 Organizer Message`, title);
+    });
+    res.json({ success: true, count: userIds.length, message: `Message sent to ${userIds.length} attendees.` });
+  } catch (err) { next(err); }
+});
+
+/**
+ * POST /api/organizers/message-admin
+ */
+app.post('/api/organizers/message-admin', jwtMiddleware, requireDB, async (req, res, next) => {
+  try {
+    const { title, message } = req.body;
+    if (!title || !message) return res.status(400).json({ error: 'Title and message required' });
+    const admins = await User.find({ role: 'admin' }).select('_id');
+    if (!admins.length) return res.status(404).json({ error: 'No admin found' });
+    admins.forEach(admin => {
+      notify(admin._id, 'message', `🏢 Help: ${title} (from ${req.user.id})`, `Organizer ${req.user.name} asks: ${message}`);
+      wsNotifyUser(admin._id, 'message', `🏢 Support Request`, title);
+    });
+    res.json({ success: true, message: 'Message sent to platform administrator.' });
+  } catch (err) { next(err); }
+});
 
 /* ── Public Event Routes ─────────────────────────────────────────────────── */
 
@@ -231,7 +257,7 @@ app.post('/api/tickets/revert', requireDB, async (req, res, next) => {
   const { eventId, categoryName: catName, quantity: qty, amount: amt } = req.body;
   try {
     const updatedEvent = await Event.findOneAndUpdate(
-      { _id: eventId, 'ticketCategories.name': catName },
+      { _id: eventId, 'ticketCategories.name': catName?.toLowerCase() },
       { $inc: { 'ticketCategories.$.availableSeats': qty, ticketsSold: -qty, totalRevenue: -amt } },
       { new: true }
     );
@@ -270,8 +296,8 @@ app.post('/api/tickets', jwtMiddleware, requireDB, async (req, res, next) => {
     const event = await Event.findById(eventId);
     if (!event) return res.status(404).json({ error: 'Event not found' });
 
-    // 1. Find the specific category
-    const category = event.ticketCategories?.find(c => c.name === catName);
+    // 1. Find the specific category (case-insensitive)
+    const category = event.ticketCategories?.find(c => c.name === catName?.toLowerCase());
     if (catName && !category) return res.status(400).json({ error: 'Invalid ticket category' });
 
     // 2. Check availability
@@ -287,18 +313,19 @@ app.post('/api/tickets', jwtMiddleware, requireDB, async (req, res, next) => {
     
     if (category) {
       await Event.findOneAndUpdate(
-        { _id: eventId, 'ticketCategories.name': catName },
+        { _id: eventId, 'ticketCategories.name': catName?.toLowerCase() },
         { 
           $inc: { 
             'ticketCategories.$.availableSeats': -qty, 
-            ticketsSold: qty
+            ticketsSold: qty,
+            totalRevenue: amount
           } 
         }
       );
     } else {
       await Event.findByIdAndUpdate(
         eventId,
-        { $inc: { ticketsSold: qty } }
+        { $inc: { ticketsSold: qty, totalRevenue: amount } }
       );
     }
 

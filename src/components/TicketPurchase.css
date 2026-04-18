@@ -125,6 +125,67 @@
   margin-top: 1rem;
 }
 
+/* Payment Method Styles */
+.payment-method-section {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  background: rgba(102, 126, 234, 0.05);
+  border-radius: 12px;
+  border: 1px solid rgba(102, 126, 234, 0.1);
+}
+
+.payment-method-section h3 {
+  font-size: 1.3rem !important;
+  margin-bottom: 1.25rem !important;
+  color: #333;
+}
+
+.payment-methods-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1rem;
+}
+
+.method-card {
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 1rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.method-card:hover {
+  border-color: #667eea;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+}
+
+.method-card.selected {
+  border-color: #667eea;
+  background: linear-gradient(135deg, #667eea08 0%, #764ba208 100%);
+  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.15);
+}
+
+.method-icon {
+  font-size: 1.75rem;
+}
+
+.method-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #555;
+}
+
+.method-card.selected .method-label {
+  color: #667eea;
+}
+
 .order-summary h4 {
   color: #333;
   margin-bottom: 1rem;

@@ -6,7 +6,7 @@ import { errorHandler, notFound } from '../shared/errorHandler.js';
 import jwtMiddleware from '../shared/jwtMiddleware.js';
 import Ticket from '../shared/models/Ticket.js';
 import Event from '../shared/models/Event.js';
-import { wsAttendanceUpdate } from '../shared/interservice.js';
+import { wsAttendanceUpdate, notify, wsNotifyUser } from '../shared/interservice.js';
 
 dotenv.config();
 
@@ -62,6 +62,10 @@ app.post('/api/scanner/verify', jwtMiddleware, requireDB, async (req, res, next)
     ]);
 
     wsAttendanceUpdate(ticket.eventId._id, scannedCount, totalSold);
+
+    // ── Inter-service: notify attendee ──
+    notify(ticket.userId, 'event_update', '🎭 Welcome!', `Your ticket for "${ticket.eventId.name}" has been scanned. enjoy the event!`);
+    wsNotifyUser(ticket.userId, 'event_update', '🎭 Check-in Successful', `Welcome to ${ticket.eventId.name}!`);
 
     res.json({ 
       success: true, 

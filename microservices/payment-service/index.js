@@ -7,7 +7,7 @@ import { errorHandler, notFound } from '../shared/errorHandler.js';
 import jwtMiddleware from '../shared/jwtMiddleware.js';
 import Ticket from '../shared/models/Ticket.js';
 import Event from '../shared/models/Event.js';
-import { notify, wsNotifyUser, sendEmailTemplate, revertPurchase } from '../shared/interservice.js';
+import { notify, wsNotifyUser, sendEmailTemplate, revertPurchase, creditUserWallet } from '../shared/interservice.js';
 
 dotenv.config();
 
@@ -82,17 +82,30 @@ app.post('/api/payments', jwtMiddleware, requireDB, async (req, res, next) => {
       metadata: { ...req.body.metadata, cardLast4, upiId },
     });
 
-    // 4. Update Event Revenue
+    // 4. Update Event Revenue & Credit Organizer Wallet
     try {
       const eventId = ticket.eventId._id || ticket.eventId;
+      const organizerId = ticket.eventId.organizerId;
+
+      // Increment revenue in event document
       await Event.findByIdAndUpdate(eventId, {
         $inc: { totalRevenue: payment.amount }
       });
-      // Optionally trigger sync logic
+
+      // Synchronize derived metrics
       const event = await Event.findById(eventId);
       if (event) await event.save(); 
+
+      // DIRECT REVENUE: Credit the Organizer's wallet immediately
+      if (organizerId && payment.amount > 0) {
+        creditUserWallet(
+          organizerId, 
+          payment.amount, 
+          `Revenue from ticket purchase: ${ticket.bookingReference} (Event: ${event?.name || 'N/A'})`
+        );
+      }
     } catch (updateErr) {
-      console.error('[PaymentService] Event revenue update failed:', updateErr.message);
+      console.error('[PaymentService] Revenue distribution failed:', updateErr.message);
     }
 
     res.status(201).json({
@@ -195,8 +208,14 @@ app.post('/api/payments/:id/refund', jwtMiddleware, requireDB, async (req, res, 
     const ticket = await Ticket.findByIdAndUpdate(payment.ticketId, { status: 'refunded' }, { new: true });
     
     if (ticket) {
-      // ── Inter-service: revert revenue and inventory in Organizer Service
-      revertPurchase(ticket.eventId, ticket.categoryName, ticket.quantity, ticket.totalAmount);
+      // 85% REFUND POLICY: User gets 85%, Organizer loses 85% (keeps 15% as fee)
+      const refundAmount = Math.round(payment.amount * 0.85);
+
+      // ── Inter-service: revert 85% revenue in Organizer Service
+      revertPurchase(ticket.eventId, ticket.categoryName, ticket.quantity, refundAmount);
+
+      // ── Inter-service: Credit User Wallet with 85%
+      creditUserWallet(payment.userId, refundAmount, `Refund (85% payout) for ${ticket.eventId?.name || 'ticket'}`);
     }
 
     res.json({ message: 'Refund processed', payment });
@@ -204,11 +223,11 @@ app.post('/api/payments/:id/refund', jwtMiddleware, requireDB, async (req, res, 
     // ── Inter-service: notify user about refund ──────────────────────────
     notify(req.user.id, 'refund',
       '💸 Refund Processed',
-      `₹${payment.amount} refunded. Transaction: ${payment.transactionId}`
+      `₹${refundAmount} refunded for event: ${ticket?.eventId?.name || 'ticket'}. Transaction: ${payment.transactionId}`
     );
     wsNotifyUser(req.user.id, 'refund',
       '💸 Refund Issued',
-      `Your ₹${payment.amount} refund is being processed.`
+      `Your ₹${refundAmount} refund (85% payout) has been processed.`
     );
   } catch (err) { next(err); }
 });

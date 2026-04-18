@@ -18,6 +18,7 @@ const SERVICES = {
   payment:      process.env.PAYMENT_SERVICE_URL      || 'http://localhost:4004',
   cache:        process.env.CACHE_SERVICE_URL        || 'http://localhost:4005',
   organizer:    process.env.ORGANIZER_SERVICE_URL    || 'http://localhost:4013',
+  wallet:       process.env.WALLET_SERVICE_URL       || 'http://localhost:4016',
 };
 
 // ── Generic fire-and-forget helper ────────────────────────────────────────
@@ -109,6 +110,25 @@ export const sendEmail = (to, subject, html) =>
   fireAndForget(
     () => axios.post(`${SERVICES.email}/api/email/send`, { to, subject, html }, { timeout: 5000 }),
     `sendEmail(→ ${to})`
+  );
+
+// ── Wallet Service ────────────────────────────────────────────────────────
+/**
+ * Credit a user's wallet (internal call).
+ */
+export const creditUserWallet = (userId, amount, description) =>
+  fireAndForget(
+    () => axios.post(`${SERVICES.wallet}/api/wallet/credit`, { userId, amount, description }, { timeout: 5000 }),
+    `creditUserWallet(${userId})`
+  );
+
+/**
+ * Debit a user's wallet (internal call).
+ */
+export const debitUserWallet = (userId, amount, description) =>
+  fireAndForget(
+    () => axios.post(`${SERVICES.wallet}/api/wallet/debit`, { userId, amount, description, internal: true }, { timeout: 5000 }),
+    `debitUserWallet(${userId})`
   );
 
 // ── Cache Service ─────────────────────────────────────────────────────────

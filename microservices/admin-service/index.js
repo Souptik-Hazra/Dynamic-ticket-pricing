@@ -7,7 +7,8 @@ import jwtMiddleware from '../shared/jwtMiddleware.js';
 import Event from '../shared/models/Event.js';
 import Ticket from '../shared/models/Ticket.js';
 import User from '../shared/models/User.js';
-import { cacheDel, cacheDelPattern, CACHE_KEYS } from '../shared/interservice.js';
+import Commission from '../shared/models/Commission.js';
+import { cacheDel, cacheDelPattern, CACHE_KEYS, creditUserWallet, debitUserWallet, notify, wsNotifyUser } from '../shared/interservice.js';
 
 dotenv.config();
 
@@ -175,6 +176,132 @@ app.get('/api/admin/users', auth, async (req, res, next) => {
   try {
     const users = await User.find({ role: { $ne: 'admin' } }).sort({ createdAt: -1 });
     res.json({ users });
+  } catch (err) { next(err); }
+});
+
+app.put('/api/admin/users/:id/role', auth, async (req, res, next) => {
+  try {
+    const { role } = req.body;
+    if (!['user', 'organizer', 'admin'].includes(role))
+      return res.status(400).json({ error: 'Invalid role' });
+
+    // Prevent demoting self
+    if (req.params.id === req.user.id.toString() && role !== 'admin') {
+      return res.status(400).json({ error: 'Cannot demote yourself from Admin' });
+    }
+
+    const user = await User.findByIdAndUpdate(req.params.id, { role }, { new: true });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    res.json({ message: 'User role updated', user });
+  } catch (err) { next(err); }
+});
+
+/**
+ * POST /api/admin/broadcast
+ * Broadcast message to various target groups
+ */
+app.post('/api/admin/broadcast', auth, async (req, res, next) => {
+  try {
+    const { target, targetId, title, message } = req.body;
+    if (!title || !message) return res.status(400).json({ error: 'Title and message required' });
+
+    let userIds = [];
+
+    if (target === 'all_organizers') {
+      const users = await User.find({ role: 'organizer' }).select('_id');
+      userIds = users.map(u => u._id);
+    } else if (target === 'event_attendees') {
+      if (!targetId) return res.status(400).json({ error: 'Event ID required for event_attendees target' });
+      const tickets = await Ticket.find({ eventId: targetId, status: 'confirmed' }).select('userId');
+      userIds = [...new Set(tickets.map(t => t.userId))];
+    } else if (target === 'all_users') {
+      const users = await User.find({ role: 'user' }).select('_id');
+      userIds = users.map(u => u._id);
+    } else if (target === 'individual') {
+      if (!targetId) return res.status(400).json({ error: 'User ID required for individual target' });
+      userIds = [targetId];
+    } else {
+      return res.status(400).json({ error: 'Invalid target group' });
+    }
+
+    // Process messaging
+    userIds.forEach(uid => {
+      notify(uid, 'message', `📢 Admin: ${title}`, message);
+      wsNotifyUser(uid, 'message', `📢 Admin Message`, title);
+    });
+
+    res.json({ success: true, count: userIds.length, message: `Dispatched to ${userIds.length} users.` });
+  } catch (err) { next(err); }
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   COMMISSIONS & ORGANIZER PAYMENTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * POST /api/admin/events/:id/complete
+ * Marks event as completed and processes 20% commission payout.
+ */
+app.post('/api/admin/events/:id/complete', auth, async (req, res, next) => {
+  try {
+    const event = await Event.findById(req.params.id);
+    if (!event) return res.status(404).json({ error: 'Event not found' });
+    if (event.status === 'completed') return res.status(400).json({ error: 'Event already completed' });
+
+    // 1. Find System Admin (Shared Wallet)
+    const admin = await User.findOne({ role: 'admin' });
+    if (!admin) return res.status(500).json({ error: 'No system admin found' });
+
+    // 2. Calculate Commission (20%)
+    const revenue = event.totalRevenue || 0;
+    const commissionAmount = Math.round(revenue * 0.20);
+
+    // 3. Process Wallet Transfers
+    if (commissionAmount > 0) {
+      debitUserWallet(event.organizerId, commissionAmount, `Commission payout (20%) for event: ${event.name}`);
+      creditUserWallet(admin._id, commissionAmount, `Commission received from ${event.organizerId} for event: ${event.name}`);
+    }
+
+    // 4. Create Commission Record
+    await Commission.create({
+      eventId: event._id,
+      organizerId: event.organizerId,
+      adminId: admin._id,
+      totalRevenue: revenue,
+      commissionAmount,
+      status: 'paid'
+    });
+
+    // 5. Update Event Status
+    event.status = 'completed';
+    await event.save();
+
+    // 6. Invalidate Caches
+    cacheDel(CACHE_KEYS.EVENT_DETAIL(event._id));
+    cacheDelPattern(CACHE_KEYS.EVENT_LIST_ALL);
+
+    res.json({ 
+      success: true, 
+      message: 'Event completed and commission processed',
+      commissionAmount,
+      revenue
+    });
+  } catch (err) { next(err); }
+});
+
+/**
+ * GET /api/admin/commissions
+ * Returns list of all commission payments.
+ */
+app.get('/api/admin/commissions', auth, async (req, res, next) => {
+  try {
+    const commissions = await Commission.find()
+      .populate('eventId', 'name venue')
+      .populate('organizerId', 'name email')
+      .sort({ payoutDate: -1 });
+      
+    res.json({ commissions });
   } catch (err) { next(err); }
 });
 

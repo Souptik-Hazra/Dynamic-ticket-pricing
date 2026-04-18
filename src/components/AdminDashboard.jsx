@@ -15,12 +15,15 @@ function AdminDashboard() {
   const [events, setEvents]               = useState([]);
   const [tickets, setTickets]             = useState([]);
   const [users, setUsers]                 = useState([]);
+  const [commissions, setCommissions]     = useState([]);
   const [loading, setLoading]             = useState(false);
   const [showEventForm, setShowEventForm] = useState(false);
   const [editingEvent, setEditingEvent]   = useState(null);
   const [userSearch, setUserSearch]       = useState(''); 
   const [eventSearch, setEventSearch]     = useState(''); 
   const [roleFilter, setRoleFilter]         = useState('all');
+  const [adminWallet, setAdminWallet]     = useState({ balance: 0 });
+  const [messageForm, setMessageForm]     = useState({ target: 'all_users', targetId: '', title: '', message: '' });
 
   // Real-time: refresh stats when a ticket is sold
   useEffect(() => {
@@ -39,7 +42,16 @@ function AdminDashboard() {
     if (view === 'events')  fetchEvents();
     if (view === 'tickets') fetchTickets();
     if (view === 'users')   fetchUsers();
+    if (view === 'organizers') fetchCommissions();
+    fetchAdminWallet();
   }, [view]);
+
+  const fetchAdminWallet = async () => {
+    try {
+      const { data } = await axios.get(buildUrl('/wallet/balance'), authHeaders());
+      setAdminWallet(data);
+    } catch (err) { console.error('Admin wallet error:', err); }
+  };
 
   const fetchStats = async () => {
     try {
@@ -75,6 +87,29 @@ function AdminDashboard() {
   };
 
 
+  const fetchCommissions = async () => {
+    try {
+      setLoading(true);
+      const { data } = await axios.get(buildUrl('/admin/commissions'), authHeaders());
+      setCommissions(data.commissions || []);
+    } catch (err) {
+      console.error('Commissions error:', err);
+    } finally { setLoading(false); }
+  };
+
+  const handleCompleteEvent = async (eventId) => {
+    if (!window.confirm('Mark this event as COMPLETED and process 20% commission? This action is irreversible.')) return;
+    try {
+      setLoading(true);
+      await axios.post(buildUrl(`/admin/events/${eventId}/complete`), {}, authHeaders());
+      alert('Event completed and commission transferred!');
+      fetchEvents();
+    } catch (err) {
+      console.error('Completion error:', err);
+      alert(err.response?.data?.error || 'Failed to complete event');
+    } finally { setLoading(false); }
+  };
+
   const fetchUsers = async () => {
     try {
       setLoading(true);
@@ -84,6 +119,46 @@ function AdminDashboard() {
       console.error('Users error:', err);
       alert('Failed to fetch users');
     } finally { setLoading(false); }
+  };
+
+  const handleRoleUpdate = async (userId, newRole) => {
+    if (!window.confirm(`Are you sure you want to change this user's role to ${newRole.toUpperCase()}?`)) return;
+    try {
+      setLoading(true);
+      await axios.put(buildUrl(`/admin/users/${userId}/role`), { role: newRole }, authHeaders());
+      alert('Role updated successfully!');
+      fetchUsers();
+    } catch (err) {
+      console.error('Role update error:', err);
+      alert(err.response?.data?.error || 'Failed to update role');
+    } finally { setLoading(false); }
+  };
+
+  const handleDirectMessage = (userId) => {
+    setMessageForm({ ...messageForm, target: 'individual', targetId: userId, title: '', message: '' });
+    setView('communication');
+  };
+
+  const handleBroadcast = async (e) => {
+    e.preventDefault();
+    if (!messageForm.title || !messageForm.message) return alert('Title and message required');
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("token");
+      await axios.post(buildUrl('/admin/broadcast'), messageForm, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      alert('Broadcast dispatched successfully!');
+      setMessageForm({ ...messageForm, title: '', message: '' });
+    } catch (err) {
+      console.error('Broadcast error:', err);
+      alert(err.response?.data?.error || 'Failed to send broadcast');
+    } finally { setLoading(false); }
+  };
+
+  const handleDirectMessage = (userId) => {
+    setMessageForm({ ...messageForm, target: 'individual', targetId: userId, title: '', message: '' });
+    setView('communication');
   };
 
   const handleDeleteEvent = async (eventId) => {
@@ -133,6 +208,9 @@ function AdminDashboard() {
                 title={connected ? 'Live updates connected' : 'Offline'}>
             {connected ? '🟢 Live' : '⚫ Offline'}
           </span>
+          <div className="admin-wallet-badge" style={{ marginLeft: 'auto', background: 'rgba(255,255,255,0.1)', padding: '5px 12px', borderRadius: '20px', fontSize: '0.9rem', fontWeight: 'bold' }}>
+            🏢 Platform: ₹{adminWallet.balance.toFixed(2)}
+          </div>
         </div>
       </header>
 
@@ -141,6 +219,8 @@ function AdminDashboard() {
         <button className={view === 'events'  ? 'active' : ''} onClick={() => setView('events')}>🎭 Manage Events</button>
         <button className={view === 'tickets' ? 'active' : ''} onClick={() => setView('tickets')}>🎟️ Ticket Buyers</button>
         <button className={view === 'users'   ? 'active' : ''} onClick={() => setView('users')}>👥 Users</button>
+        <button className={view === 'organizers' ? 'active' : ''} onClick={() => setView('organizers')}>🏢 Organizers</button>
+        <button className={view === 'communication' ? 'active' : ''} onClick={() => setView('communication')}>📢 Communication</button>
       </nav>
 
       <main className="admin-content">
@@ -155,6 +235,13 @@ function AdminDashboard() {
               <div className="stat-card"><div className="stat-icon">👥</div><div className="stat-info"><h3>Total Users</h3><p className="stat-value">{stats.totalUsers}</p></div></div>
               <div className="stat-card"><div className="stat-icon">🎟️</div><div className="stat-info"><h3>Tickets Sold</h3><p className="stat-value">{stats.totalTickets}</p></div></div>
               <div className="stat-card"><div className="stat-icon">💰</div><div className="stat-info"><h3>Total Revenue</h3><p className="stat-value">₹{stats.totalRevenue.toFixed(2)}</p></div></div>
+              <div className="stat-card" style={{ border: '2px solid #f1c40f' }}>
+                <div className="stat-icon">🏢</div>
+                <div className="stat-info">
+                  <h3>Platform Profit (Wallet)</h3>
+                  <p className="stat-value" style={{ color: '#f1c40f' }}>₹{adminWallet.balance.toFixed(2)}</p>
+                </div>
+              </div>
             </div>
             {stats.recentTickets?.length > 0 && (
               <div className="recent-tickets">
@@ -273,8 +360,11 @@ function AdminDashboard() {
                           <td>
                             <span className={`status-pill ${event.status}`}>{event.status.toUpperCase()}</span>
                           </td>
-                          <td>
+                           <td>
                             <div className="action-buttons">
+                              {event.status !== 'completed' && (
+                                <button className="complete-btn" onClick={() => handleCompleteEvent(event._id)} title="Complete Event">✅</button>
+                              )}
                               <button className="edit-btn" onClick={() => { setEditingEvent(event); setShowEventForm(true); }} title="Edit">✏️</button>
                               <button className="delete-btn" onClick={() => handleDeleteEvent(event._id)} title="Delete">🗑️</button>
                             </div>
@@ -333,6 +423,100 @@ function AdminDashboard() {
                 </div>
               </>
             )}
+          </div>
+        )}
+
+        {/* ── Communication ────────────────────────────────────────────────── */}
+        {view === 'communication' && (
+          <div className="communication-view">
+            <div className="view-header">
+              <h2>📢 Communication Center</h2>
+              <p className="view-subtitle">Send targeted messages to platform stakeholders</p>
+            </div>
+
+            <div className="broadcast-card">
+              <form onSubmit={handleBroadcast} className="admin-form">
+                <div className="form-group">
+                  <label>Target Audience</label>
+                    <select 
+                      value={messageForm.target} 
+                      onChange={(e) => setMessageForm({ ...messageForm, target: e.target.value })}
+                    >
+                      <option value="all_users">All Registered Users</option>
+                      <option value="all_organizers">All Event Organizers</option>
+                      <option value="event_attendees">Specific Event Attendees</option>
+                      <option value="individual">Specific Individual (DM)</option>
+                    </select>
+                  </div>
+
+                  {messageForm.target === 'individual' && (
+                    <div className="form-group">
+                      <label>Target User ID</label>
+                      <input 
+                        type="text" 
+                        placeholder="Paste User ID here..." 
+                        value={messageForm.targetId}
+                        onChange={(e) => setMessageForm({ ...messageForm, targetId: e.target.value })}
+                      />
+                    </div>
+                  )}
+
+                  {messageForm.target === 'event_attendees' && (
+                    <div className="form-group">
+                      <label>Select Event</label>
+                      <select 
+                        value={messageForm.targetId} 
+                        onChange={(e) => setMessageForm({ ...messageForm, targetId: e.target.value })}
+                      >
+                        <option value="">-- Select an Event --</option>
+                        {events.map(ev => (
+                          <option key={ev._id} value={ev._id}>{ev.name} ({ev.ticketsSold} attendees)</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                <div className="form-group">
+                  <label>Message Title</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g., Update on System Maintenance" 
+                    value={messageForm.title}
+                    onChange={(e) => setMessageForm({ ...messageForm, title: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Message Content</label>
+                  <textarea 
+                    rows="5" 
+                    placeholder="Type your announcement or direct message here..."
+                    value={messageForm.message}
+                    onChange={(e) => setMessageForm({ ...messageForm, message: e.target.value })}
+                  />
+                </div>
+
+                <button type="submit" className="broadcast-btn" disabled={loading}>
+                  {loading ? '🚀 Sending...' : '📢 Dispatch Now'}
+                </button>
+              </form>
+            </div>
+            
+            <style>{`
+              .communication-view { max-width: 800px; margin: 0 auto; padding: 20px; }
+              .broadcast-card { background: #1a1a1a; border: 1px solid #333; padding: 30px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+              .admin-form .form-group { margin-bottom: 20px; }
+              .admin-form label { display: block; margin-bottom: 8px; font-weight: 600; color: #aaa; }
+              .admin-form input, .admin-form select, .admin-form textarea {
+                width: 100%; padding: 12px; border-radius: 6px; border: 1px solid #444; background: #222; color: #fff; font-size: 1rem;
+              }
+              .broadcast-btn { 
+                width: 100%; background: #f1c40f; color: #000; border: none; padding: 15px; border-radius: 6px; 
+                font-weight: bold; cursor: pointer; font-size: 1.1rem; transition: all 0.2s;
+              }
+              .broadcast-btn:hover:not(:disabled) { background: #d4ac0d; transform: translateY(-2px); }
+              .broadcast-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+            `}</style>
           </div>
         )}
 
@@ -402,7 +586,26 @@ function AdminDashboard() {
                               </div>
                             </div>
                           </td>
-                          <td><span className={`role-badge ${u.role}`}>{u.role}</span></td>
+                          <td>
+                            <select 
+                              className={`role-inline-select ${u.role}`}
+                              value={u.role}
+                              onChange={(e) => handleRoleUpdate(u._id, e.target.value)}
+                              style={{ 
+                                padding: '4px 8px', 
+                                borderRadius: '4px', 
+                                border: '1px solid #ccc', 
+                                fontSize: '12px',
+                                fontWeight: 'bold',
+                                cursor: 'pointer',
+                                textTransform: 'uppercase'
+                              }}
+                            >
+                              <option value="user">USER</option>
+                              <option value="organizer">ORGANIZER</option>
+                              <option value="admin">ADMIN</option>
+                            </select>
+                          </td>
                           <td>
                             {u.subscription?.plan && u.subscription.plan !== 'none'
                               ? <div className="sub-badge active">
@@ -414,7 +617,10 @@ function AdminDashboard() {
                           <td className="city-cell">{u.city || '—'}</td>
                           <td className="date-cell">{fmtDate(u.createdAt)}</td>
                           <td>
-                            <button className="manage-btn" title="Manage User">⚙️</button>
+                            <div className="action-buttons">
+                              <button className="msg-btn" onClick={() => handleDirectMessage(u._id)} title="Direct Message" style={{ background: '#3498db', border: 'none', borderRadius: '4px', padding: '5px', cursor: 'pointer', marginRight: '5px' }}>💬</button>
+                              <button className="manage-btn" title="Manage User">⚙️</button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -439,6 +645,66 @@ function AdminDashboard() {
                 </div>
               </>
             )}
+          </div>
+        )}
+
+        {/* ── Organizers & Commissions ─────────────────────────────────────── */}
+        {view === 'organizers' && (
+          <div className="commissions-view">
+            <div className="view-header">
+              <div className="title-group">
+                <h2>🏢 Organizer Commissions (20% Cut)</h2>
+                <span className="count-pill">{commissions.length} payouts</span>
+              </div>
+              <button className="refresh-btn" onClick={fetchCommissions}>🔄 Refresh</button>
+            </div>
+
+            {commissions.length === 0 ? (
+              <div className="no-data"><p>No commissions collected yet.</p></div>
+            ) : (
+              <div className="tickets-table-container">
+                <table className="admin-table high-contrast-table">
+                  <thead>
+                    <tr>
+                      <th>Event</th>
+                      <th>Organizer</th>
+                      <th>Total Revenue</th>
+                      <th>Admin Cut (20%)</th>
+                      <th>Date Paid</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {commissions.map((c) => (
+                      <tr key={c._id}>
+                        <td>{c.eventId?.name || 'Unknown Event'}</td>
+                        <td>
+                          <div className="user-name-group">
+                            <span className="user-name">{c.organizerId?.name}</span>
+                            <span className="user-email-sub">{c.organizerId?.email}</span>
+                          </div>
+                        </td>
+                        <td className="amount-dim">₹{c.totalRevenue?.toLocaleString()}</td>
+                        <td className="revenue-cell">
+                          <div className="amount-bold">₹{c.commissionAmount?.toLocaleString()}</div>
+                        </td>
+                        <td className="date-cell">{fmtDate(c.payoutDate)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            
+            <div className="tickets-summary">
+              <div className="summary-card">
+                <span className="label">Total Earnings</span>
+                <span className="value highlighting">₹{commissions.reduce((s, c) => s + c.commissionAmount, 0).toLocaleString()}</span>
+              </div>
+              <div className="summary-card">
+                <span className="label">Managed Revenue</span>
+                <span className="value">₹{commissions.reduce((s, c) => s + c.totalRevenue, 0).toLocaleString()}</span>
+              </div>
+            </div>
           </div>
         )}
 

@@ -24,11 +24,76 @@ const UserProfile = () => {
   const [payments, setPayments] = useState([]);
   const [paymentsLoading, setPaymentsLoading] = useState(false);
   const [refundingId, setRefundingId] = useState(null);
+  const [wallet, setWallet] = useState({ balance: 0, transactions: [] });
+  const [walletLoading, setWalletLoading] = useState(false);
+
+  const fetchWallet = async () => {
+    try {
+      setWalletLoading(true);
+      const token = localStorage.getItem("token");
+      const { data } = await axios.get(buildUrl('/wallet/balance'), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setWallet(data);
+    } catch (err) {
+      console.error("Error fetching wallet:", err);
+    } finally {
+      setWalletLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (activeTab === "tickets") fetchTickets();
     if (activeTab === "payments") fetchPayments();
+    fetchWallet(); // Always fetch wallet balance on mount/refresh
   }, [activeTab]);
+
+  const handleDeposit = async () => {
+    const amount = window.prompt("Enter amount to add to your wallet (₹):", "500");
+    if (!amount || isNaN(amount) || parseFloat(amount) <= 0) return;
+
+    try {
+      setWalletLoading(true);
+      const token = localStorage.getItem("token");
+      await axios.post(buildUrl('/wallet/deposit'), 
+        { amount: parseFloat(amount) },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      alert(`₹${amount} added to your wallet successfully!`);
+      fetchWallet();
+    } catch (err) {
+      console.error("Deposit error:", err);
+      alert(err.response?.data?.error || "Failed to add money");
+    } finally {
+      setWalletLoading(false);
+    }
+  };
+
+  const handleWithdraw = async () => {
+    const amount = window.prompt("Enter amount to withdraw from your wallet (₹):", "100");
+    if (!amount || isNaN(amount) || parseFloat(amount) <= 0) return;
+
+    if (parseFloat(amount) > wallet.balance) {
+      alert("Insufficient balance!");
+      return;
+    }
+
+    try {
+      setWalletLoading(true);
+      const token = localStorage.getItem("token");
+      await axios.post(buildUrl('/wallet/withdraw'), 
+        { amount: parseFloat(amount) },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      alert(`₹${amount} withdrawn from your wallet successfully!`);
+      fetchWallet();
+    } catch (err) {
+      console.error("Withdrawal error:", err);
+      alert(err.response?.data?.error || "Failed to withdraw money");
+    } finally {
+      setWalletLoading(false);
+    }
+  };
 
   // Real-time: refresh ticket list when a new ticket_sold event arrives
   useEffect(() => {
@@ -80,7 +145,7 @@ const UserProfile = () => {
   };
 
   const handleRefund = async (paymentId) => {
-    if (!window.confirm('Request a refund for this payment? This cannot be undone.')) return;
+    if (!window.confirm("Warning: Organiser/Admin will keep a 15% cancellation fee, and you will receive an 85% refund. Are you convinced now?")) return;
     try {
       setRefundingId(paymentId);
       const token = localStorage.getItem("token");
@@ -96,6 +161,7 @@ const UserProfile = () => {
       setRefundingId(null);
     }
   };
+
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -166,6 +232,44 @@ const UserProfile = () => {
               )}
               <span className="profile-member-since">
                 Member since {getMemberSince()}
+              </span>
+              <span className="profile-badge wallet-badge" style={{background: '#f1c40f', color: 'black', display: 'flex', alignItems: 'center', gap: '8px'}}>
+                💰 Wallet: ₹{wallet.balance?.toFixed(2) || '0.00'}
+                <button 
+                  className="add-funds-mini-btn" 
+                  onClick={handleDeposit} 
+                  disabled={walletLoading}
+                  style={{
+                    background: 'black',
+                    color: '#f1c40f',
+                    border: 'none',
+                    borderRadius: '4px',
+                    padding: '2px 8px',
+                    fontSize: '11px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {walletLoading ? '...' : '➕ ADD'}
+                </button>
+                <button 
+                  className="withdraw-funds-mini-btn" 
+                  onClick={handleWithdraw} 
+                  disabled={walletLoading}
+                  style={{
+                    background: 'rgba(0,0,0,0.6)',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '4px',
+                    padding: '2px 8px',
+                    fontSize: '11px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    marginLeft: '5px'
+                  }}
+                >
+                   💸 WITHDRAW
+                </button>
               </span>
             </div>
           </div>
@@ -298,6 +402,15 @@ const UserProfile = () => {
                 "Save Changes"
               )}
             </button>
+            <div className="stat-badge wallet-badge" style={{marginTop: '15px', display: 'inline-block'}}>
+              <span className="icon">💰</span> Wallet: ₹{wallet.balance.toFixed(2)}
+              <button type="button" className="add-funds-btn" onClick={handleDeposit} disabled={walletLoading}>
+                {walletLoading ? '...' : '➕ Add Funds'}
+              </button>
+              <button type="button" className="add-funds-btn withdrawal-btn" onClick={handleWithdraw} disabled={walletLoading} style={{ background: '#e67e22', marginLeft: '10px' }}>
+                {walletLoading ? '...' : '💸 Withdraw'}
+              </button>
+            </div>
           </form>
         </div>
       )}

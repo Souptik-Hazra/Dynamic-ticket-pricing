@@ -22,7 +22,6 @@ echo Done!
 echo.
 
 echo [3/6] Starting MongoDB (if not running)...
-REM Check if mongod is running
 for /f "tokens=2 delims==;" %%I in ('wmic process where "name='mongod.exe'" get ProcessId /value 2^>nul') do set MONGO_PID=%%I
 if not defined MONGO_PID (
     start "MongoDB" cmd /k "mongod"
@@ -57,6 +56,7 @@ start "[ FanFever ] Subscription" cmd /k "cd microservices/subscription-service 
 start "[ FanFever ] Organizer" cmd /k "cd microservices/organizer-service && npm start"
 start "[ FanFever ] QR-Gen" cmd /k "cd microservices/qr-service && npm start"
 start "[ FanFever ] Scanner" cmd /k "cd microservices/scanner-service && npm start"
+start "[ FanFever ] Wallet" cmd /k "cd microservices/wallet-service && npm start"
 timeout /t 5 /nobreak >nul
 echo Done!
 echo.
@@ -72,10 +72,11 @@ echo   All Services Started Successfully!
 echo ========================================
 echo.
 echo Services running:
-echo   * MongoDB:   http://localhost:27017
-echo   * ML API:    http://localhost:5000
+echo   * MongoDB:     http://localhost:27017
+echo   * ML API:      http://localhost:5000
 echo   * API Gateway: http://localhost:3001
-echo   * Frontend:  http://localhost:5173
+echo   * Wallet:      http://localhost:4016
+echo   * Frontend:    http://localhost:5173
 echo   * All microservices on their respective ports
 echo.
 echo Press any key to exit...

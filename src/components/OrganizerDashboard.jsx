@@ -21,6 +21,8 @@ function OrganizerDashboard() {
   // New: Search and Filtering state
   const [eventSearch, setEventSearch]   = useState('');
   const [ticketSearch, setTicketSearch] = useState('');
+  const [organizerWallet, setOrganizerWallet] = useState({ balance: 0 });
+  const [messageModal, setMessageModal] = useState({ isOpen: false, eventId: null, eventName: '', type: 'attendees', title: '', message: '' });
 
   // Helpers for Avatars
   const getInitials = (name) => {
@@ -58,10 +60,17 @@ function OrganizerDashboard() {
   });
 
   useEffect(() => {
-    if (view === 'stats')   fetchStats();
-    if (view === 'events')  fetchEvents();
-    if (view === 'tickets') fetchTickets();
+    if (view === 'events'  ? fetchEvents()  : null);
+    if (view === 'tickets' ? fetchTickets() : null);
+    fetchOrganizerWallet();
   }, [view]);
+
+  const fetchOrganizerWallet = async () => {
+    try {
+      const { data } = await axios.get(buildUrl('/wallet/balance'), authHeaders());
+      setOrganizerWallet(data);
+    } catch (err) { console.error('Organizer wallet error:', err); }
+  };
 
   const fetchStats = async () => {
     try {
@@ -96,6 +105,25 @@ function OrganizerDashboard() {
     } finally { setLoading(false); }
   };
 
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!messageModal.title || !messageModal.message) return alert('Title and message required');
+    try {
+      setLoading(true);
+      const endpoint = messageModal.type === 'admin' ? '/organizers/message-admin' : '/organizers/broadcast';
+      const payload = messageModal.type === 'admin' 
+        ? { title: messageModal.title, message: messageModal.message }
+        : { eventId: messageModal.eventId, title: messageModal.title, message: messageModal.message };
+
+      await axios.post(buildUrl(endpoint), payload, authHeaders());
+      alert('Message sent successfully!');
+      setMessageModal({ ...messageModal, isOpen: false, title: '', message: '' });
+    } catch (err) {
+      console.error('Messaging error:', err);
+      alert(err.response?.data?.error || 'Failed to send message');
+    } finally { setLoading(false); }
+  };
+
   const handleDeleteEvent = async (eventId) => {
     if (!window.confirm('Are you sure you want to delete this event?')) return;
     try {
@@ -126,6 +154,16 @@ function OrganizerDashboard() {
                 title={connected ? 'Live updates connected' : 'Offline'}>
               {connected ? '🟢 Live' : '⚫ Offline'}
             </span>
+            <div className="org-wallet-badge" style={{ marginLeft: 'auto', background: 'rgba(255,255,255,0.1)', padding: '5px 12px', borderRadius: '20px', fontSize: '0.9rem', fontWeight: 'bold' }}>
+              💰 My Wallet: ₹{organizerWallet.balance.toFixed(2)}
+            </div>
+            <button 
+              className="msg-admin-btn" 
+              onClick={() => setMessageModal({ isOpen: true, type: 'admin', title: '', message: '' })}
+              style={{ marginLeft: '10px', background: '#3498db', border: 'none', color: '#fff', padding: '6px 12px', borderRadius: '20px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}
+            >
+              📧 Message Admin
+            </button>
           </div>
         </div>
       </header>
@@ -156,6 +194,13 @@ function OrganizerDashboard() {
                 <div className="stat-info">
                   <h3>Total Tickets Sold</h3>
                   <p className="stat-value">{stats.totalTickets}</p>
+                </div>
+              </div>
+              <div className="stat-card" style={{ border: '2px solid #2ecc71' }}>
+                <div className="stat-icon stats-green">💰</div>
+                <div className="stat-info">
+                  <h3>My Available Balance</h3>
+                  <p className="stat-value" style={{ color: '#2ecc71' }}>₹{organizerWallet.balance.toFixed(2)}</p>
                 </div>
               </div>
               <div className="stat-card">
@@ -284,6 +329,7 @@ function OrganizerDashboard() {
                           </td>
                           <td>
                             <div className="action-buttons">
+                              <button className="msg-btn" onClick={() => setMessageModal({ isOpen: true, type: 'attendees', eventId: event._id, eventName: event.name, title: '', message: '' })} title="Message Attendees" style={{ background: '#9b59b6', border: 'none', borderRadius: '4px', padding: '5px', cursor: 'pointer' }}>💬</button>
                               <button className="edit-btn" onClick={() => { setEditingEvent(event); setShowEventForm(true); }} title="Edit">✏️</button>
                               <button className="delete-btn" onClick={() => handleDeleteEvent(event._id)} title="Delete">🗑️</button>
                             </div>
@@ -395,6 +441,49 @@ function OrganizerDashboard() {
           </div>
         )}
       </main>
+
+      {messageModal.isOpen && (
+        <div className="modal-overlay">
+          <div className="org-msg-modal">
+            <h3>{messageModal.type === 'admin' ? '📧 Contact Platform Admin' : `💬 Message Attendees: ${messageModal.eventName}`}</h3>
+            <form onSubmit={handleSendMessage}>
+              <div className="form-group">
+                <label>Subject</label>
+                <input 
+                  type="text" 
+                  value={messageModal.title} 
+                  onChange={(e) => setMessageModal({ ...messageModal, title: e.target.value })}
+                  placeholder={messageModal.type === 'admin' ? 'Issue description...' : 'Important Update...'}
+                />
+              </div>
+              <div className="form-group">
+                <label>Message</label>
+                <textarea 
+                  rows="5"
+                  value={messageModal.message} 
+                  onChange={(e) => setMessageModal({ ...messageModal, message: e.target.value })}
+                  placeholder="Type your message here..."
+                ></textarea>
+              </div>
+              <div className="modal-actions">
+                <button type="button" className="cancel-btn" onClick={() => setMessageModal({ ...messageModal, isOpen: false })}>Cancel</button>
+                <button type="submit" className="send-btn" disabled={loading}>{loading ? 'Sending...' : 'Send Message'}</button>
+              </div>
+            </form>
+          </div>
+          <style>{`
+            .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 2000; }
+            .org-msg-modal { background: #1a1a1a; padding: 25px; border-radius: 12px; width: 100%; max-width: 500px; border: 1px solid #333; }
+            .org-msg-modal h3 { margin-bottom: 20px; color: #fff; font-size: 1.2rem; }
+            .org-msg-modal .form-group { margin-bottom: 15px; }
+            .org-msg-modal label { display: block; margin-bottom: 5px; color: #aaa; font-size: 0.9rem; }
+            .org-msg-modal input, .org-msg-modal textarea { width: 100%; padding: 10px; background: #222; border: 1px solid #444; color: #fff; border-radius: 4px; }
+            .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+            .cancel-btn { background: #444; color: #fff; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; }
+            .send-btn { background: #9b59b6; color: #fff; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+          `}</style>
+        </div>
+      )}
     </div>
   );
 }

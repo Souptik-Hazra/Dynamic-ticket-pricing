@@ -658,6 +658,42 @@
   margin-bottom: 1.5rem;
 }
 
+.wallet-badge {
+  display: flex !important;
+  align-items: center;
+  gap: 10px;
+}
+
+.add-funds-btn {
+  padding: 6px 12px;
+  background: #27ae60;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.add-funds-btn:hover:not(:disabled) {
+  background: #2ecc71;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.add-funds-mini-btn:hover:not(:disabled) {
+  background: #ffffff !important;
+  color: #1a1a2e !important;
+  transform: scale(1.1);
+}
+
+.add-funds-btn:disabled, .add-funds-mini-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .print-ticket-brand {
   display: flex;
   align-items: center;

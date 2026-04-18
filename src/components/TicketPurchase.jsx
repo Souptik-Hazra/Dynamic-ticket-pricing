@@ -16,6 +16,9 @@ function TicketPurchase({ event, onBack, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [priceLoading, setPriceLoading] = useState(true);
   const [purchasedTicket, setPurchasedTicket] = useState(null);
+  const [paymentMethod, setPaymentMethod]     = useState('card');
+  const [userWallet, setUserWallet]           = useState({ balance: 0 });
+  const [walletLoading, setWalletLoading]     = useState(false);
 
   // Fetch dynamic prices for all categories
   useEffect(() => {
@@ -56,8 +59,21 @@ function TicketPurchase({ event, onBack, onSuccess }) {
         customerName: user.name || '',
         customerEmail: user.email || ''
       }));
+      fetchUserWallet();
     }
   }, [user]);
+
+  const fetchUserWallet = async () => {
+    try {
+      setWalletLoading(true);
+      const token = localStorage.getItem('token');
+      const { data } = await axios.get(buildUrl('/wallet/balance'), {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setUserWallet(data);
+    } catch (err) { console.error('Checkout wallet error:', err); }
+    finally { setWalletLoading(false); }
+  };
 
   // Select first category by default
   useEffect(() => {
@@ -155,7 +171,7 @@ function TicketPurchase({ event, onBack, onSuccess }) {
             ticketId: response.data.tickets[0]._id, // Lead ticket
             bookingReference: response.data.tickets[0].bookingReference,
             amount: response.data.tickets.reduce((sum, t) => sum + t.totalAmount, 0),
-            paymentMethod: 'card', // Default for now
+            paymentMethod: paymentMethod, 
             metadata: {
               ticketIds: response.data.tickets.map(t => t._id),
               eventTitle: event.name
@@ -348,6 +364,27 @@ function TicketPurchase({ event, onBack, onSuccess }) {
               />
             </div>
 
+            <div className="payment-method-section">
+              <h3>💳 Select Payment Method</h3>
+              <div className="payment-methods-grid">
+                {[
+                  { id: 'card', label: 'Credit/Debit Card', icon: '💳' },
+                  { id: 'upi', label: 'UPI / PhonePe', icon: '📱' },
+                  { id: 'netbanking', label: 'Net Banking', icon: '🏦' },
+                  { id: 'wallet', label: 'Wallet Balance', icon: '💰' }
+                ].map((method) => (
+                  <div 
+                    key={method.id} 
+                    className={`method-card ${paymentMethod === method.id ? 'selected' : ''}`}
+                    onClick={() => setPaymentMethod(method.id)}
+                  >
+                    <span className="method-icon">{method.icon}</span>
+                    <span className="method-label">{method.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div className="order-summary">
               <h4>📋 Order Summary</h4>
               {selectedCategory && (
@@ -388,6 +425,25 @@ function TicketPurchase({ event, onBack, onSuccess }) {
             </button>
           </form>
         </div>
+
+        {paymentMethod === 'wallet' && isAuthenticated && (
+            <div className={`wallet-status-box ${userWallet.balance < getPrice() * formData.quantity ? 'low-balance' : 'sufficient-balance'}`} 
+                 style={{ 
+                     marginTop: '15px', 
+                     padding: '12px', 
+                     borderRadius: '8px', 
+                     background: userWallet.balance < getPrice() * formData.quantity ? 'rgba(231, 76, 60, 0.1)' : 'rgba(46, 204, 113, 0.1)',
+                     border: `1px solid ${userWallet.balance < getPrice() * formData.quantity ? '#e74c3c' : '#2ecc71'}`,
+                     display: 'flex',
+                     justifyContent: 'space-between',
+                     alignItems: 'center'
+                 }}>
+                <span style={{ fontWeight: '600' }}>💰 Your Wallet Balance: ₹{userWallet.balance.toFixed(2)}</span>
+                {userWallet.balance < getPrice() * formData.quantity && (
+                    <span style={{ color: '#e74c3c', fontWeight: 'bold' }}>⚠️ Insufficient Funds</span>
+                )}
+            </div>
+        )}
       </div>
 
       {/* Purchased Ticket Modal */}

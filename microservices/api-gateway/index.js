@@ -29,6 +29,7 @@ const SERVICES = {
   organizer:    process.env.ORGANIZER_SERVICE_URL    || 'http://localhost:4013',
   qr:           process.env.QR_SERVICE_URL           || 'http://localhost:4014',
   scanner:      process.env.SCANNER_SERVICE_URL      || 'http://localhost:4015',
+  wallet:       process.env.WALLET_SERVICE_URL       || 'http://localhost:4016',
   ml:           process.env.ML_SERVICE_URL           || 'http://localhost:5000',
 };
 
@@ -69,6 +70,7 @@ app.use(proxy('/api/tickets',       SERVICES.organizer));
 app.use(proxy('/api/organizers',    SERVICES.organizer));
 app.use(proxy('/api/qr',            SERVICES.qr));
 app.use(proxy('/api/scanner',       SERVICES.scanner));
+app.use(proxy('/api/wallet',        SERVICES.wallet));
 
 // ── ML Model (Special case: strips prefix) ─────────────────────────────────
 app.use(

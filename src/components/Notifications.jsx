@@ -10,6 +10,7 @@ const typeIcons = {
   subscription:    '⭐',
   refund:          '💸',
   system:          '🔔',
+  message:         '✉️',
 };
 
 function Notifications() {
@@ -139,7 +140,7 @@ function Notifications() {
           {notifications.map((n) => (
             <div
               key={n._id}
-              className={`notif-item ${!n.read ? 'unread' : ''}`}
+              className={`notif-item ${!n.read ? 'unread' : ''} ${n.type === 'message' ? 'is-message' : ''}`}
               onClick={() => !n.read && markRead(n._id)}
               title={n.read ? '' : 'Click to mark as read'}
             >
@@ -165,6 +166,12 @@ function Notifications() {
           ))}
         </div>
       )}
+      <style>{`
+        .notif-item.is-message { background: rgba(52, 152, 219, 0.05); border-left: 4px solid #3498db; }
+        .notif-item.is-message.unread { background: rgba(52, 152, 219, 0.1); }
+        .notif-item.is-message .notif-icon { color: #3498db; }
+        .is-message .notif-item-title { color: #3498db; font-weight: bold; }
+      `}</style>
     </div>
   );
 }
