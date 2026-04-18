@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import { API_URL } from '../config/api';
+import { buildUrl, ENDPOINTS } from '../config/api';
 import './TicketPurchase.css';
 
 function TicketPurchase({ event, onBack, onSuccess }) {
@@ -22,7 +22,7 @@ function TicketPurchase({ event, onBack, onSuccess }) {
     const fetchDynamicPrices = async () => {
       try {
         setPriceLoading(true);
-        const response = await axios.get(`${API_URL}/events/${event._id}/dynamic-prices`);
+        const response = await axios.get(buildUrl(`/events/${event._id}/dynamic-prices`));
         if (response.data.prices) {
           setDynamicPrices(response.data.prices);
         }
@@ -133,7 +133,7 @@ function TicketPurchase({ event, onBack, onSuccess }) {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post(
-        `${API_URL}/tickets`,
+        buildUrl('/tickets'),
         {
           eventId: event._id,
           categoryId: selectedCategory?._id,

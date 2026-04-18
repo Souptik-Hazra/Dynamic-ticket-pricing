@@ -32,7 +32,7 @@ export const AuthProvider = ({ children }) => {
     
     refreshTimeoutRef.current = setTimeout(async () => {
       try {
-        const response = await axios.post(`${API_URL}${ENDPOINTS.REFRESH_TOKEN}`, {
+        const response = await axios.post(buildUrl(ENDPOINTS.REFRESH_TOKEN), {
           refreshToken
         });
         
@@ -75,7 +75,7 @@ export const AuthProvider = ({ children }) => {
     }
     try {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      const response = await axios.get(`${API_URL}/auth/me`);
+      const response = await axios.get(buildUrl(ENDPOINTS.ME));
       setUser(response.data.user);
     } catch (error) {
       console.error('Load user error:', error);
@@ -88,7 +88,7 @@ export const AuthProvider = ({ children }) => {
   // Signup
   const signup = async (name, email, password) => {
     try {
-      const response = await axios.post(`${API_URL}/auth/signup`, {
+      const response = await axios.post(buildUrl(ENDPOINTS.SIGNUP), {
         name,
         email,
         password
@@ -107,7 +107,7 @@ export const AuthProvider = ({ children }) => {
   // Signin
   const signin = async (email, password) => {
     try {
-      const response = await axios.post(`${API_URL}/auth/signin`, {
+      const response = await axios.post(buildUrl(ENDPOINTS.LOGIN), {
         email,
         password
       }, { withCredentials: true });
@@ -125,7 +125,7 @@ export const AuthProvider = ({ children }) => {
   // Logout
   const logout = async () => {
     try {
-      await axios.post(`${API_URL}/auth/logout`, {}, { withCredentials: true });
+      await axios.post(buildUrl('/auth/logout'), {}, { withCredentials: true });
     } catch (e) {}
     if (refreshTimeoutRef.current) {
       clearTimeout(refreshTimeoutRef.current);
@@ -142,7 +142,7 @@ export const AuthProvider = ({ children }) => {
   // Update user profile
   const updateUser = async (profileData) => {
     try {
-      const response = await axios.put(`${API_URL}/auth/update-profile`, profileData);
+      const response = await axios.put(buildUrl(ENDPOINTS.UPDATE_PROFILE), profileData);
       setUser(response.data.user);
       return response.data.user;
     } catch (error) {

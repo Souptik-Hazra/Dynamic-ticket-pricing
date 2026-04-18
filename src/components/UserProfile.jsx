@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext.jsx";
-import { API_URL } from "../config/api";
+import { buildUrl, ENDPOINTS } from "../config/api";
 import "./UserProfile.css";
 
 const UserProfile = () => {
@@ -30,7 +30,7 @@ const UserProfile = () => {
     try {
       setTicketsLoading(true);
       const token = localStorage.getItem("token");
-      const response = await axios.get(`${API_URL}/tickets`, {
+      const response = await axios.get(buildUrl('/tickets'), {
         headers: { Authorization: `Bearer ${token}` },
       });
       setTickets(Array.isArray(response.data) ? response.data : []);

@@ -10,7 +10,7 @@ import EventList from './components/EventList';
 import Analytics from './components/Analytics';
 import TicketPurchase from './components/TicketPurchase';
 import Subscription from './components/Subscription';
-import { API_URL } from './config/api';
+import { buildUrl, ENDPOINTS } from './config/api';
 import './App.css';
 import './components/NavBadge.css';
 import UserProfile from "./components/UserProfile.jsx";
@@ -58,7 +58,7 @@ function AppContent() {
   const fetchEvents = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_URL}/events`);
+      const response = await axios.get(buildUrl(ENDPOINTS.EVENTS));
       setEvents(response.data);
     } catch (error) {
       console.error('Error fetching events:', error);
@@ -70,7 +70,7 @@ function AppContent() {
 
   const handleUpdatePrice = async (eventId) => {
     try {
-      const response = await axios.get(`${API_URL}/events/${eventId}/price`);
+      const response = await axios.get(buildUrl(`/events/${eventId}/price`));
       alert(`New dynamic price: ₹${response.data.current_price.toFixed(2)}`);
       fetchEvents(); // Refresh events
     } catch (error) {

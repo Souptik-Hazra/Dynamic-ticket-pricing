@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import AdminEventForm from './AdminEventForm';
-import { API_URL } from '../config/api';
+import { buildUrl, ENDPOINTS } from '../config/api';
 import './AdminDashboard.css';
 
 function AdminDashboard() {
@@ -37,7 +37,7 @@ function AdminDashboard() {
   const fetchStats = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_URL}/admin/stats`, getAuthHeaders());
+      const response = await axios.get(buildUrl('/admin/stats'), getAuthHeaders());
       setStats(response.data.stats);
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -50,7 +50,7 @@ function AdminDashboard() {
   const fetchEvents = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_URL}/admin/events`, getAuthHeaders());
+      const response = await axios.get(buildUrl(ENDPOINTS.ADMIN_EVENTS), getAuthHeaders());
       setEvents(response.data.events);
     } catch (error) {
       console.error('Error fetching events:', error);
@@ -63,7 +63,7 @@ function AdminDashboard() {
   const fetchTickets = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_URL}/admin/tickets`, getAuthHeaders());
+      const response = await axios.get(buildUrl('/admin/tickets'), getAuthHeaders());
       setTickets(response.data.tickets);
     } catch (error) {
       console.error('Error fetching tickets:', error);
@@ -76,7 +76,7 @@ function AdminDashboard() {
   const fetchFraudAnalytics = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_URL}/admin/fraud-analytics`, getAuthHeaders());
+      const response = await axios.get(buildUrl('/admin/fraud-analytics'), getAuthHeaders());
       setFraudAnalytics(response.data.fraudAnalytics);
     } catch (error) {
       console.error('Error fetching fraud analytics:', error);
@@ -102,7 +102,7 @@ function AdminDashboard() {
     }
 
     try {
-      await axios.delete(`${API_URL}/admin/events/${eventId}`);
+      await axios.delete(buildUrl(`/admin/events/${eventId}`));
       alert('Event deleted successfully');
       fetchEvents();
     } catch (error) {

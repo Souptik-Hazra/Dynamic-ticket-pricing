@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import { API_URL } from '../config/api';
+import { buildUrl, ENDPOINTS } from '../config/api';
 import { subscriptionPlans } from '../utils/subscriptionPlans';
 import './Subscription.css';
 
@@ -20,7 +20,7 @@ const Subscription = () => {
         try {
             const token = localStorage.getItem('token');
             const response = await axios.post(
-                `${API_URL}/subscription/upgrade`,
+                buildUrl('/subscription/upgrade'),
                 { plan: planId },
                 { headers: { Authorization: `Bearer ${token}` } }
             );

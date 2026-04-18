@@ -34,13 +34,25 @@ timeout /t 3 /nobreak >nul
 echo Done!
 echo.
 
-echo [4/5] Starting Backend...
-start "Backend" cmd /k "cd backend && npm start"
-timeout /t 3 /nobreak >nul
+echo [4/6] Starting Microservices...
+start "API Gateway" cmd /k "cd microservices/api-gateway && npm start"
+start "Auth Service" cmd /k "cd microservices/authentication-service && npm start"
+start "User Service" cmd /k "cd microservices/user-service && npm start"
+start "Admin Service" cmd /k "cd microservices/admin-service && npm start"
+start "Payment Service" cmd /k "cd microservices/payment-service && npm start"
+start "Cache Service" cmd /k "cd microservices/cache-service && npm start"
+start "Concurrency Service" cmd /k "cd microservices/concurrency-service && npm start"
+start "Email Service" cmd /k "cd microservices/email-service && npm start"
+start "Message Queue Service" cmd /k "cd microservices/message-queue-service && npm start"
+start "Notification Service" cmd /k "cd microservices/notification-service && npm start"
+start "WebSocket Service" cmd /k "cd microservices/websocket-service && npm start"
+start "Analytics Service" cmd /k "cd microservices/analytics-service && npm start"
+start "Subscription Service" cmd /k "cd microservices/subscription-service && npm start"
+timeout /t 5 /nobreak >nul
 echo Done!
 echo.
 
-echo [5/5] Starting Frontend...
+echo [5/6] Starting Frontend...
 start "Frontend" cmd /k "npm run dev"
 timeout /t 2 /nobreak >nul
 echo Done!
@@ -53,8 +65,9 @@ echo.
 echo Services running:
 echo   * MongoDB:   http://localhost:27017
 echo   * ML API:    http://localhost:5000
-echo   * Backend:   http://localhost:3001
+echo   * API Gateway: http://localhost:3001
 echo   * Frontend:  http://localhost:5173
+echo   * All microservices on their respective ports
 echo.
 echo Press any key to exit...
 pause >nul

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { API_URL } from '../config/api';
+import { buildUrl, ENDPOINTS } from '../config/api';
 import './AdminEventForm.css';
 
 function AdminEventForm({ event, onClose }) {
@@ -193,11 +193,11 @@ function AdminEventForm({ event, onClose }) {
 
       if (event) {
         // Update existing event
-        await axios.put(`${API_URL}/admin/events/${event._id}`, eventData);
+        await axios.put(buildUrl(`/admin/events/${event._id}`), eventData);
         alert('Event updated successfully!');
       } else {
         // Create new event
-        await axios.post(`${API_URL}/admin/events`, eventData);
+        await axios.post(buildUrl(ENDPOINTS.ADMIN_EVENTS), eventData);
         alert('Event created successfully!');
       }
 

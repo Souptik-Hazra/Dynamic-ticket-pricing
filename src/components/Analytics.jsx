@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { API_URL} from '../config/api';
+import { buildUrl, ENDPOINTS } from '../config/api';
 import './Analytics.css';
 import Footer from './Footer';
 
@@ -16,7 +16,7 @@ function Analytics() {
   const fetchAnalytics = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_URL}/analytics`);
+      const response = await axios.get(buildUrl(ENDPOINTS.ANALYTICS));
       setAnalytics(response.data);
     } catch (error) {
       console.error('Error fetching analytics:', error);
