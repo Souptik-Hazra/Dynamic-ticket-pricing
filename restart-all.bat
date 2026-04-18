@@ -8,14 +8,20 @@ echo   Restarting All Services
 echo ========================================
 echo.
 
-echo [1/5] Stopping existing processes...
+echo [1/6] Starting WSL...
+start "" "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\WSL.lnk"
+timeout /t 3 /nobreak >nul
+echo Done!
+echo.
+
+echo [2/6] Stopping existing processes...
 taskkill /F /IM node.exe >nul 2>&1
 taskkill /F /IM python.exe >nul 2>&1
 timeout /t 2 /nobreak >nul
 echo Done!
 echo.
 
-echo [2/5] Starting MongoDB (if not running)...
+echo [3/6] Starting MongoDB (if not running)...
 REM Check if mongod is running
 for /f "tokens=2 delims==;" %%I in ('wmic process where "name='mongod.exe'" get ProcessId /value 2^>nul') do set MONGO_PID=%%I
 if not defined MONGO_PID (
@@ -28,13 +34,13 @@ if not defined MONGO_PID (
 echo Done!
 echo.
 
-echo [3/5] Starting ML API...
+echo [4/6] Starting ML API...
 start "ML API" cmd /k "cd ml-model && python app.py"
 timeout /t 3 /nobreak >nul
 echo Done!
 echo.
 
-echo [4/6] Starting Microservices...
+echo [5/6] Starting Microservices...
 start "[ FanFever ] Gateway" cmd /k "cd microservices/api-gateway && npm start"
 start "[ FanFever ] Auth" cmd /k "cd microservices/authentication-service && npm start"
 start "[ FanFever ] User" cmd /k "cd microservices/user-service && npm start"
@@ -55,7 +61,7 @@ timeout /t 5 /nobreak >nul
 echo Done!
 echo.
 
-echo [5/6] Starting Frontend...
+echo [6/6] Starting Frontend...
 start "Frontend" cmd /k "npm run dev"
 timeout /t 2 /nobreak >nul
 echo Done!

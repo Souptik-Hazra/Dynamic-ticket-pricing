@@ -93,7 +93,7 @@
 
 .form-group label {
   font-weight: 600;
-  color: #555;
+  color: #333;
   margin-bottom: 0.5rem;
 }
 
@@ -108,6 +108,14 @@
 .form-group input:focus {
   outline: none;
   border-color: #667eea;
+}
+
+.form-group input:read-only {
+  background-color: #333; /* Matches user screenshot */
+  color: #fff;
+  cursor: not-allowed;
+  border-color: rgba(255, 255, 255, 0.1);
+  opacity: 0.8;
 }
 
 .order-summary {
@@ -127,6 +135,7 @@
   justify-content: space-between;
   padding: 0.75rem 0;
   border-bottom: 1px solid #e0e0e0;
+  color: #555;
 }
 
 .summary-row.total {
@@ -136,6 +145,7 @@
   font-weight: 700;
   margin-top: 0.5rem;
   padding-top: 1rem;
+  color: #1a1a2e;
 }
 
 .purchase-button {
@@ -257,8 +267,15 @@
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
 }
 
 .category-seats {
@@ -339,7 +356,7 @@
     grid-template-columns: 1fr;
     gap: 2rem;
   }
-  
+
   .categories-grid {
     grid-template-columns: 1fr;
   }
@@ -355,64 +372,64 @@
     padding: 1rem;
     border-radius: 8px;
   }
-  
+
   .back-button {
     padding: 0.6rem 1.25rem;
     font-size: 0.9rem;
     margin-bottom: 1.5rem;
   }
-  
+
   .purchase-content {
     gap: 1.5rem;
     margin-top: 1rem;
   }
-  
+
   .event-summary {
     padding: 1.5rem;
   }
-  
+
   .event-summary h2 {
     font-size: 1.5rem;
   }
-  
+
   .event-summary p {
     font-size: 1rem;
   }
-  
+
   .price-display {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
   }
-  
+
   .price-amount {
     font-size: 1.75rem;
   }
-  
+
   .purchase-form-section h3 {
     font-size: 1.5rem;
   }
-  
+
   .order-summary {
     padding: 1rem;
   }
-  
+
   .purchase-button {
     padding: 0.875rem 1.5rem;
     font-size: 1rem;
   }
-  
+
   /* Modal responsive */
   .purchase-print-modal {
     max-width: 100%;
     border-radius: 12px;
     margin: 0.5rem;
   }
-  
+
   .purchase-print-content {
     padding: 1.5rem;
   }
-  
+
   .pp-event-image {
     height: 150px;
   }
@@ -424,82 +441,82 @@
     padding: 0.75rem;
     border-radius: 0;
   }
-  
+
   .back-button {
     width: 100%;
     text-align: center;
   }
-  
+
   .event-summary {
     padding: 1rem;
   }
-  
+
   .event-summary img {
     border-radius: 6px;
   }
-  
+
   .event-summary h2 {
     font-size: 1.25rem;
   }
-  
+
   .event-summary p {
     font-size: 0.9rem;
     margin: 0.5rem 0;
   }
-  
+
   .price-amount {
     font-size: 1.5rem;
   }
-  
+
   .purchase-form-section h3 {
     font-size: 1.25rem;
     margin-bottom: 1rem;
   }
-  
+
   .form-group label {
     font-size: 0.9rem;
   }
-  
+
   .form-group input {
     padding: 0.65rem;
   }
-  
+
   .summary-row {
     flex-direction: row;
     font-size: 0.9rem;
   }
-  
+
   .purchase-button {
     width: 100%;
     font-size: 1rem;
   }
-  
+
   /* Modal responsive */
   .purchase-print-overlay {
     padding: 0.5rem;
   }
-  
+
   .purchase-print-content {
     padding: 1rem;
   }
-  
+
   .pp-brand-name {
     font-size: 1.1rem;
   }
-  
+
   .pp-badge {
     font-size: 0.7rem;
     padding: 0.2rem 0.6rem;
   }
-  
+
   .pp-event-image {
     height: 120px;
   }
-  
+
   .pp-actions {
     flex-direction: column;
   }
-  
+
   .pp-print-btn,
   .pp-done-btn {
     width: 100%;
@@ -512,15 +529,15 @@
   .event-summary h2 {
     font-size: 1.1rem;
   }
-  
+
   .price-label {
     font-size: 0.85rem;
   }
-  
+
   .price-amount {
     font-size: 1.3rem;
   }
-  
+
   .purchase-form-section h3 {
     font-size: 1.1rem;
   }
@@ -684,8 +701,13 @@
   background: #1a1a2e;
 }
 
-.pp-divider::before { left: -2.5rem; }
-.pp-divider::after { right: -2.5rem; }
+.pp-divider::before {
+  left: -2.5rem;
+}
+
+.pp-divider::after {
+  right: -2.5rem;
+}
 
 /* Detail Grid */
 .pp-detail-grid {
@@ -858,7 +880,7 @@
   background: white;
   padding: 12px;
   border-radius: 12px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
 }
 
 .pp-qr-image {
@@ -927,7 +949,7 @@
 
   .pp-actions,
   .top-navigation,
-  .ticket-purchase-container > .back-button,
+  .ticket-purchase-container>.back-button,
   .purchase-content {
     display: none !important;
   }

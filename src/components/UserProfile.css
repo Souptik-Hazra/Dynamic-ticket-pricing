@@ -229,6 +229,13 @@
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
 }
 
+.input-wrapper input:read-only {
+  background: rgba(255, 255, 255, 0.03);
+  color: #888;
+  cursor: not-allowed;
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
 .input-wrapper input::placeholder {
   color: #666;
 }
@@ -869,6 +876,11 @@
 
 /* ===== Print Media Styles ===== */
 @media print {
+  @page {
+    margin: 10mm;
+    size: auto;
+  }
+
   /* Hide everything except the ticket */
   body * {
     visibility: hidden !important;
@@ -884,13 +896,45 @@
     top: 0;
     left: 0;
     width: 100%;
-    padding: 2rem;
+    padding: 1rem;
     background: #1a1a2e !important;
     color: #ddd !important;
     z-index: 99999;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     color-adjust: exact !important;
+  }
+
+  /* COMPACT LAYOUT FOR SINGLE PAGE FIT */
+  .print-ticket-brand {
+    transform: scale(0.8);
+    transform-origin: left center;
+  }
+
+  .print-event-image {
+    height: 120px !important;
+    margin-bottom: 0.75rem;
+  }
+
+  .print-event-name {
+    font-size: 1.25rem !important;
+    margin-bottom: 0.5rem;
+  }
+
+  .print-divider {
+    margin: 0.5rem 0;
+  }
+
+  .print-detail-grid {
+    gap: 0.5rem;
+  }
+
+  .print-detail-box {
+    padding: 0.5rem;
+  }
+
+  .print-ticket-footer {
+    margin-top: 0.75rem;
   }
 
   /* Hide non-printable parts */
@@ -912,7 +956,133 @@
   .top-navigation,
   .profile-header-card,
   .profile-tabs,
-  .profile-card {
+  .profile-card,
+  .print-cancel-btn,
+  .print-now-btn {
     display: none !important;
   }
+}
+
+/* ===== Payment History Table ===== */
+.payments-table-container {
+  margin-top: 1.5rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.payments-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.payments-table th {
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.04);
+  color: #888;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.payments-table td {
+  padding: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: #ddd;
+  font-size: 0.9rem;
+}
+
+.payments-table tr:last-child td {
+  border-bottom: none;
+}
+
+.payments-table tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.transaction-id {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.75rem !important;
+  color: #667eea !important;
+  background: rgba(102, 126, 234, 0.1);
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+}
+
+.payment-amount {
+  font-weight: 700;
+  color: #fff !important;
+}
+
+.payment-method-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.75rem;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #aaa;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-badge.completed {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.status-badge.pending {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}
+
+.status-badge.failed {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.status-badge.refunded {
+  background: rgba(102, 126, 234, 0.15);
+  color: #667eea;
+}
+
+.refund-btn {
+  background: transparent;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.refund-btn:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: #ef4444;
+}
+
+.refund-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.refunded-text {
+  color: #667eea;
+  font-size: 0.8rem;
+  font-weight: 600;
 }

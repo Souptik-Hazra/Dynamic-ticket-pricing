@@ -1,13 +1,31 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import mkcert from 'vite-plugin-mkcert'
 
 // https://vite.dev/config/
 export default defineConfig({
   base: './',
-  plugins: [react()],
+  plugins: [
+    react(),
+    mkcert()
+  ],
   server: {
+    https: true, // Force HTTPS
     port: Number(process.env.VITE_PORT) || 5173,
-    strictPort: true // Fail if port is taken, don't increment
+    strictPort: true, // Fail if port is taken, don't increment
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        secure: false, // Don't verify SSL for local proxy
+      },
+      '/ws': {
+        target: 'ws://localhost:4010',
+        ws: true,
+        changeOrigin: true,
+        secure: false,
+      }
+    }
   },
   build: {
     sourcemap: false

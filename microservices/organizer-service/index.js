@@ -291,15 +291,14 @@ app.post('/api/tickets', jwtMiddleware, requireDB, async (req, res, next) => {
         { 
           $inc: { 
             'ticketCategories.$.availableSeats': -qty, 
-            ticketsSold: qty, 
-            totalRevenue: amount 
+            ticketsSold: qty
           } 
         }
       );
     } else {
       await Event.findByIdAndUpdate(
         eventId,
-        { $inc: { ticketsSold: qty, totalRevenue: amount } }
+        { $inc: { ticketsSold: qty } }
       );
     }
 
@@ -348,7 +347,7 @@ app.post('/api/tickets', jwtMiddleware, requireDB, async (req, res, next) => {
       : (finalEvent.capacity - finalEvent.ticketsSold)) || 0;
       
     wsTicketSold(eventId, catName || 'standard', newAvail);
-    notify(req.user.id, 'Tickets Purchased', `You successfully bought ${qty} ticket(s) for ${event.name}`);
+    notify(req.user.id, 'ticket_purchase', '🎟️ Tickets Purchased', `You successfully bought ${qty} ticket(s) for ${event.name}`);
     sendEmailTemplate(customerEmail, 'TICKET_CONFIRMATION', {
       customerName,
       eventName: event.name,

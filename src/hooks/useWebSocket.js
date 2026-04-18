@@ -7,7 +7,14 @@
  */
 import { useEffect, useRef, useState, useCallback } from 'react';
 
-const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:4010';
+const getWsUrl = () => {
+    const { protocol, host } = window.location;
+    const wsProtocol = protocol === 'https:' ? 'wss:' : 'ws:';
+    // Use the relative /ws path which Vite proxies to port 4010
+    return `${wsProtocol}//${host}/ws`;
+};
+
+const WS_URL = getWsUrl();
 const RECONNECT_DELAY_MS  = 3000;
 const MAX_RECONNECT_TRIES = 10;
 

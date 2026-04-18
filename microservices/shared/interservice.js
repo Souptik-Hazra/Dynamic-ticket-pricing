@@ -138,7 +138,14 @@ export const cacheGet = async (key) => {
  */
 export const cacheDel = (key) =>
   fireAndForget(
-    () => axios.delete(`${SERVICES.cache}/api/cache/${key}`, { timeout: 2000 }),
+    async () => {
+      try {
+        await axios.delete(`${SERVICES.cache}/api/cache/${key}`, { timeout: 2000 });
+      } catch (err) {
+        // If it's a 404, it means the key is already gone, which is our goal.
+        if (err.response?.status !== 404) throw err;
+      }
+    },
     `cacheDel(key)`
   );
 

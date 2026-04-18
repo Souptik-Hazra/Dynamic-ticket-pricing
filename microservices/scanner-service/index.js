@@ -26,13 +26,15 @@ app.post('/api/scanner/verify', jwtMiddleware, requireDB, async (req, res, next)
     if (!ticket) return res.status(404).json({ error: 'Invalid Ticket' });
     if (!ticket.eventId) return res.status(404).json({ error: 'Associated Event not found' });
 
-    // Access Control: Only the organizer, an admin, or designated staff can verify
+    // Access Control: Only the organizer (any with the role), an admin, or designated staff can verify
     const isAuthorized = 
       req.user.role === 'admin' || 
       req.user.role === 'staff' || 
+      req.user.role === 'organizer' ||
       (ticket.eventId.organizerId && ticket.eventId.organizerId.toString() === req.user.id);
 
     if (!isAuthorized) {
+      console.warn(`[ScannerService] Unauthorized scan attempt: user ${req.user.id} (role: ${req.user.role}) for event ${ticket.eventId._id}`);
       return res.status(403).json({ error: 'Not authorized to verify tickets for this event' });
     }
 

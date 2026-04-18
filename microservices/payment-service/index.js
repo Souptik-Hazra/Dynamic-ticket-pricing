@@ -24,6 +24,7 @@ const paymentSchema = new mongoose.Schema(
     eventId:       { type: mongoose.Schema.Types.ObjectId, ref: 'Event',  required: true },
     userId:        { type: mongoose.Schema.Types.ObjectId, ref: 'User',   required: true },
     amount:        { type: Number, required: true, min: 0 },
+    bookingReference: { type: String, trim: true },
     currency:      { type: String, default: 'INR' },
     paymentMethod: { type: String, enum: ['card', 'upi', 'netbanking', 'wallet', 'cash'], required: true },
     status:        { type: String, enum: ['pending', 'completed', 'failed', 'refunded'], default: 'pending' },
@@ -32,11 +33,10 @@ const paymentSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-paymentSchema.pre('save', function (next) {
+paymentSchema.pre('save', function () {
   if (!this.transactionId) {
     this.transactionId = `PAY-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
   }
-  next();
 });
 const Payment = mongoose.models.Payment || mongoose.model('Payment', paymentSchema);
 
@@ -55,50 +55,114 @@ app.post('/api/payments', jwtMiddleware, requireDB, async (req, res, next) => {
     if (!validMethods.includes(paymentMethod))
       return res.status(400).json({ error: `paymentMethod must be one of: ${validMethods.join(', ')}` });
 
-    const ticket = await Ticket.findById(ticketId).populate('eventId', 'name');
+    // 1. Fetch ticket with populated event
+    const ticket = await Ticket.findById(ticketId).populate('eventId');
     if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
+    
+    // 2. Validate ownership and status
     if (ticket.userId.toString() !== req.user.id)
       return res.status(403).json({ error: 'This ticket does not belong to you' });
+    
     if (ticket.status !== 'confirmed')
       return res.status(400).json({ error: `Ticket status is '${ticket.status}' — cannot process payment` });
 
+    if (!ticket.eventId) {
+      return res.status(400).json({ error: 'Event information missing from ticket' });
+    }
+
+    // 3. Create Payment with explicit ObjectIds to prevent TypeErrors
     const payment = await Payment.create({
-      ticketId: ticket._id,
-      eventId:  ticket.eventId._id,
-      userId:   req.user.id,
-      amount:   ticket.totalAmount,
+      ticketId: new mongoose.Types.ObjectId(ticket._id),
+      eventId:  new mongoose.Types.ObjectId(ticket.eventId._id || ticket.eventId),
+      userId:   new mongoose.Types.ObjectId(req.user.id),
+      amount:   Number(req.body.amount) || Number(ticket.totalAmount),
+      bookingReference: req.body.bookingReference || ticket.bookingReference,
       paymentMethod,
       status:   'completed',
-      metadata: { cardLast4, upiId },
+      metadata: { ...req.body.metadata, cardLast4, upiId },
     });
+
+    // 4. Update Event Revenue
+    try {
+      const eventId = ticket.eventId._id || ticket.eventId;
+      await Event.findByIdAndUpdate(eventId, {
+        $inc: { totalRevenue: payment.amount }
+      });
+      // Optionally trigger sync logic
+      const event = await Event.findById(eventId);
+      if (event) await event.save(); 
+    } catch (updateErr) {
+      console.error('[PaymentService] Event revenue update failed:', updateErr.message);
+    }
 
     res.status(201).json({
+      success: true,
       payment,
-      ticket,
-      message: `Payment of ₹${ticket.totalAmount} processed for ${ticket.eventId.name}`,
+      message: `Payment of ₹${payment.amount} processed successfully`,
     });
 
-    // ── Inter-service: notify + email (after response sent) ──────────────
-    const eventName = ticket.eventId.name;
-    notify(req.user.id, 'ticket_purchase',
-      `💳 Payment Successful — ${eventName}`,
-      `₹${ticket.totalAmount} paid via ${paymentMethod}. Transaction: ${payment.transactionId}`
-    );
-    wsNotifyUser(req.user.id, 'system',
-      '💳 Payment Confirmed',
-      `₹${ticket.totalAmount} paid for ${eventName}`
-    );
-  } catch (err) { next(err); }
+    // 5. Deferred inter-service logic
+    try {
+      const eventName = ticket.eventId.name || 'Event Ticket';
+      notify(req.user.id, 'ticket_purchase',
+        `💳 Payment Successful — ${eventName}`,
+        `₹${payment.amount} paid via ${paymentMethod}. Transaction: ${payment.transactionId}`
+      );
+      wsNotifyUser(req.user.id, 'system',
+        '💳 Payment Confirmed',
+        `₹${payment.amount} paid for ${eventName}`
+      );
+    } catch (interError) {
+      console.error('[PaymentService] Inter-service notifications failed:', interError.message);
+    }
+  } catch (err) { 
+    console.error('[PaymentService] POST /api/payments CRITICAL ERROR:', err);
+    // Return detailed error in 500 response temporarily to see what's happening
+    res.status(500).json({ 
+      error: 'CRITICAL_PAYMENT_FAILED', 
+      message: err.message,
+      details: err.stack?.split('\n')[0] 
+    });
+  }
 });
 
 // GET /api/payments
 app.get('/api/payments', jwtMiddleware, requireDB, async (req, res, next) => {
   try {
-    const payments = await Payment.find({ userId: req.user.id })
-      .populate('eventId', 'name venue')
+    const userId = req.user.id;
+    console.log(`[PaymentService] Fetching payments for user: ${userId}`);
+    
+    // Ensure we are querying with the correct type
+    const query = { userId };
+    if (mongoose.Types.ObjectId.isValid(userId)) {
+      query.userId = new mongoose.Types.ObjectId(userId);
+    }
+
+    const payments = await Payment.find(query)
+      .populate('eventId', 'name venue startDate')
       .sort({ createdAt: -1 });
-    res.json({ payments });
-  } catch (err) { next(err); }
+    
+    console.log(`[PaymentService] Found ${payments.length} payments for user ${userId}`);
+
+    // Safety pass: ensure eventId is not null for the frontend
+    const cleanedPayments = payments.map(p => {
+      const obj = p.toObject ? p.toObject() : p;
+      return {
+        ...obj,
+        eventName: p.eventId?.name || 'Unknown Event',
+        eventVenue: p.eventId?.venue || 'Unknown Venue'
+      };
+    });
+
+    res.json({ 
+      success: true,
+      payments: cleanedPayments,
+      count: cleanedPayments.length 
+    });
+  } catch (err) { 
+    console.error('[PaymentService] GET /api/payments Error:', err);
+    next(err); 
+  }
 });
 
 // GET /api/payments/:id

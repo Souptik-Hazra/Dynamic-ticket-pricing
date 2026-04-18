@@ -147,9 +147,34 @@ function TicketPurchase({ event, onBack, onSuccess }) {
         }
       );
 
+      // Create Payment Record
+      try {
+        await axios.post(
+          buildUrl('/payments'),
+          {
+            ticketId: response.data.tickets[0]._id, // Lead ticket
+            bookingReference: response.data.tickets[0].bookingReference,
+            amount: response.data.tickets.reduce((sum, t) => sum + t.totalAmount, 0),
+            paymentMethod: 'card', // Default for now
+            metadata: {
+              ticketIds: response.data.tickets.map(t => t._id),
+              eventTitle: event.name
+            }
+          },
+          {
+            headers: { Authorization: `Bearer ${token}` }
+          }
+        );
+      } catch (payErr) {
+        console.error('Payment recording failed:', payErr);
+        // We continue anyway as the tickets were already created
+      }
+
       setLoading(false);
       setPurchasedTicket({
         tickets: response.data.tickets,
+        _id: response.data.tickets[0]._id,
+        bookingReference: response.data.tickets[0].bookingReference,
         totalAmount: response.data.tickets.reduce((sum, t) => sum + t.totalAmount, 0),
         quantity: response.data.tickets.length,
         eventName: event.name,
@@ -291,6 +316,7 @@ function TicketPurchase({ event, onBack, onSuccess }) {
                 onChange={handleChange}
                 placeholder="John Doe"
                 required
+                readOnly={true}
               />
             </div>
 
@@ -304,6 +330,7 @@ function TicketPurchase({ event, onBack, onSuccess }) {
                 onChange={handleChange}
                 placeholder="john@example.com"
                 required
+                readOnly={true}
               />
             </div>
 

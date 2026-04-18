@@ -59,7 +59,19 @@ const UserProfile = () => {
       const { data } = await axios.get(buildUrl(ENDPOINTS.PAYMENTS), {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setPayments(Array.isArray(data.payments) ? data.payments : Array.isArray(data) ? data : []);
+      console.log("[UserProfile] Payments loaded:", data);
+      
+      // Handle various response structures gracefully
+      let paymentsList = [];
+      if (data && Array.isArray(data.payments)) {
+        paymentsList = data.payments;
+      } else if (Array.isArray(data)) {
+        paymentsList = data;
+      } else if (data && data.success && Array.isArray(data.payments)) {
+        paymentsList = data.payments;
+      }
+      
+      setPayments(paymentsList);
     } catch (err) {
       console.error("Error fetching payments:", err);
     } finally {
@@ -207,6 +219,7 @@ const UserProfile = () => {
                     onChange={handleChange}
                     placeholder="Your full name"
                     required
+                    readOnly={true}
                   />
                 </div>
               </div>
@@ -222,6 +235,7 @@ const UserProfile = () => {
                     onChange={handleChange}
                     placeholder="your@email.com"
                     required
+                    readOnly={true}
                   />
                 </div>
               </div>
@@ -453,8 +467,8 @@ const UserProfile = () => {
                 <div className="print-detail-grid">
                   <div className="print-detail-box">
                     <span className="print-box-label">Booking Reference</span>
-                    <span className="print-box-value print-ref">
-                      {printTicket.bookingReference || printTicket._id}
+                    <span className="print-box-value print-ref" style={{ color: '#fff' }}>
+                      {printTicket.bookingReference || printTicket._id || "N/A"}
                     </span>
                   </div>
                   <div className="print-detail-box">
@@ -557,54 +571,67 @@ const UserProfile = () => {
           {paymentsLoading ? (
             <div className="loading-spinner">🔄 Loading payments...</div>
           ) : payments.length === 0 ? (
-            <div className="no-tickets-message">
-              <p>No payments found.</p>
-              <p style={{ fontSize: '0.85rem', color: '#999', marginTop: '0.5rem' }}>
-                Payments are recorded when you complete a checkout with the payment service.
-              </p>
+            <div className="no-tickets">
+              <span className="no-tickets-icon">💳</span>
+              <h3>No payments found</h3>
+              <p>Transactions appear here after ticket checkout.</p>
+              <button 
+                className="print-now-btn" 
+                style={{ marginTop: '1rem', background: '#3b82f6', color: 'white' }}
+                onClick={fetchPayments}
+              >
+                🔄 Refresh Payments
+              </button>
             </div>
           ) : (
-            <div className="tickets-table-container" style={{ overflowX: 'auto', marginTop: '1.5rem' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+            <div className="payments-table-container">
+              <table className="payments-table">
                 <thead>
-                  <tr style={{ background: '#f0f0f0', textAlign: 'left' }}>
-                    <th style={{ padding: '10px' }}>Transaction ID</th>
-                    <th style={{ padding: '10px' }}>Amount</th>
-                    <th style={{ padding: '10px' }}>Method</th>
-                    <th style={{ padding: '10px' }}>Status</th>
-                    <th style={{ padding: '10px' }}>Date</th>
-                    <th style={{ padding: '10px' }}>Action</th>
+                  <tr>
+                    <th>Date</th>
+                    <th>Event</th>
+                    <th>Transaction</th>
+                    <th>Method</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {payments.map((p) => (
-                    <tr key={p._id} style={{ borderBottom: '1px solid #eee' }}>
-                      <td style={{ padding: '10px', fontFamily: 'monospace', fontSize: '0.8rem', color: '#666' }}>
-                        {p.transactionId || p._id}
-                      </td>
-                      <td style={{ padding: '10px', fontWeight: 700 }}>₹{p.amount?.toFixed(2)}</td>
-                      <td style={{ padding: '10px', textTransform: 'capitalize' }}>{p.paymentMethod}</td>
-                      <td style={{ padding: '10px' }}>
-                        <span className={`status-badge ${p.status}`}>{p.status}</span>
-                      </td>
-                      <td style={{ padding: '10px', color: '#666' }}>
+                    <tr key={p._id}>
+                      <td>
                         {p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-IN', {
-                          day: 'numeric', month: 'short', year: 'numeric'
+                          day: 'numeric', month: 'short'
                         }) : '—'}
                       </td>
-                      <td style={{ padding: '10px' }}>
+                      <td style={{ fontWeight: 600 }}>{p.eventId?.name || 'Ticket Purchase'}</td>
+                      <td>
+                        <code className="transaction-id" title={p.transactionId || p._id}>
+                          {(p.transactionId || p._id).substring(0, 10)}...
+                        </code>
+                      </td>
+                      <td>
+                        <span className="payment-method-badge">
+                          {p.paymentMethod === 'card' ? '💳' : '📱'} {p.paymentMethod}
+                        </span>
+                      </td>
+                      <td className="payment-amount">₹{p.amount?.toFixed(2)}</td>
+                      <td>
+                        <span className={`status-badge ${p.status}`}>{p.status}</span>
+                      </td>
+                      <td>
                         {p.status === 'completed' && (
                           <button
-                            className="update-price-btn"
-                            style={{ fontSize: '0.8rem', padding: '4px 12px' }}
+                            className="refund-btn"
                             disabled={refundingId === p._id}
                             onClick={() => handleRefund(p._id)}
                           >
-                            {refundingId === p._id ? 'Processing...' : '💸 Refund'}
+                            {refundingId === p._id ? 'Refunding...' : 'Refund'}
                           </button>
                         )}
                         {p.status === 'refunded' && (
-                          <span style={{ color: '#2ecc71', fontWeight: 600 }}>✓ Refunded</span>
+                          <span className="refunded-text">✓ Refunded</span>
                         )}
                       </td>
                     </tr>

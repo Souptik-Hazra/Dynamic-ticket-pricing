@@ -3,12 +3,10 @@
 // API Gateway URL
 // API Gateway URL
 // Auto-detect host to allow mobile devices on same Wi-Fi to reach the API
+// Auto-detect host to allow mobile devices on same Wi-Fi to reach the API via Vite Proxy
 const getBaseUrl = () => {
-    if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
-    const { hostname } = window.location;
-    // If we're on localhost, keep localhost. Otherwise, use the current network hostname/IP.
-    const host = (hostname === 'localhost' || hostname === '127.0.0.1') ? 'localhost' : hostname;
-    return `http://${host}:3001/api`;
+    // In dev, always use relative /api which Vite proxies to port 3001
+    return '/api';
 };
 
 export const API_URL = getBaseUrl();
