@@ -149,7 +149,9 @@ function TicketPurchase({ event, onBack, onSuccess }) {
 
       setLoading(false);
       setPurchasedTicket({
-        ...response.data.ticket,
+        tickets: response.data.tickets,
+        totalAmount: response.data.tickets.reduce((sum, t) => sum + t.totalAmount, 0),
+        quantity: response.data.tickets.length,
         eventName: event.name,
         eventVenue: event.venue,
         eventImage: event.image,
@@ -454,6 +456,27 @@ function TicketPurchase({ event, onBack, onSuccess }) {
                     ₹{purchasedTicket.price?.toFixed(2) || (purchasedTicket.totalAmount / purchasedTicket.quantity).toFixed(2)}
                   </span>
                 </div>
+              </div>
+
+              {/* QR Code Section - Show all tickets in a scrollable/list view */}
+              <div className="pp-qr-container">
+                {purchasedTicket.tickets && purchasedTicket.tickets.map((ticket, index) => (
+                  <div key={ticket._id} className="pp-qr-item">
+                    <div className="pp-qr-label">TICKET {index + 1} OF {purchasedTicket.quantity}</div>
+                    {ticket.qrCode ? (
+                      <div className="pp-qr-wrapper">
+                        <img src={ticket.qrCode} alt={`QR Code ${index + 1}`} className="pp-qr-image" />
+                      </div>
+                    ) : (
+                      <div className="pp-qr-placeholder">
+                        <div className="pp-qr-spinner"></div>
+                        <p>Generating Branded QR...</p>
+                      </div>
+                    )}
+                    <div className="pp-qr-token">{ticket.qrToken.slice(0, 8)}...{ticket.qrToken.slice(-8)}</div>
+                  </div>
+                ))}
+                <p className="pp-qr-hint">Each person must scan their own unique QR code at the entrance</p>
               </div>
 
               {/* Total */}

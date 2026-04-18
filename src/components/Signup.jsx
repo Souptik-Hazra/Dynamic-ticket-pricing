@@ -137,6 +137,7 @@ function Signup({ onSwitchToLogin }) {
             >
               <option value="user">🎟️ Attendee (Buy Tickets)</option>
               <option value="organizer">🎭 Organizer (List Events)</option>
+              <option value="staff">🛡️ Entry Staff (Scan Only)</option>
             </select>
           </div>
 

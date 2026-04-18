@@ -49,6 +49,8 @@ start "[ FanFever ] Live-WS" cmd /k "cd microservices/websocket-service && npm s
 start "[ FanFever ] Analytics" cmd /k "cd microservices/analytics-service && npm start"
 start "[ FanFever ] Subscription" cmd /k "cd microservices/subscription-service && npm start"
 start "[ FanFever ] Organizer" cmd /k "cd microservices/organizer-service && npm start"
+start "[ FanFever ] QR-Gen" cmd /k "cd microservices/qr-service && npm start"
+start "[ FanFever ] Scanner" cmd /k "cd microservices/scanner-service && npm start"
 timeout /t 5 /nobreak >nul
 echo Done!
 echo.

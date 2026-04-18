@@ -16,6 +16,7 @@ import './components/NavBadge.css';
 import UserProfile from "./components/UserProfile.jsx";
 import Notifications from "./components/Notifications.jsx";
 import OrganizerDashboard from "./components/OrganizerDashboard.jsx";
+import Scanner from "./components/Scanner.jsx";
 
 function AppContent() {
   const { user, loading: authLoading, logout, isAuthenticated, isAdmin } = useAuth();
@@ -39,12 +40,16 @@ function AppContent() {
       setView('home');
     }
   }, [isAuthenticated, view]);
-  // Redirect to events page after login
+  // Redirect to events page (user) or scanner page (staff) after login
   useEffect(() => {
     if (isAuthenticated && view === 'login') {
-      setView('events');
+      if (user?.role === 'staff') {
+        setView('scanner');
+      } else {
+        setView('events');
+      }
     }
-  }, [isAuthenticated, view]);
+  }, [isAuthenticated, view, user]);
 
   // Close mobile menu when view changes
   useEffect(() => {
@@ -144,8 +149,19 @@ function AppContent() {
           )}
 
           {isAuthenticated && user?.role === 'organizer' && (
-            <button onClick={() => setView('organizer')} className={view === 'organizer' ? 'active' : ''}>
-              Dashboard
+            <>
+              <button onClick={() => setView('organizer')} className={view === 'organizer' ? 'active' : ''}>
+                Dashboard
+              </button>
+              <button onClick={() => setView('scanner')} className={view === 'scanner' ? 'active' : ''}>
+                Scanner
+              </button>
+            </>
+          )}
+
+          {isAuthenticated && user?.role === 'staff' && (
+            <button onClick={() => setView('scanner')} className={view === 'scanner' ? 'active' : ''}>
+              🛡️ Staff Scanner
             </button>
           )}
           
@@ -290,6 +306,10 @@ function AppContent() {
 
       {view === 'subscription' && isAuthenticated && (
         <Subscription />
+      )}
+
+      {view === 'scanner' && isAuthenticated && (user?.role === 'organizer' || user?.role === 'staff' || isAdmin()) && (
+        <Scanner />
       )}
     </div>
   );

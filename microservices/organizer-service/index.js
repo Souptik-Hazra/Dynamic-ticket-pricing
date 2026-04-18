@@ -4,6 +4,8 @@ import cors from 'cors';
 import connectDB, { requireDB, registerProcessHandlers } from '../shared/db.js';
 import { errorHandler, notFound } from '../shared/errorHandler.js';
 import jwtMiddleware from '../shared/jwtMiddleware.js';
+import crypto from 'crypto';
+import axios from 'axios';
 import Event from '../shared/models/Event.js';
 import Ticket from '../shared/models/Ticket.js';
 import {
@@ -16,6 +18,8 @@ import {
   cacheGet,
   cacheDel,
   cacheDelPattern,
+  cacheLock,
+  cacheUnlock,
   CACHE_KEYS,
 } from '../shared/interservice.js';
 
@@ -60,6 +64,9 @@ organizerRouter.get('/health', (req, res) => {
 
 // GET /api/organizers/stats
 organizerRouter.get('/stats', jwtMiddleware, requireDB, async (req, res, next) => {
+  if (req.user.role === 'staff') {
+    return res.status(403).json({ error: 'Entry staff are not authorized to view statistics.' });
+  }
   console.log(`[OrganizerRouter] Fetching stats for organizer: ${req.user.id}`);
   try {
     const events = await Event.find({ organizerId: req.user.id });
@@ -102,6 +109,9 @@ organizerRouter.get('/stats', jwtMiddleware, requireDB, async (req, res, next) =
 
 // GET /api/organizers/events
 organizerRouter.get('/events', jwtMiddleware, requireDB, async (req, res, next) => {
+  if (req.user.role === 'staff') {
+    return res.status(403).json({ error: 'Entry staff are not authorized to view event management.' });
+  }
   console.log(`[OrganizerRouter] Fetching events for organizer: ${req.user.id}`);
   try {
     const events = await Event.find({ organizerId: req.user.id }).sort({ createdAt: -1 });
@@ -114,6 +124,9 @@ organizerRouter.get('/events', jwtMiddleware, requireDB, async (req, res, next) 
 
 // GET /api/organizers/tickets
 organizerRouter.get('/tickets', jwtMiddleware, requireDB, async (req, res, next) => {
+  if (req.user.role === 'staff') {
+    return res.status(403).json({ error: 'Entry staff are not authorized to view sales history.' });
+  }
   console.log(`[OrganizerRouter] Fetching tickets for organizer: ${req.user.id}`);
   try {
     const events = await Event.find({ organizerId: req.user.id }).select('_id');
@@ -237,12 +250,20 @@ app.post('/api/tickets/revert', requireDB, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// POST /api/tickets — buy a ticket
+// POST /api/tickets — buy a ticket with Distributed Lock protection
 app.post('/api/tickets', jwtMiddleware, requireDB, async (req, res, next) => {
   const { eventId, categoryName: catName, quantity: qty, customerName, customerEmail, pricePerTicket } = req.body;
   
   if (!eventId || !qty || qty < 1) {
     return res.status(400).json({ error: 'Invalid purchase request' });
+  }
+
+  // ── Distributed Locking ────────────────────────────────────────────────
+  const lockKey = `lock:purchase:${eventId}:${catName || 'any'}`;
+  const { success: lockAcquired, token: lockToken } = await cacheLock(lockKey, 15000, 10);
+
+  if (!lockAcquired) {
+    return res.status(503).json({ error: 'System busy. Please try again in a few seconds.' });
   }
 
   try {
@@ -261,7 +282,7 @@ app.post('/api/tickets', jwtMiddleware, requireDB, async (req, res, next) => {
       if (avail < qty) return res.status(400).json({ error: 'Sold out' });
     }
 
-    // 3. Update inventory & revenue (Atomic)
+    // 3. Update inventory & revenue (Constrained update would also work, but we use Lock)
     const amount = (pricePerTicket || getDynamicPrice(category, event)) * qty;
     
     if (category) {
@@ -286,18 +307,40 @@ app.post('/api/tickets', jwtMiddleware, requireDB, async (req, res, next) => {
     const finalEvent = await Event.findById(eventId);
     await finalEvent.save();
 
-    // 5. Create Ticket
-    const ticket = await Ticket.create({
-      eventId,
-      userId: req.user.id,
-      categoryName: catName || 'standard',
-      customerName,
-      customerEmail,
-      pricePerTicket: pricePerTicket || getDynamicPrice(category, event),
-      quantity: qty,
-      totalAmount: amount,
-      status: 'confirmed'
-    });
+    // 5. Generate unique QR codes for EACH individual ticket
+    const tickets = [];
+    for (let i = 0; i < qty; i++) {
+        const qrToken = crypto.randomBytes(32).toString('hex');
+        const qrUrl   = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify?token=${qrToken}`;
+        
+        let qrCode = '';
+        try {
+          const qrResponse = await axios.post(`${process.env.QR_SERVICE_URL || 'http://localhost:4014'}/api/qr/generate`, {
+            text: qrUrl,
+            logoPath: '../../public/default-event.png',
+            position: 'center'
+          });
+          qrCode = qrResponse.data.qrCode;
+        } catch (qrErr) {
+          console.error(`[OrganizerService] QR generation failed for ticket ${i+1}:`, qrErr.message);
+        }
+
+        const ticket = await Ticket.create({
+          eventId,
+          userId: req.user.id,
+          categoryName: catName || 'standard',
+          customerName: qty > 1 ? `${customerName} (Ticket ${i + 1})` : customerName,
+          customerEmail,
+          pricePerTicket: pricePerTicket || getDynamicPrice(category, event),
+          quantity: 1, // Individual ticket
+          totalAmount: pricePerTicket || getDynamicPrice(category, event),
+          status: 'confirmed',
+          qrToken,
+          qrCode,
+          expiresAt: event.startDate
+        });
+        tickets.push(ticket);
+    }
 
     // 6. side effects
     const newAvail = (category 
@@ -305,23 +348,26 @@ app.post('/api/tickets', jwtMiddleware, requireDB, async (req, res, next) => {
       : (finalEvent.capacity - finalEvent.ticketsSold)) || 0;
       
     wsTicketSold(eventId, catName || 'standard', newAvail);
-    notify(req.user.id, 'Ticket Purchased', `You successfully bought ${qty} ticket(s) for ${event.name}`);
+    notify(req.user.id, 'Tickets Purchased', `You successfully bought ${qty} ticket(s) for ${event.name}`);
     sendEmailTemplate(customerEmail, 'TICKET_CONFIRMATION', {
       customerName,
       eventName: event.name,
       quantity: qty,
       totalAmount: amount,
-      bookingReference: ticket.bookingReference
+      bookingReference: tickets[0].bookingReference // Use first one as ref
     });
 
     // Invalidate caches
     cacheDel(CACHE_KEYS.EVENT_DETAIL(eventId));
     cacheDelPattern(CACHE_KEYS.EVENT_LIST_ALL);
 
-    res.status(201).json({ success: true, ticket });
+    res.status(201).json({ success: true, tickets });
   } catch (err) {
     console.error('[OrganizerService] Purchase error:', err);
     next(err);
+  } finally {
+    // ── ALWAYS Release the Lock ──────────────────────────────────────────
+    cacheUnlock(lockKey, lockToken);
   }
 });
 

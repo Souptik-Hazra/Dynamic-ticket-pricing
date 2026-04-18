@@ -11,6 +11,7 @@
     "cors": "*",
     "dotenv": "*",
     "express": "*",
-    "http-proxy-middleware": "*"
+    "http-proxy-middleware": "*",
+    "selfsigned": "^5.5.0"
   }
 }

@@ -689,6 +689,8 @@
 .role-badge.admin { background: #fee2e2; color: #991b1b; }
 .role-badge.organizer { background: #fef3c7; color: #92400e; }
 .role-badge.user { background: #dcfce7; color: #166534; }
+.role-badge.stats-purple { background: #f3e8ff; color: #8b5cf6; }
+.stats-orange { background: #fff7ed; color: #f97316; }
 
 .sub-badge {
   display: inline-flex;
@@ -894,8 +896,20 @@
 
 .sold-progress-fill {
   height: 100%;
-  background: #6366f1;
-  transition: width 0.5s ease-out;
+  background: linear-gradient(90deg, #6366f1, #a855f7);
+  border-radius: 4px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.entry-progress-mini {
+  margin-top: 6px;
+  font-size: 0.7rem;
+  color: #94a3b8;
+  letter-spacing: 0.5px;
+}
+
+.entry-progress-mini b {
+  color: #10b981;
 }
 
 .profit-amount {

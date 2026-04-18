@@ -11,7 +11,7 @@ const userSchema = new mongoose.Schema(
     name:     { type: String, required: true, trim: true },
     email:    { type: String, required: true, unique: true, lowercase: true, trim: true },
     password: { type: String, required: true, select: false }, // excluded by default
-    role:     { type: String, enum: ['user', 'organizer', 'admin'], default: 'user' },
+    role:     { type: String, enum: ['user', 'organizer', 'admin', 'staff'], default: 'user' },
 
     // Extended profile
     city:      { type: String, default: '' },

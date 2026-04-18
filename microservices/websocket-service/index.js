@@ -109,6 +109,13 @@ app.post('/api/ws/notify-user', (req, res) => {
   res.json({ message: 'Sent to user', userId });
 });
 
+// Broadcast attendance update (live entry stats)
+app.post('/api/ws/attendance-update', (req, res) => {
+  const { eventId, scannedCount, totalSold } = req.body;
+  broadcast({ type: 'attendance_update', eventId, scannedCount, totalSold, ts: Date.now() });
+  res.json({ message: 'Broadcast sent' });
+});
+
 // Broadcast ticket-sold event (causes seat count to update on all browsers)
 app.post('/api/ws/ticket-sold', (req, res) => {
   const { eventId, categoryName, remainingSeats } = req.body;

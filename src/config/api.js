@@ -1,7 +1,17 @@
 // Centralized API configuration
 
 // API Gateway URL
-export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+// API Gateway URL
+// Auto-detect host to allow mobile devices on same Wi-Fi to reach the API
+const getBaseUrl = () => {
+    if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+    const { hostname } = window.location;
+    // If we're on localhost, keep localhost. Otherwise, use the current network hostname/IP.
+    const host = (hostname === 'localhost' || hostname === '127.0.0.1') ? 'localhost' : hostname;
+    return `http://${host}:3001/api`;
+};
+
+export const API_URL = getBaseUrl();
 
 // API endpoints (paths relative to each service's /api root)
 export const ENDPOINTS = {
@@ -58,6 +68,7 @@ export const ENDPOINTS = {
   ORGANIZER_STATS:   '/organizers/stats',
   ORGANIZER_EVENTS:  '/organizers/events',
   ORGANIZER_TICKETS: '/organizers/tickets',
+  SCANNER_VERIFY:    '/scanner/verify',
 };
 
 // Helper — build full URL via gateway

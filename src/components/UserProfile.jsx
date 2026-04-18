@@ -475,6 +475,14 @@ const UserProfile = () => {
                   </div>
                 </div>
 
+                {/* QR Code Section */}
+                {printTicket.qrCode && (
+                  <div className="pp-qr-section" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '20px 0' }}>
+                    <img src={printTicket.qrCode} alt="Ticket QR Code" style={{ width: '150px', height: '150px', background: 'white', padding: '10px', borderRadius: '8px' }} />
+                    <p style={{ marginTop: '10px', fontSize: '0.8rem', color: '#666' }}>Scan at entrance for entry</p>
+                  </div>
+                )}
+
                 <div className="print-total-section">
                   <div className="print-total-row">
                     <span>Total Amount Paid</span>

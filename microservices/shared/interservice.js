@@ -83,6 +83,15 @@ export const wsPriceUpdate = (eventId, prices, occupancyRate) =>
     `wsPriceUpdate(${eventId})`
   );
 
+/**
+ * Broadcast attendance update to ALL connected clients.
+ */
+export const wsAttendanceUpdate = (eventId, scannedCount, totalSold) =>
+  fireAndForget(
+    () => axios.post(`${SERVICES.websocket}/api/ws/attendance-update`, { eventId, scannedCount, totalSold }, { timeout: 5000 }),
+    `wsAttendanceUpdate(${eventId})`
+  );
+
 // ── Email Service ─────────────────────────────────────────────────────────
 /**
  * Send a named email template.
@@ -131,6 +140,35 @@ export const cacheDel = (key) =>
   fireAndForget(
     () => axios.delete(`${SERVICES.cache}/api/cache/${key}`, { timeout: 2000 }),
     `cacheDel(key)`
+  );
+
+/**
+ * Atomicly acquire a distributed lock.
+ * Returns { success, token } or null on failure.
+ */
+export const cacheLock = async (key, ttl = 5000, retries = 5) => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const { data } = await axios.post(`${SERVICES.cache}/api/cache/lock`, { key, ttl }, { timeout: 2000 });
+      if (data.success) return { success: true, token: data.token };
+      
+      // Wait before retrying (exponential backoff)
+      const delay = Math.pow(2, i) * 100;
+      await new Promise(r => setTimeout(r, delay));
+    } catch (err) {
+      console.error(`[Inter-service] cacheLock attempt ${i+1} failed:`, err.message);
+    }
+  }
+  return { success: false };
+};
+
+/**
+ * Release a distributed lock.
+ */
+export const cacheUnlock = (key, token) =>
+  fireAndForget(
+    () => axios.post(`${SERVICES.cache}/api/cache/unlock`, { key, token }, { timeout: 2000 }),
+    `cacheUnlock(${key})`
   );
 
 /**

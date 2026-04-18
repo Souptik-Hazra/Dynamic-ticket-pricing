@@ -36,11 +36,20 @@ function OrganizerDashboard() {
     return colors[Math.abs(hash) % colors.length];
   };
 
-  // Real-time: refresh stats when a ticket is sold for any of this organizer's events
+  // Real-time: refresh stats when a ticket is sold or attendance updates
   useEffect(() => {
     if (!lastEvent) return;
     if (lastEvent.type === 'ticket_sold' && view === 'stats') {
       fetchStats();
+    }
+    if (lastEvent.type === 'attendance_update') {
+      // Update the events list in-place for live progress feedback
+      setEvents(currentEvents => currentEvents.map(ev => {
+        if (ev._id === lastEvent.eventId) {
+          return { ...ev, scannedCount: lastEvent.scannedCount, totalSold: lastEvent.totalSold };
+        }
+        return ev;
+      }));
     }
   }, [lastEvent]); // eslint-disable-line
 
@@ -163,6 +172,15 @@ function OrganizerDashboard() {
                   <p className="stat-value">{stats.totalEvents > 0 ? (stats.totalTickets / stats.totalEvents).toFixed(1) : '0'}</p>
                 </div>
               </div>
+              <div className="stat-card">
+                <div className="stat-icon stats-orange">🛂</div>
+                <div className="stat-info">
+                  <h3>Total Attendance</h3>
+                  <p className="stat-value">
+                    {events.reduce((sum, ev) => sum + (ev.scannedCount || 0), 0)}
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -242,6 +260,9 @@ function OrganizerDashboard() {
                             </div>
                             <div className="sold-progress-bg">
                               <div className="sold-progress-fill" style={{ width: `${(event.ticketsSold / event.capacity) * 100}%` }}></div>
+                            </div>
+                            <div className="entry-progress-mini">
+                              Checked-in: <b>{event.scannedCount || 0}</b> / {event.ticketsSold}
                             </div>
                           </td>
                           <td className="base-revenue-cell">

@@ -19,6 +19,12 @@ const ticketSchema = new mongoose.Schema(
     status:           { type: String, enum: ['confirmed', 'cancelled', 'refunded'], default: 'confirmed' },
     bookingReference: { type: String, unique: true, sparse: true }, // generated in pre-save
     purchaseDate:     { type: Date, default: Date.now },
+
+    // QR Ticket Security
+    qrToken: { type: String, unique: true, sparse: true, index: true },
+    qrCode:  { type: String }, // Base64 encoded branded QR code
+    isUsed:  { type: Boolean, default: false },
+    expiresAt: { type: Date },
   },
   { timestamps: true }
 );
