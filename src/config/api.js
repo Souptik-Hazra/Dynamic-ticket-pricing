@@ -33,12 +33,13 @@ export const ENDPOINTS = {
   USER_TICKETS:         '/tickets',
 
   // Admin (Admin Service)
-  ADMIN_STATS:          '/admin/stats',
-  ADMIN_EVENTS:         '/admin/events',
-  ADMIN_EVENT_BY_ID:    (id) => `/admin/events/${id}`,
-  ADMIN_TICKETS:        '/admin/tickets',
-  ADMIN_TICKETS:        '/admin/tickets',
-  ADMIN_USERS:          '/admin/users',
+  ADMIN_STATS:       '/admin/stats',
+  ADMIN_USERS:       '/admin/users',
+  ADMIN_EVENTS:      '/admin/events',
+  ADMIN_TICKETS:     '/admin/tickets',
+  ADMIN_COMMISSIONS: '/admin/commissions',
+  ADMIN_BROADCAST:   '/admin/broadcast',
+  PLATFORM_HEALTH:   '/health-all',
 
   // Analytics (Analytics Service)
   ANALYTICS: '/analytics',
@@ -62,14 +63,31 @@ export const ENDPOINTS = {
   ML_PREDICT: '/ml-model/predict',
   ML_HEALTH:  '/ml-model/health',
 
-  // Organizer Dashboard
-  ORGANIZER_STATS:   '/organizers/stats',
-  ORGANIZER_EVENTS:  '/organizers/events',
-  ORGANIZER_TICKETS: '/organizers/tickets',
+  // Organizer Service (Messaging & Management)
+  ORGANIZER_STATS:         '/organizers/stats',
+  ORGANIZER_EVENTS:        '/organizers/events',
+  ORGANIZER_TICKETS:       '/organizers/tickets',
+  ORGANIZER_BROADCAST:     '/organizers/broadcast',
+  ORGANIZER_MESSAGE_ADMIN: '/organizers/message-admin',
+  
+  // Scanner / QR
   SCANNER_VERIFY:    '/scanner/verify',
+  QR_GENERATE:       '/qr/generate',
+
+  // Wallet Service
+  WALLET_BALANCE:    '/wallet/balance',
+  WALLET_DEPOSIT:    '/wallet/deposit',
+  WALLET_WITHDRAW:   '/wallet/withdraw',
 };
 
 // Helper — build full URL via gateway
 export const buildUrl = (endpoint) => `${API_URL}${endpoint}`;
+
+// Helper - build WebSocket URL via gateway
+export const getWsUrl = () => {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  // Use same host/port as window to leverage Vite's proxy (5173 -> 3001)
+  return `${protocol}//${window.location.host}/api/ws`;
+};
 
 export default API_URL;

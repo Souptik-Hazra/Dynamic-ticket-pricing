@@ -67,7 +67,7 @@ function OrganizerDashboard() {
 
   const fetchOrganizerWallet = async () => {
     try {
-      const { data } = await axios.get(buildUrl('/wallet/balance'), authHeaders());
+      const { data } = await axios.get(buildUrl(ENDPOINTS.WALLET_BALANCE), authHeaders());
       setOrganizerWallet(data);
     } catch (err) { console.error('Organizer wallet error:', err); }
   };
@@ -110,7 +110,7 @@ function OrganizerDashboard() {
     if (!messageModal.title || !messageModal.message) return alert('Title and message required');
     try {
       setLoading(true);
-      const endpoint = messageModal.type === 'admin' ? '/organizers/message-admin' : '/organizers/broadcast';
+      const endpoint = messageModal.type === 'admin' ? ENDPOINTS.ORGANIZER_MESSAGE_ADMIN : ENDPOINTS.ORGANIZER_BROADCAST;
       const payload = messageModal.type === 'admin' 
         ? { title: messageModal.title, message: messageModal.message }
         : { eventId: messageModal.eventId, title: messageModal.title, message: messageModal.message };
@@ -127,7 +127,7 @@ function OrganizerDashboard() {
   const handleDeleteEvent = async (eventId) => {
     if (!window.confirm('Are you sure you want to delete this event?')) return;
     try {
-      await axios.delete(buildUrl(`/events/${eventId}`), authHeaders());
+      await axios.delete(buildUrl(`${ENDPOINTS.EVENTS}/${eventId}`), authHeaders());
       fetchEvents();
     } catch (err) {
       console.error('Delete error:', err);

@@ -11,6 +11,11 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// ── Health ──────────────────────────────────────────────────────────────────
+app.get('/health', (_req, res) =>
+  res.json({ status: 'ok', service: 'websocket-service', ts: new Date().toISOString() })
+);
+
 const server = createServer(app);
 const wss    = new WebSocketServer({ server });
 

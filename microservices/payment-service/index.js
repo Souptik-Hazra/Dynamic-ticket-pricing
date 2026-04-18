@@ -15,6 +15,11 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// ── Health ──────────────────────────────────────────────────────────────────
+app.get('/health', (_req, res) =>
+  res.json({ status: 'ok', service: 'payment-service', ts: new Date().toISOString() })
+);
+
 connectDB('PaymentService');
 
 // ── Payment Schema (local to this service, same DB) ───────────────────────
@@ -207,9 +212,10 @@ app.post('/api/payments/:id/refund', jwtMiddleware, requireDB, async (req, res, 
     // Update ticket and get details for reversal
     const ticket = await Ticket.findByIdAndUpdate(payment.ticketId, { status: 'refunded' }, { new: true });
     
+    let refundAmount = 0;
     if (ticket) {
       // 85% REFUND POLICY: User gets 85%, Organizer loses 85% (keeps 15% as fee)
-      const refundAmount = Math.round(payment.amount * 0.85);
+      refundAmount = Math.round(payment.amount * 0.85);
 
       // ── Inter-service: revert 85% revenue in Organizer Service
       revertPurchase(ticket.eventId, ticket.categoryName, ticket.quantity, refundAmount);

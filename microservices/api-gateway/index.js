@@ -35,15 +35,17 @@ const SERVICES = {
 
 // ── Proxy factory ──────────────────────────────────────────────────────────
 // Using the explicit configuration object for http-proxy-middleware v3
-const proxy = (path, target) =>
+const proxy = (path, target, extraOptions = {}) =>
   createProxyMiddleware({
     target,
     changeOrigin: true,
     pathFilter: path,
+    ws: true, // Enable websocket proxying correctly for Upgrade headers
+    ...extraOptions,
     on: {
       error: (err, _req, res) => {
         console.error(`Proxy → ${target} (path: ${path}):`, err.message);
-        if (!res.headersSent)
+        if (res.headersSent === false && typeof res.status === 'function')
           res.status(502).json({ error: 'Service temporarily unavailable' });
       },
     },
@@ -72,6 +74,9 @@ app.use(proxy('/api/qr',            SERVICES.qr));
 app.use(proxy('/api/scanner',       SERVICES.scanner));
 app.use(proxy('/api/wallet',        SERVICES.wallet));
 
+// ── WebSocket Proxy (Direct Upgrade support) ──────────────────────────────
+app.use(proxy('/api/ws', SERVICES.websocket));
+
 // ── ML Model (Special case: strips prefix) ─────────────────────────────────
 app.use(
   createProxyMiddleware({
@@ -89,8 +94,28 @@ app.use(
   })
 );
 
-// ── 404 catch-all ─────────────────────────────────────────────────────────
-app.use('/api', (_req, res) => res.status(404).json({ error: 'API route not found' }));
+// ── Platform Health Aggregation ──────────────────────────────────────────
+app.get('/api/health-all', async (_req, res) => {
+  const reports = {};
+  const serviceCheck = async (name, url) => {
+    try {
+      const start = Date.now();
+      const response = await fetch(`${url}/health`, { signal: AbortSignal.timeout(2000) });
+      const latency = Date.now() - start;
+      if (response.ok) {
+        const data = await response.json();
+        reports[name] = { ...data, status: 'online', latency: `${latency}ms` };
+      } else {
+        reports[name] = { status: 'error', code: response.status };
+      }
+    } catch (err) {
+      reports[name] = { status: 'offline', error: err.message };
+    }
+  };
+
+  await Promise.all(Object.entries(SERVICES).map(([name, url]) => serviceCheck(name, url)));
+  res.json({ gateway: 'online', timestamp: new Date(), services: reports });
+});
 
 const PORT = process.env.PORT_API_GATEWAY || process.env.PORT || 3001;
 app.listen(PORT, '0.0.0.0', () => console.log(`API Gateway running on port ${PORT} (Network Exposed)`));

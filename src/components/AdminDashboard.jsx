@@ -24,6 +24,7 @@ function AdminDashboard() {
   const [roleFilter, setRoleFilter]         = useState('all');
   const [adminWallet, setAdminWallet]     = useState({ balance: 0 });
   const [messageForm, setMessageForm]     = useState({ target: 'all_users', targetId: '', title: '', message: '' });
+  const [healthData, setHealthData]       = useState({ services: {}, loading: false });
 
   // Real-time: refresh stats when a ticket is sold
   useEffect(() => {
@@ -43,12 +44,24 @@ function AdminDashboard() {
     if (view === 'tickets') fetchTickets();
     if (view === 'users')   fetchUsers();
     if (view === 'organizers') fetchCommissions();
+    if (view === 'diagnostics') fetchPlatformHealth();
     fetchAdminWallet();
   }, [view]);
 
+  const fetchPlatformHealth = async () => {
+    try {
+      setHealthData(prev => ({ ...prev, loading: true }));
+      const { data } = await axios.get(buildUrl(ENDPOINTS.PLATFORM_HEALTH), authHeaders());
+      setHealthData({ services: data.services || {}, loading: false });
+    } catch (err) {
+      console.error('Health check error:', err);
+      setHealthData(prev => ({ ...prev, loading: false }));
+    }
+  };
+
   const fetchAdminWallet = async () => {
     try {
-      const { data } = await axios.get(buildUrl('/wallet/balance'), authHeaders());
+      const { data } = await axios.get(buildUrl(ENDPOINTS.WALLET_BALANCE), authHeaders());
       setAdminWallet(data);
     } catch (err) { console.error('Admin wallet error:', err); }
   };
@@ -56,7 +69,7 @@ function AdminDashboard() {
   const fetchStats = async () => {
     try {
       setLoading(true);
-      const { data } = await axios.get(buildUrl('/admin/stats'), authHeaders());
+      const { data } = await axios.get(buildUrl(ENDPOINTS.ADMIN_STATS), authHeaders());
       setStats(data.stats);
     } catch (err) {
       console.error('Stats error:', err);
@@ -78,7 +91,7 @@ function AdminDashboard() {
   const fetchTickets = async () => {
     try {
       setLoading(true);
-      const { data } = await axios.get(buildUrl('/admin/tickets'), authHeaders());
+      const { data } = await axios.get(buildUrl(ENDPOINTS.ADMIN_TICKETS), authHeaders());
       setTickets(data.tickets);
     } catch (err) {
       console.error('Tickets error:', err);
@@ -90,7 +103,7 @@ function AdminDashboard() {
   const fetchCommissions = async () => {
     try {
       setLoading(true);
-      const { data } = await axios.get(buildUrl('/admin/commissions'), authHeaders());
+      const { data } = await axios.get(buildUrl(ENDPOINTS.ADMIN_COMMISSIONS), authHeaders());
       setCommissions(data.commissions || []);
     } catch (err) {
       console.error('Commissions error:', err);
@@ -101,7 +114,7 @@ function AdminDashboard() {
     if (!window.confirm('Mark this event as COMPLETED and process 20% commission? This action is irreversible.')) return;
     try {
       setLoading(true);
-      await axios.post(buildUrl(`/admin/events/${eventId}/complete`), {}, authHeaders());
+      await axios.post(buildUrl(`${ENDPOINTS.ADMIN_EVENTS}/${eventId}/complete`), {}, authHeaders());
       alert('Event completed and commission transferred!');
       fetchEvents();
     } catch (err) {
@@ -125,7 +138,7 @@ function AdminDashboard() {
     if (!window.confirm(`Are you sure you want to change this user's role to ${newRole.toUpperCase()}?`)) return;
     try {
       setLoading(true);
-      await axios.put(buildUrl(`/admin/users/${userId}/role`), { role: newRole }, authHeaders());
+      await axios.put(buildUrl(`${ENDPOINTS.ADMIN_USERS}/${userId}/role`), { role: newRole }, authHeaders());
       alert('Role updated successfully!');
       fetchUsers();
     } catch (err) {
@@ -145,7 +158,7 @@ function AdminDashboard() {
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
-      await axios.post(buildUrl('/admin/broadcast'), messageForm, {
+      await axios.post(buildUrl(ENDPOINTS.ADMIN_BROADCAST), messageForm, {
         headers: { Authorization: `Bearer ${token}` }
       });
       alert('Broadcast dispatched successfully!');
@@ -156,15 +169,10 @@ function AdminDashboard() {
     } finally { setLoading(false); }
   };
 
-  const handleDirectMessage = (userId) => {
-    setMessageForm({ ...messageForm, target: 'individual', targetId: userId, title: '', message: '' });
-    setView('communication');
-  };
-
   const handleDeleteEvent = async (eventId) => {
     if (!window.confirm('Are you sure you want to delete this event?')) return;
     try {
-      await axios.delete(buildUrl(`/admin/events/${eventId}`), authHeaders());
+      await axios.delete(buildUrl(`${ENDPOINTS.ADMIN_EVENTS}/${eventId}`), authHeaders());
       fetchEvents();
     } catch (err) {
       console.error('Delete error:', err);
@@ -221,10 +229,83 @@ function AdminDashboard() {
         <button className={view === 'users'   ? 'active' : ''} onClick={() => setView('users')}>👥 Users</button>
         <button className={view === 'organizers' ? 'active' : ''} onClick={() => setView('organizers')}>🏢 Organizers</button>
         <button className={view === 'communication' ? 'active' : ''} onClick={() => setView('communication')}>📢 Communication</button>
+        <button className={view === 'diagnostics' ? 'active' : ''} onClick={() => setView('diagnostics')}>🩺 Platform Health</button>
       </nav>
 
       <main className="admin-content">
         {loading && <div className="loading">Loading...</div>}
+
+        {/* ── Diagnostics / Service Pulse ─────────────────────────────────── */}
+        {view === 'diagnostics' && (
+          <div className="diagnostics-view">
+            <div className="view-header">
+              <h2>🩺 Technical Health Monitor (System Pulse)</h2>
+              <p className="view-subtitle">Real-time status of the 14 microservices architecture</p>
+              <button className="refresh-btn" onClick={fetchPlatformHealth} disabled={healthData.loading}>
+                {healthData.loading ? '🔄 Checking...' : '🔄 Refresh All'}
+              </button>
+            </div>
+
+            <div className="pulse-grid">
+              {Object.entries(healthData.services).map(([name, data]) => (
+                <div key={name} className={`pulse-card ${(['online', 'ok', 'healthy'].includes(data.status)) ? 'online' : data.status}`}>
+                  <div className="pulse-header">
+                    <span className="service-name">{name.replace(/([A-Z])/g, ' $1').toUpperCase()}</span>
+                    <span className={`status-pill ${(['online', 'ok', 'healthy'].includes(data.status)) ? 'online' : data.status}`}>{data.status.toUpperCase()}</span>
+                  </div>
+                  <div className="pulse-body">
+                    {(['online', 'ok', 'healthy'].includes(data.status)) ? (
+                      <>
+                        <div className="pulse-metric"><span className="label">Latency:</span> <span className="value latency">{data.latency}</span></div>
+                        <div className="pulse-metric"><span className="label">Uptime:</span> <span className="value">Verified</span></div>
+                        {data.model_version && <div className="pulse-metric"><span className="label">Model:</span> <span className="value" style={{fontSize: '0.7rem'}}>{data.model_version}</span></div>}
+                        {data.model_loaded !== undefined && <div className="pulse-metric"><span className="label">Loaded:</span> <span className="value">{data.model_loaded ? '✅' : '❌'}</span></div>}
+                      </>
+                    ) : (
+                      <div className="pulse-error">Error: {data.error || 'Connection Failed'}</div>
+                    )}
+                  </div>
+                  <div className="pulse-footer">
+                    <div className="pulse-wave"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <style>{`
+              .diagnostics-view { padding: 20px; }
+              .pulse-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; margin-top: 30px; }
+              .pulse-card { background: #1a1a1a; border: 1px solid #333; border-radius: 12px; padding: 20px; position: relative; overflow: hidden; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+              .pulse-card:hover { transform: translateY(-5px); border-color: #555; box-shadow: 0 10px 20px rgba(0,0,0,0.4); }
+              .pulse-card.online { border-left: 4px solid #2ecc71; }
+              .pulse-card.offline { border-left: 4px solid #e74c3c; opacity: 0.8; }
+              .pulse-card.error { border-left: 4px solid #f1c40f; }
+
+              .pulse-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+              .service-name { font-weight: 800; font-size: 0.8rem; color: #888; letter-spacing: 1px; }
+              .status-pill { font-size: 0.7rem; padding: 2px 8px; border-radius: 12px; font-weight: bold; }
+              .status-pill.online { background: rgba(46, 204, 113, 0.2); color: #2ecc71; }
+              .status-pill.offline { background: rgba(231, 76, 60, 0.2); color: #e74c3c; }
+
+              .pulse-body { min-height: 60px; }
+              .pulse-metric { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem; }
+              .pulse-metric .label { color: #666; }
+              .pulse-metric .value { color: #ddd; font-weight: 600; }
+              .pulse-metric .latency { color: #2ecc71; }
+              .pulse-error { color: #e74c3c; font-size: 0.8rem; line-height: 1.4; }
+
+              .pulse-footer { height: 4px; background: rgba(255,255,255,0.05); margin-top: 15px; border-radius: 2px; }
+              .pulse-card.online .pulse-wave { 
+                height: 100%; width: 30%; background: #2ecc71; border-radius: 2px;
+                animation: pulse-move 2s infinite linear;
+              }
+              @keyframes pulse-move {
+                0% { transform: translateX(-100%); }
+                100% { transform: translateX(400%); }
+              }
+            `}</style>
+          </div>
+        )}
 
         {/* ── Stats ─────────────────────────────────────────────────────── */}
         {view === 'stats' && stats && (

@@ -201,8 +201,8 @@ function AdminEventForm({ event, onClose }) {
 
       if (event) {
         const updateUrl = isAdmin 
-          ? buildUrl(`/admin/events/${event._id}`) 
-          : buildUrl(`/events/${event._id}`);
+          ? buildUrl(`${ENDPOINTS.ADMIN_EVENTS}/${event._id}`) 
+          : buildUrl(`${ENDPOINTS.EVENTS}/${event._id}`);
         await axios.put(updateUrl, eventData, authHeader());
         alert('Event updated successfully!');
       } else {

@@ -6,13 +6,7 @@
  *   const { connected, lastEvent } = useWebSocket();
  */
 import { useEffect, useRef, useState, useCallback } from 'react';
-
-const getWsUrl = () => {
-    const { protocol, host } = window.location;
-    const wsProtocol = protocol === 'https:' ? 'wss:' : 'ws:';
-    // Use the relative /ws path which Vite proxies to port 4010
-    return `${wsProtocol}//${host}/ws`;
-};
+import { getWsUrl } from '../config/api';
 
 const WS_URL = getWsUrl();
 const RECONNECT_DELAY_MS  = 3000;

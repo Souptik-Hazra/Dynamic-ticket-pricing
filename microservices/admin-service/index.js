@@ -18,6 +18,11 @@ app.use(express.json({ limit: '10mb' }));
 
 connectDB('AdminService');
 
+// ── Health ──────────────────────────────────────────────────────────────────
+app.get('/health', (_req, res) =>
+  res.json({ status: 'ok', service: 'admin-service', ts: new Date().toISOString() })
+);
+
 // ── Admin-only guard ───────────────────────────────────────────────────────
 const adminOnly = (req, res, next) => {
   if (req.user?.role !== 'admin')
@@ -253,13 +258,13 @@ app.post('/api/admin/events/:id/complete', auth, async (req, res, next) => {
     const admin = await User.findOne({ role: 'admin' });
     if (!admin) return res.status(500).json({ error: 'No system admin found' });
 
-    // 2. Calculate Commission (20%)
+    // 2. Calculate Commission (15%)
     const revenue = event.totalRevenue || 0;
-    const commissionAmount = Math.round(revenue * 0.20);
+    const commissionAmount = Math.round(revenue * 0.15);
 
     // 3. Process Wallet Transfers
     if (commissionAmount > 0) {
-      debitUserWallet(event.organizerId, commissionAmount, `Commission payout (20%) for event: ${event.name}`);
+      debitUserWallet(event.organizerId, commissionAmount, `Commission payout (15%) for event: ${event.name}`);
       creditUserWallet(admin._id, commissionAmount, `Commission received from ${event.organizerId} for event: ${event.name}`);
     }
 

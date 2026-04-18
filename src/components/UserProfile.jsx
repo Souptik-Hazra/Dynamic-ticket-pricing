@@ -31,7 +31,7 @@ const UserProfile = () => {
     try {
       setWalletLoading(true);
       const token = localStorage.getItem("token");
-      const { data } = await axios.get(buildUrl('/wallet/balance'), {
+      const { data } = await axios.get(buildUrl(ENDPOINTS.WALLET_BALANCE), {
         headers: { Authorization: `Bearer ${token}` },
       });
       setWallet(data);
@@ -55,7 +55,7 @@ const UserProfile = () => {
     try {
       setWalletLoading(true);
       const token = localStorage.getItem("token");
-      await axios.post(buildUrl('/wallet/deposit'), 
+      await axios.post(buildUrl(ENDPOINTS.WALLET_DEPOSIT), 
         { amount: parseFloat(amount) },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -81,7 +81,7 @@ const UserProfile = () => {
     try {
       setWalletLoading(true);
       const token = localStorage.getItem("token");
-      await axios.post(buildUrl('/wallet/withdraw'), 
+      await axios.post(buildUrl(ENDPOINTS.WALLET_WITHDRAW), 
         { amount: parseFloat(amount) },
         { headers: { Authorization: `Bearer ${token}` } }
       );

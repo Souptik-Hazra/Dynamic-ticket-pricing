@@ -9,14 +9,14 @@ import User from '../shared/models/User.js';
 dotenv.config();
 
 const app = express();
-app.use(cors());
 app.use(express.json());
 
-connectDB('UserService');
-
+// ── Health ──────────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) =>
   res.json({ status: 'ok', service: 'user-service', ts: new Date().toISOString() })
 );
+
+connectDB('UserService');
 
 // All user management routes require auth
 app.use(jwtMiddleware);

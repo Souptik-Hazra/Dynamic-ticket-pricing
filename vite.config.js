@@ -19,8 +19,8 @@ export default defineConfig({
         changeOrigin: true,
         secure: false, // Don't verify SSL for local proxy
       },
-      '/ws': {
-        target: 'ws://localhost:4010',
+      '/api/ws': {
+        target: 'http://localhost:3001',
         ws: true,
         changeOrigin: true,
         secure: false,
