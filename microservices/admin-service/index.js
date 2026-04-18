@@ -7,7 +7,7 @@ import jwtMiddleware from '../shared/jwtMiddleware.js';
 import Event from '../shared/models/Event.js';
 import Ticket from '../shared/models/Ticket.js';
 import User from '../shared/models/User.js';
-import { cacheDel } from '../shared/interservice.js';
+import { cacheDel, cacheDelPattern, CACHE_KEYS } from '../shared/interservice.js';
 
 dotenv.config();
 
@@ -76,26 +76,20 @@ app.get('/api/admin/events', auth, async (req, res, next) => {
   try {
     const events = await Event.find().sort({ createdAt: -1 });
 
-    // Aggregate real ticket revenue per event
-    const revenueByEvent = await Ticket.aggregate([
-      { $match: { status: 'confirmed' } },
-      { $group: { _id: '$eventId', realRevenue: { $sum: '$totalAmount' }, realSold: { $sum: '$quantity' } } },
-    ]);
-    const revMap = Object.fromEntries(revenueByEvent.map((r) => [r._id.toString(), r]));
-
     const enriched = events.map((ev) => {
-      const rev          = revMap[ev._id.toString()] || {};
-      const totalRevenue = rev.realRevenue ?? ev.totalRevenue ?? 0;
-      const ticketsSold  = rev.realSold    ?? ev.ticketsSold  ?? 0;
-      const baseRevenue  = (ev.basePrice || 0) * ticketsSold;
-      const profitAmount = totalRevenue - baseRevenue;
+      // Use the pre-calculated financial fields now synchronized by Organizer/Payment services
+      const totalRevenue = ev.totalRevenue || 0;
+      const ticketsSold  = ev.ticketsSold || 0;
+      const baseRevenue  = ev.baseRevenue || 0;
+      const profitAmount = ev.profitAmount || 0;
+      
       return {
         ...ev.toObject(),
         ticketsSold,
         totalRevenue,
         baseRevenue,
         profitAmount,
-        profitPercentage: baseRevenue > 0 ? (profitAmount / baseRevenue) * 100 : 0,
+        profitPercentage: ev.profitPercentage || 0,
       };
     });
 
@@ -106,7 +100,8 @@ app.get('/api/admin/events', auth, async (req, res, next) => {
 app.post('/api/admin/events', auth, async (req, res, next) => {
   try {
     const event = await Event.create(req.body);
-    cacheDel('events:list:{}'); // invalidate public event list cache
+    // Invalidate all event list versions
+    cacheDelPattern(CACHE_KEYS.EVENT_LIST_ALL);
     res.status(201).json({ event });
   } catch (err) { next(err); }
 });
@@ -118,8 +113,10 @@ app.put('/api/admin/events/:id', auth, async (req, res, next) => {
       runValidators: true,
     });
     if (!event) return res.status(404).json({ error: 'Event not found' });
-    cacheDel(`event:${req.params.id}`);
-    cacheDel('events:list:{}');
+    
+    // Invalidate detail and all lists
+    cacheDel(CACHE_KEYS.EVENT_DETAIL(req.params.id));
+    cacheDelPattern(CACHE_KEYS.EVENT_LIST_ALL);
     res.json({ event });
   } catch (err) { next(err); }
 });
@@ -128,8 +125,10 @@ app.delete('/api/admin/events/:id', auth, async (req, res, next) => {
   try {
     const event = await Event.findByIdAndDelete(req.params.id);
     if (!event) return res.status(404).json({ error: 'Event not found' });
-    cacheDel(`event:${req.params.id}`);
-    cacheDel('events:list:{}');
+    
+    // Invalidate detail and all lists
+    cacheDel(CACHE_KEYS.EVENT_DETAIL(req.params.id));
+    cacheDelPattern(CACHE_KEYS.EVENT_LIST_ALL);
     res.json({ message: 'Event deleted' });
   } catch (err) { next(err); }
 });
@@ -261,7 +260,7 @@ app.use(notFound);
 app.use(errorHandler);
 
 // ── Start ──────────────────────────────────────────────────────────────────
-const PORT   = process.env.PORT || 4003;
+const PORT   = process.env.PORT_ADMIN_SERVICE || process.env.PORT || 4003;
 const server = app.listen(PORT, () => console.log(`Admin Service running on port ${PORT}`));
 registerProcessHandlers(server, 'AdminService');
 

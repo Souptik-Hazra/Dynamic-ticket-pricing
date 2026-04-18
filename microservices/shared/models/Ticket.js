@@ -24,13 +24,12 @@ const ticketSchema = new mongoose.Schema(
 );
 
 /* ── Pre-save: auto-generate booking reference ───────────────────────────── */
-ticketSchema.pre('save', function (next) {
+ticketSchema.pre('save', async function () {
   if (!this.bookingReference) {
     const ts   = Date.now().toString(36).toUpperCase();
     const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
     this.bookingReference = `FF-${ts}-${rand}`;
   }
-  next();
 });
 
 const Ticket = mongoose.models.Ticket || mongoose.model('Ticket', ticketSchema);

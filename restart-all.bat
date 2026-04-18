@@ -35,19 +35,20 @@ echo Done!
 echo.
 
 echo [4/6] Starting Microservices...
-start "API Gateway" cmd /k "cd microservices/api-gateway && npm start"
-start "Auth Service" cmd /k "cd microservices/authentication-service && npm start"
-start "User Service" cmd /k "cd microservices/user-service && npm start"
-start "Admin Service" cmd /k "cd microservices/admin-service && npm start"
-start "Payment Service" cmd /k "cd microservices/payment-service && npm start"
-start "Cache Service" cmd /k "cd microservices/cache-service && npm start"
-start "Concurrency Service" cmd /k "cd microservices/concurrency-service && npm start"
-start "Email Service" cmd /k "cd microservices/email-service && npm start"
-start "Message Queue Service" cmd /k "cd microservices/message-queue-service && npm start"
-start "Notification Service" cmd /k "cd microservices/notification-service && npm start"
-start "WebSocket Service" cmd /k "cd microservices/websocket-service && npm start"
-start "Analytics Service" cmd /k "cd microservices/analytics-service && npm start"
-start "Subscription Service" cmd /k "cd microservices/subscription-service && npm start"
+start "[ FanFever ] Gateway" cmd /k "cd microservices/api-gateway && npm start"
+start "[ FanFever ] Auth" cmd /k "cd microservices/authentication-service && npm start"
+start "[ FanFever ] User" cmd /k "cd microservices/user-service && npm start"
+start "[ FanFever ] Admin" cmd /k "cd microservices/admin-service && npm start"
+start "[ FanFever ] Payment" cmd /k "cd microservices/payment-service && npm start"
+start "[ FanFever ] Cache" cmd /k "cd microservices/cache-service && npm start"
+start "[ FanFever ] Lock" cmd /k "cd microservices/concurrency-service && npm start"
+start "[ FanFever ] Email" cmd /k "cd microservices/email-service && npm start"
+start "[ FanFever ] Queue" cmd /k "cd microservices/message-queue-service && npm start"
+start "[ FanFever ] Notify" cmd /k "cd microservices/notification-service && npm start"
+start "[ FanFever ] Live-WS" cmd /k "cd microservices/websocket-service && npm start"
+start "[ FanFever ] Analytics" cmd /k "cd microservices/analytics-service && npm start"
+start "[ FanFever ] Subscription" cmd /k "cd microservices/subscription-service && npm start"
+start "[ FanFever ] Organizer" cmd /k "cd microservices/organizer-service && npm start"
 timeout /t 5 /nobreak >nul
 echo Done!
 echo.

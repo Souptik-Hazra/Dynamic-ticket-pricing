@@ -40,8 +40,10 @@ const eventSchema = new mongoose.Schema(
     availableTickets: { type: Number, default: 0 },
     basePrice:        { type: Number, default: 0 }, // lowest category price
     currentPrice:     { type: Number, default: 0 },
-    totalRevenue:     { type: Number, default: 0 }, // updated on each ticket purchase
-    baseRevenue:      { type: Number, default: 0 }, // basePrice * ticketsSold
+    totalRevenue:     { type: Number, default: 0 }, // actual accumulated revenue
+    baseRevenue:      { type: Number, default: 0 }, // basePrice * ticketsSold (min expected revenue)
+    profitAmount:     { type: Number, default: 0 }, // totalRevenue - baseRevenue
+    profitPercentage: { type: Number, default: 0 }, // (profitAmount / baseRevenue) * 100
 
     // ── ML / Dynamic-pricing inputs ──
     eventPopularity: { type: Number, min: 0, max: 1, default: 0.5 },
@@ -68,6 +70,11 @@ eventSchema.pre('save', function (next) {
     this.ticketsSold      = this.capacity - this.availableTickets;
     this.basePrice        = Math.min(...this.ticketCategories.map((c) => c.price));
     this.currentPrice     = this.basePrice;
+    
+    // Financial calculations
+    this.baseRevenue      = this.basePrice * this.ticketsSold;
+    this.profitAmount     = Math.max(0, this.totalRevenue - this.baseRevenue);
+    this.profitPercentage = this.baseRevenue > 0 ? (this.profitAmount / this.baseRevenue) * 100 : 0;
   }
   next();
 });

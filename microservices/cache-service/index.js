@@ -111,6 +111,27 @@ app.get('/api/cache/:key', requireRedis, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// ── DELETE BY PATTERN (Wildcard) ──────────────────────────────────────────
+// Efficiently deletes multiple keys using SCAN
+app.delete('/api/cache/pattern/:pattern', requireRedis, async (req, res, next) => {
+  try {
+    const { pattern } = req.params;
+    if (!validateKey(pattern, res)) return;
+
+    let count = 0;
+    const stream = redis.scanStream({ match: pattern, count: 100 });
+
+    for await (const resultKeys of stream) {
+      if (resultKeys.length > 0) {
+        count += await redis.del(...resultKeys);
+      }
+    }
+
+    console.log(`[Cache] Cleared pattern '${pattern}' — ${count} keys removed`);
+    res.json({ message: `Pattern '${pattern}' cleared`, keysDeleted: count });
+  } catch (err) { next(err); }
+});
+
 // ── DELETE ────────────────────────────────────────────────────────────────
 app.delete('/api/cache/:key', requireRedis, async (req, res, next) => {
   try {
@@ -136,6 +157,6 @@ app.use(notFound);
 app.use(errorHandler);
 
 // ── Start ──────────────────────────────────────────────────────────────────
-const PORT = process.env.PORT || 4005;
+const PORT = process.env.PORT_CACHE_SERVICE || process.env.PORT || 4005;
 const server = app.listen(PORT, () => console.log(`Cache Service running on port ${PORT}`));
 registerProcessHandlers(server, 'CacheService');

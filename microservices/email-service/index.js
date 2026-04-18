@@ -139,6 +139,6 @@ app.post('/api/email/send-template', async (req, res, next) => {
 app.use(notFound);
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 4007;
+const PORT = process.env.PORT_EMAIL_SERVICE || process.env.PORT || 4007;
 const server = app.listen(PORT, () => console.log(`Email Service running on port ${PORT}`));
 registerProcessHandlers(server, 'EmailService');

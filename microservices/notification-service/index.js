@@ -87,6 +87,6 @@ app.delete('/api/notifications/:id', jwtMiddleware, requireDB, async (req, res, 
 app.use(notFound);
 app.use(errorHandler);
 
-const PORT   = process.env.PORT || 4009;
+const PORT   = process.env.PORT_NOTIFICATION_SERVICE || process.env.PORT || 4009;
 const server = app.listen(PORT, () => console.log(`Notification Service running on port ${PORT}`));
 registerProcessHandlers(server, 'NotificationService');

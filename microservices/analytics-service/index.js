@@ -30,18 +30,23 @@ app.get('/api/analytics', jwtMiddleware, requireDB, async (req, res, next) => {
     if (cached) return res.json(cached);
 
     const now = new Date();
-    const [totalEvents, upcomingEvents, ticketAgg, revenueAgg] = await Promise.all([
+    const [totalEvents, upcomingEvents, statsAgg] = await Promise.all([
       Event.countDocuments(),
       Event.countDocuments({ startDate: { $gt: now }, status: { $ne: 'cancelled' } }),
-      Ticket.aggregate([{ $match: { status: 'confirmed' } }, { $group: { _id: null, totalTicketsSold: { $sum: '$quantity' } } }]),
-      Ticket.aggregate([{ $match: { status: 'confirmed' } }, { $group: { _id: null, totalRevenue: { $sum: '$totalAmount' } } }]),
+      Event.aggregate([
+        { $group: { 
+          _id: null, 
+          totalTicketsSold: { $sum: '$ticketsSold' }, 
+          totalRevenue: { $sum: '$totalRevenue' } 
+        } }
+      ]),
     ]);
 
     const result = {
       totalEvents,
       upcomingEvents,
-      totalTicketsSold: ticketAgg[0]?.totalTicketsSold || 0,
-      totalRevenue:     revenueAgg[0]?.totalRevenue    || 0,
+      totalTicketsSold: statsAgg[0]?.totalTicketsSold || 0,
+      totalRevenue:     statsAgg[0]?.totalRevenue    || 0,
     };
 
     cacheSet('analytics:summary', result, 120); // cache for 2 minutes
@@ -52,6 +57,6 @@ app.get('/api/analytics', jwtMiddleware, requireDB, async (req, res, next) => {
 app.use(notFound);
 app.use(errorHandler);
 
-const PORT   = process.env.PORT || 4011;
+const PORT   = process.env.PORT_ANALYTICS_SERVICE || process.env.PORT || 4011;
 const server = app.listen(PORT, () => console.log(`Analytics Service running on port ${PORT}`));
 registerProcessHandlers(server, 'AnalyticsService');

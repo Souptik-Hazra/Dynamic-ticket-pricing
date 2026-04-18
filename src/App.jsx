@@ -62,7 +62,8 @@ function AppContent() {
       setEvents(response.data);
     } catch (error) {
       console.error('Error fetching events:', error);
-      alert('Failed to fetch events');
+      const errorMsg = error.response?.data?.error || error.message;
+      alert(`Failed to fetch events: ${errorMsg}`);
     } finally {
       setLoading(false);
     }

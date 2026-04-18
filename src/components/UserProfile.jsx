@@ -394,15 +394,13 @@ const UserProfile = () => {
               </div>
 
               {/* Event Image */}
-              {printTicket.eventId?.image && (
-                <div className="print-event-image">
-                  <img
-                    src={printTicket.eventId.image}
-                    alt={printTicket.eventId?.name}
-                    onError={(e) => (e.target.style.display = "none")}
-                  />
-                </div>
-              )}
+              <div className="print-event-image">
+                <img
+                  src={printTicket.eventId?.image || '/default-event.png'}
+                  alt={printTicket.eventId?.name}
+                  onError={(e) => (e.target.src = "/default-event.png")}
+                />
+              </div>
 
               {/* Event Info */}
               <div className="print-event-info">
@@ -545,11 +543,11 @@ const UserProfile = () => {
       {/* \u2500\u2500 Payments Tab \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */}
       {activeTab === "payments" && (
         <div className="profile-card">
-          <h2 className="card-title">\ud83d\udcb3 Payment History</h2>
+          <h2 className="card-title">💳 Payment History</h2>
           <p className="card-subtitle">All your recorded payment transactions</p>
 
           {paymentsLoading ? (
-            <div className="loading-spinner">\ud83d\udd04 Loading payments...</div>
+            <div className="loading-spinner">🔄 Loading payments...</div>
           ) : payments.length === 0 ? (
             <div className="no-tickets-message">
               <p>No payments found.</p>
@@ -576,7 +574,7 @@ const UserProfile = () => {
                       <td style={{ padding: '10px', fontFamily: 'monospace', fontSize: '0.8rem', color: '#666' }}>
                         {p.transactionId || p._id}
                       </td>
-                      <td style={{ padding: '10px', fontWeight: 700 }}>\u20b9{p.amount?.toFixed(2)}</td>
+                      <td style={{ padding: '10px', fontWeight: 700 }}>₹{p.amount?.toFixed(2)}</td>
                       <td style={{ padding: '10px', textTransform: 'capitalize' }}>{p.paymentMethod}</td>
                       <td style={{ padding: '10px' }}>
                         <span className={`status-badge ${p.status}`}>{p.status}</span>
@@ -584,7 +582,7 @@ const UserProfile = () => {
                       <td style={{ padding: '10px', color: '#666' }}>
                         {p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-IN', {
                           day: 'numeric', month: 'short', year: 'numeric'
-                        }) : '\u2014'}
+                        }) : '—'}
                       </td>
                       <td style={{ padding: '10px' }}>
                         {p.status === 'completed' && (
@@ -594,11 +592,11 @@ const UserProfile = () => {
                             disabled={refundingId === p._id}
                             onClick={() => handleRefund(p._id)}
                           >
-                            {refundingId === p._id ? 'Processing...' : '\ud83d\udcb8 Refund'}
+                            {refundingId === p._id ? 'Processing...' : '💸 Refund'}
                           </button>
                         )}
                         {p.status === 'refunded' && (
-                          <span style={{ color: '#2ecc71', fontWeight: 600 }}>\u2713 Refunded</span>
+                          <span style={{ color: '#2ecc71', fontWeight: 600 }}>✓ Refunded</span>
                         )}
                       </td>
                     </tr>

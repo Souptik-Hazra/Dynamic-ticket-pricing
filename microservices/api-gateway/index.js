@@ -31,13 +31,15 @@ const SERVICES = {
 };
 
 // ── Proxy factory ──────────────────────────────────────────────────────────
-const proxy = (target) =>
+// Using the explicit configuration object for http-proxy-middleware v3
+const proxy = (path, target) =>
   createProxyMiddleware({
     target,
     changeOrigin: true,
+    pathFilter: path,
     on: {
       error: (err, _req, res) => {
-        console.error(`Proxy → ${target}:`, err.message);
+        console.error(`Proxy → ${target} (path: ${path}):`, err.message);
         if (!res.headersSent)
           res.status(502).json({ error: 'Service temporarily unavailable' });
       },
@@ -47,42 +49,42 @@ const proxy = (target) =>
 // ── Gateway health (not proxied) ──────────────────────────────────────────
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', gateway: true }));
 
-// ── Route map (ORDER MATTERS — most specific first) ────────────────────────
-//
-//  /api/auth/*          → authentication-service :4001
-//  /api/users/*         → user-service           :4002
-//  /api/admin/*         → admin-service           :4003
-//  /api/payments/*      → payment-service         :4004
-//  /api/cache/*         → cache-service           :4005
-//  /api/lock/*          → concurrency-service     :4006
-//  /api/email/*         → email-service           :4007
-//  /api/queue/*         → message-queue-service   :4008
-//  /api/notifications/* → notification-service    :4009
-//  /api/analytics/*     → analytics-service       :4011
-//  /api/subscription/*  → subscription-service    :4012
-//  /api/events/*        → organizer-service       :4013  (events + dynamic-prices)
-//  /api/tickets/*       → organizer-service       :4013  (purchase + user-tickets)
-//  /api/organizers/*    → organizer-service       :4013
-//  /api/ml-model/*      → ml-service              :5000
+// ── Route map ──────────────────────────────────────────────────────────────
+// Note: We use the proxy middleware directly to ensure URL prefixes are NOT stripped
+app.use(proxy('/api/auth',          SERVICES.auth));
+app.use(proxy('/api/users',         SERVICES.user));
+app.use(proxy('/api/admin',         SERVICES.admin));
+app.use(proxy('/api/payments',      SERVICES.payment));
+app.use(proxy('/api/cache',         SERVICES.cache));
+app.use(proxy('/api/lock',          SERVICES.concurrency));
+app.use(proxy('/api/email',         SERVICES.email));
+app.use(proxy('/api/queue',         SERVICES.messageQueue));
+app.use(proxy('/api/notifications', SERVICES.notification));
+app.use(proxy('/api/analytics',     SERVICES.analytics));
+app.use(proxy('/api/subscription',  SERVICES.subscription));
+app.use(proxy('/api/events',        SERVICES.organizer));
+app.use(proxy('/api/tickets',       SERVICES.organizer));
+app.use(proxy('/api/organizers',    SERVICES.organizer));
 
-app.use('/api/auth',          proxy(SERVICES.auth));
-app.use('/api/users',         proxy(SERVICES.user));
-app.use('/api/admin',         proxy(SERVICES.admin));
-app.use('/api/payments',      proxy(SERVICES.payment));
-app.use('/api/cache',         proxy(SERVICES.cache));
-app.use('/api/lock',          proxy(SERVICES.concurrency));
-app.use('/api/email',         proxy(SERVICES.email));
-app.use('/api/queue',         proxy(SERVICES.messageQueue));
-app.use('/api/notifications', proxy(SERVICES.notification));
-app.use('/api/analytics',     proxy(SERVICES.analytics));
-app.use('/api/subscription',  proxy(SERVICES.subscription));
-app.use('/api/events',        proxy(SERVICES.organizer));   // includes /:id/dynamic-prices
-app.use('/api/tickets',       proxy(SERVICES.organizer));   // purchase + user tickets
-app.use('/api/organizers',    proxy(SERVICES.organizer));
-app.use('/api/ml-model',      proxy(SERVICES.ml));
+// ── ML Model (Special case: strips prefix) ─────────────────────────────────
+app.use(
+  createProxyMiddleware({
+    target: SERVICES.ml,
+    changeOrigin: true,
+    pathFilter: '/api/ml-model',
+    pathRewrite: { '^/api/ml-model': '' },
+    on: {
+      error: (err, _req, res) => {
+        console.error(`Proxy → ML Model:`, err.message);
+        if (!res.headersSent)
+          res.status(502).json({ error: 'Service temporarily unavailable' });
+      },
+    },
+  })
+);
 
 // ── 404 catch-all ─────────────────────────────────────────────────────────
 app.use('/api', (_req, res) => res.status(404).json({ error: 'API route not found' }));
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT_API_GATEWAY || process.env.PORT || 4000;
 app.listen(PORT, () => console.log(`API Gateway running on port ${PORT}`));

@@ -60,6 +60,12 @@ export function useWebSocket() {
 
   // Keepalive ping every 30 s
   useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setConnected(false);
+      return;
+    }
+
     const pingTimer = setInterval(() => {
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         wsRef.current.send(JSON.stringify({ type: 'ping' }));
@@ -73,9 +79,13 @@ export function useWebSocket() {
       mountedRef.current = false;
       clearInterval(pingTimer);
       clearTimeout(timerRef.current);
-      wsRef.current?.close();
+      if (wsRef.current) {
+        wsRef.current.onclose = null; // prevent reconnect loop on intentional close
+        wsRef.current.close();
+        wsRef.current = null;
+      }
     };
-  }, [connect]);
+  }, [connect, localStorage.getItem('token')]); // Re-run if token changes (logout/login)
 
   return { connected, lastEvent };
 }

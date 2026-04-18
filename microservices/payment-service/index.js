@@ -7,7 +7,7 @@ import { errorHandler, notFound } from '../shared/errorHandler.js';
 import jwtMiddleware from '../shared/jwtMiddleware.js';
 import Ticket from '../shared/models/Ticket.js';
 import Event from '../shared/models/Event.js';
-import { notify, wsNotifyUser, sendEmailTemplate } from '../shared/interservice.js';
+import { notify, wsNotifyUser, sendEmailTemplate, revertPurchase } from '../shared/interservice.js';
 
 dotenv.config();
 
@@ -126,7 +126,14 @@ app.post('/api/payments/:id/refund', jwtMiddleware, requireDB, async (req, res, 
 
     payment.status = 'refunded';
     await payment.save();
-    await Ticket.findByIdAndUpdate(payment.ticketId, { status: 'refunded' });
+    
+    // Update ticket and get details for reversal
+    const ticket = await Ticket.findByIdAndUpdate(payment.ticketId, { status: 'refunded' }, { new: true });
+    
+    if (ticket) {
+      // ── Inter-service: revert revenue and inventory in Organizer Service
+      revertPurchase(ticket.eventId, ticket.categoryName, ticket.quantity, ticket.totalAmount);
+    }
 
     res.json({ message: 'Refund processed', payment });
 
@@ -145,6 +152,6 @@ app.post('/api/payments/:id/refund', jwtMiddleware, requireDB, async (req, res, 
 app.use(notFound);
 app.use(errorHandler);
 
-const PORT   = process.env.PORT || 4004;
+const PORT   = process.env.PORT_PAYMENT_SERVICE || process.env.PORT || 4004;
 const server = app.listen(PORT, () => console.log(`Payment Service running on port ${PORT}`));
 registerProcessHandlers(server, 'PaymentService');

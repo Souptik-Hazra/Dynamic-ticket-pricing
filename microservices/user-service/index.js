@@ -74,6 +74,6 @@ app.delete('/api/users/:id', requireDB, async (req, res, next) => {
 app.use(notFound);
 app.use(errorHandler);
 
-const PORT   = process.env.PORT || 4002;
+const PORT   = process.env.PORT_USER_SERVICE || process.env.PORT || 4002;
 const server = app.listen(PORT, () => console.log(`User Service running on port ${PORT}`));
 registerProcessHandlers(server, 'UserService');

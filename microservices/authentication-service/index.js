@@ -143,6 +143,6 @@ app.post('/api/auth/logout', (_req, res) => res.json({ message: 'Logged out' }))
 app.use(notFound);
 app.use(errorHandler);
 
-const PORT   = process.env.PORT || 4001;
+const PORT   = process.env.PORT_AUTHENTICATION_SERVICE || process.env.PORT || 4001;
 const server = app.listen(PORT, () => console.log(`Authentication Service running on port ${PORT}`));
 registerProcessHandlers(server, 'AuthService');

@@ -109,6 +109,6 @@ app.post('/api/subscription/upgrade', jwtMiddleware, requireDB, async (req, res,
 app.use(notFound);
 app.use(errorHandler);
 
-const PORT   = process.env.PORT || 4012;
+const PORT   = process.env.PORT_SUBSCRIPTION_SERVICE || process.env.PORT || 4012;
 const server = app.listen(PORT, () => console.log(`Subscription Service running on port ${PORT}`));
 registerProcessHandlers(server, 'SubscriptionService');

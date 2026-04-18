@@ -51,10 +51,11 @@ const getTotalCapacity = (event) => {
   return event.capacity || 0;
 };
 
-const isSoldOut = (event) => {
+const isPurchasable = (event) => {
+  if (event.status === 'completed' || event.status === 'cancelled') return false;
   if (event.ticketCategories?.length > 0)
-    return event.ticketCategories.every((c) => (c.availableSeats ?? c.seats) <= 0);
-  return event.ticketsSold >= event.capacity;
+    return !event.ticketCategories.every((c) => (c.availableSeats ?? c.seats) <= 0);
+  return event.ticketsSold < event.capacity;
 };
 
 // ── Component ─────────────────────────────────────────────────────────────
@@ -125,9 +126,11 @@ function EventList({ events, onSelectEvent, onRefresh }) {
                   <button
                     className="btn-primary"
                     onClick={() => onSelectEvent(event)}
-                    disabled={isSoldOut(event)}
+                    disabled={!isPurchasable(event)}
                   >
-                    {isSoldOut(event) ? 'Sold Out' : 'Buy Tickets'}
+                    {event.status === 'completed' ? 'Event Ended' : 
+                     event.status === 'cancelled' ? 'Cancelled' :
+                     !isPurchasable(event) ? 'Sold Out' : 'Buy Tickets'}
                   </button>
                 </div>
 

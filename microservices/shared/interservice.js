@@ -17,6 +17,7 @@ const SERVICES = {
   email:        process.env.EMAIL_SERVICE_URL        || 'http://localhost:4007',
   payment:      process.env.PAYMENT_SERVICE_URL      || 'http://localhost:4004',
   cache:        process.env.CACHE_SERVICE_URL        || 'http://localhost:4005',
+  organizer:    process.env.ORGANIZER_SERVICE_URL    || 'http://localhost:4013',
 };
 
 // ── Generic fire-and-forget helper ────────────────────────────────────────
@@ -40,8 +41,18 @@ const fireAndForget = async (fn, label) => {
  */
 export const notify = (userId, type, title, message, meta = {}) =>
   fireAndForget(
-    () => axios.post(`${SERVICES.notification}/api/notifications`, { userId, type, title, message, meta }),
+    () => axios.post(`${SERVICES.notification}/api/notifications`, { userId, type, title, message, meta }, { timeout: 5000 }),
     `notify(${type} → ${userId})`
+  );
+
+/**
+ * Revert a ticket purchase (used when a refund is processed).
+ * Return seats to inventory and subtract revenue.
+ */
+export const revertPurchase = (eventId, categoryName, quantity, amount) =>
+  fireAndForget(
+    () => axios.post(`${SERVICES.organizer}/api/tickets/revert`, { eventId, categoryName, quantity, amount }, { timeout: 5000 }),
+    `revertPurchase(${eventId})`
   );
 
 // ── WebSocket Service ─────────────────────────────────────────────────────
@@ -50,7 +61,7 @@ export const notify = (userId, type, title, message, meta = {}) =>
  */
 export const wsNotifyUser = (userId, type, title, message, meta = {}) =>
   fireAndForget(
-    () => axios.post(`${SERVICES.websocket}/api/ws/notify-user`, { userId, type, title, message, meta }),
+    () => axios.post(`${SERVICES.websocket}/api/ws/notify-user`, { userId, type, title, message, meta }, { timeout: 5000 }),
     `wsNotifyUser(${userId})`
   );
 
@@ -59,7 +70,7 @@ export const wsNotifyUser = (userId, type, title, message, meta = {}) =>
  */
 export const wsTicketSold = (eventId, categoryName, remainingSeats) =>
   fireAndForget(
-    () => axios.post(`${SERVICES.websocket}/api/ws/ticket-sold`, { eventId, categoryName, remainingSeats }),
+    () => axios.post(`${SERVICES.websocket}/api/ws/ticket-sold`, { eventId, categoryName, remainingSeats }, { timeout: 5000 }),
     `wsTicketSold(${eventId})`
   );
 
@@ -68,7 +79,7 @@ export const wsTicketSold = (eventId, categoryName, remainingSeats) =>
  */
 export const wsPriceUpdate = (eventId, prices, occupancyRate) =>
   fireAndForget(
-    () => axios.post(`${SERVICES.websocket}/api/ws/price-update`, { eventId, prices, occupancyRate }),
+    () => axios.post(`${SERVICES.websocket}/api/ws/price-update`, { eventId, prices, occupancyRate }, { timeout: 5000 }),
     `wsPriceUpdate(${eventId})`
   );
 
@@ -78,7 +89,7 @@ export const wsPriceUpdate = (eventId, prices, occupancyRate) =>
  */
 export const sendEmailTemplate = (to, templateName, data) =>
   fireAndForget(
-    () => axios.post(`${SERVICES.email}/api/email/send-template`, { to, templateName, data }),
+    () => axios.post(`${SERVICES.email}/api/email/send-template`, { to, templateName, data }, { timeout: 5000 }),
     `sendEmailTemplate(${templateName} → ${to})`
   );
 
@@ -87,7 +98,7 @@ export const sendEmailTemplate = (to, templateName, data) =>
  */
 export const sendEmail = (to, subject, html) =>
   fireAndForget(
-    () => axios.post(`${SERVICES.email}/api/email/send`, { to, subject, html }),
+    () => axios.post(`${SERVICES.email}/api/email/send`, { to, subject, html }, { timeout: 5000 }),
     `sendEmail(→ ${to})`
   );
 
@@ -97,7 +108,7 @@ export const sendEmail = (to, subject, html) =>
  */
 export const cacheSet = (key, value, ttlSeconds) =>
   fireAndForget(
-    () => axios.post(`${SERVICES.cache}/api/cache`, { key, value, ttl: ttlSeconds }),
+    () => axios.post(`${SERVICES.cache}/api/cache`, { key, value, ttl: ttlSeconds }, { timeout: 5000 }),
     `cacheSet(${key})`
   );
 
@@ -106,7 +117,7 @@ export const cacheSet = (key, value, ttlSeconds) =>
  */
 export const cacheGet = async (key) => {
   try {
-    const { data } = await axios.get(`${SERVICES.cache}/api/cache/${key}`);
+    const { data } = await axios.get(`${SERVICES.cache}/api/cache/${key}`, { timeout: 2000 });
     return data.value;
   } catch {
     return null; // cache miss or service down — caller continues without cache
@@ -118,6 +129,27 @@ export const cacheGet = async (key) => {
  */
 export const cacheDel = (key) =>
   fireAndForget(
-    () => axios.delete(`${SERVICES.cache}/api/cache/${key}`),
-    `cacheDel(${key})`
+    () => axios.delete(`${SERVICES.cache}/api/cache/${key}`, { timeout: 2000 }),
+    `cacheDel(key)`
   );
+
+/**
+ * Delete all keys matching a pattern (e.g., 'events:list:*').
+ */
+export const cacheDelPattern = (pattern) =>
+  fireAndForget(
+    () => axios.delete(`${SERVICES.cache}/api/cache/pattern/${encodeURIComponent(pattern)}`, { timeout: 5000 }),
+    `cacheDelPattern(${pattern})`
+  );
+
+// ── Cache Key Registry ───────────────────────────────────────────────────
+// Centralized key generators to ensure consistency across services.
+export const CACHE_KEYS = {
+  // Event-related
+  EVENT_DETAIL: (id) => `event:${id}`,
+  EVENT_LIST: (query = '{}') => `events:list:${query}`,
+  EVENT_LIST_ALL: 'events:list:*',
+
+  // Analytics
+  ANALYTICS_SUMMARY: 'analytics:summary',
+};

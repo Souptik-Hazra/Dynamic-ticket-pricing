@@ -117,5 +117,5 @@ app.post('/api/ws/ticket-sold', (req, res) => {
 });
 
 // ── Start ──────────────────────────────────────────────────────────────────
-const PORT = process.env.PORT || 4010;
+const PORT = process.env.PORT_WEBSOCKET_SERVICE || process.env.PORT || 4010;
 server.listen(PORT, () => console.log(`WebSocket Service running on port ${PORT}`));

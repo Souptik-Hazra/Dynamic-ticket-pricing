@@ -97,6 +97,6 @@ app.get('/api/lock/:key', requireRedis, async (req, res, next) => {
 app.use(notFound);
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 4006;
+const PORT = process.env.PORT_CONCURRENCY_SERVICE || process.env.PORT || 4006;
 const server = app.listen(PORT, () => console.log(`Concurrency Service running on port ${PORT}`));
 registerProcessHandlers(server, 'ConcurrencyService');
