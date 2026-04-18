@@ -1,75 +1,69 @@
 import React from 'react';
 import './EventList.css';
 import AutoPriceUpdater from './AutoPriceUpdater';
+import Footer from './Footer';
 
-// Get emoji based on event category
-const getCategoryEmoji = (category) => {
-  const emojiMap = {
-    concert: '🎵',
-    sports: '⚽',
-    theater: '🎭',
-    conference: '💼',
-    festival: '🎪',
-    other: '🎟️'
-  };
-  return emojiMap[category?.toLowerCase()] || '🎟️';
+// ── Category emoji map ────────────────────────────────────────────────────
+const CATEGORY_EMOJI = {
+  concert:    '🎵',
+  sports:     '⚽',
+  theater:    '🎭',
+  conference: '💼',
+  festival:   '🎪',
+  other:      '🎟️',
 };
 
-function EventList({ events, onUpdatePrice, onSelectEvent, onRefresh }) {
-  const formatDateTime = (date) => {
-    if (!date) return '';
-    const d = new Date(date);
-    return isNaN(d.getTime()) ? '' : `${d.toLocaleDateString('en-US', {
-      weekday: 'short',
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    })} ${d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
-  };
+const getCategoryEmoji = (category) =>
+  CATEGORY_EMOJI[category?.toLowerCase()] || '🎟️';
 
-  const getOccupancyPercentage = (event) => {
-    // Calculate from category data if available
-    if (event.ticketCategories && event.ticketCategories.length > 0) {
-      const totalSeats = event.ticketCategories.reduce((sum, cat) => sum + cat.seats, 0);
-      const totalAvailable = event.ticketCategories.reduce((sum, cat) => sum + cat.availableSeats, 0);
-      const sold = totalSeats - totalAvailable;
-      return Math.min(100, ((sold / totalSeats) * 100)).toFixed(1);
-    }
-    return Math.min(100, ((event.ticketsSold / event.capacity) * 100)).toFixed(1);
-  };
+// ── Helpers ───────────────────────────────────────────────────────────────
+const formatDateTime = (date) => {
+  if (!date) return 'N/A';
+  const d = new Date(date);
+  return isNaN(d.getTime())
+    ? 'N/A'
+    : `${d.toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })} ${d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
+};
 
-  const getTicketsSold = (event) => {
-    if (event.ticketCategories && event.ticketCategories.length > 0) {
-      const totalSeats = event.ticketCategories.reduce((sum, cat) => sum + cat.seats, 0);
-      const totalAvailable = event.ticketCategories.reduce((sum, cat) => sum + cat.availableSeats, 0);
-      return totalSeats - totalAvailable;
-    }
-    return event.ticketsSold;
-  };
+const getOccupancyPct = (event) => {
+  if (event.ticketCategories?.length > 0) {
+    const total = event.ticketCategories.reduce((s, c) => s + c.seats, 0);
+    const avail = event.ticketCategories.reduce((s, c) => s + (c.availableSeats ?? c.seats), 0);
+    return total > 0 ? Math.min(100, (((total - avail) / total) * 100)).toFixed(1) : '0.0';
+  }
+  return event.capacity > 0
+    ? Math.min(100, ((event.ticketsSold / event.capacity) * 100)).toFixed(1)
+    : '0.0';
+};
 
-  const getTotalCapacity = (event) => {
-    if (event.ticketCategories && event.ticketCategories.length > 0) {
-      return event.ticketCategories.reduce((sum, cat) => sum + cat.seats, 0);
-    }
-    return event.capacity;
-  };
+const getTicketsSold = (event) => {
+  if (event.ticketCategories?.length > 0) {
+    const total = event.ticketCategories.reduce((s, c) => s + c.seats, 0);
+    const avail = event.ticketCategories.reduce((s, c) => s + (c.availableSeats ?? c.seats), 0);
+    return total - avail;
+  }
+  return event.ticketsSold || 0;
+};
 
-  const isSoldOut = (event) => {
-    if (event.ticketCategories && event.ticketCategories.length > 0) {
-      return event.ticketCategories.every(cat => cat.availableSeats <= 0);
-    }
-    return event.ticketsSold >= event.capacity;
-  };
+const getTotalCapacity = (event) => {
+  if (event.ticketCategories?.length > 0)
+    return event.ticketCategories.reduce((s, c) => s + c.seats, 0);
+  return event.capacity || 0;
+};
 
-  // Removed daysUntil logic
+const isSoldOut = (event) => {
+  if (event.ticketCategories?.length > 0)
+    return event.ticketCategories.every((c) => (c.availableSeats ?? c.seats) <= 0);
+  return event.ticketsSold >= event.capacity;
+};
 
+// ── Component ─────────────────────────────────────────────────────────────
+function EventList({ events, onSelectEvent, onRefresh }) {
   return (
     <div className="event-list-container bg-white dark:bg-gray-900 text-gray-900 dark:text-white min-h-screen">
       <div className="list-header">
         <h2>Available Events</h2>
-        <button className="refresh-btn" onClick={onRefresh}>
-          🔄 Refresh
-        </button>
+        <button className="refresh-btn" onClick={onRefresh}>🔄 Refresh</button>
       </div>
 
       {events.length === 0 ? (
@@ -78,32 +72,23 @@ function EventList({ events, onUpdatePrice, onSelectEvent, onRefresh }) {
         </div>
       ) : (
         <div className="events-grid">
-          {events.map(event => (
+          {events.map((event) => (
             <div key={event._id} className="event-card">
               <div className="event-image">
                 {event.image ? (
-                  <img 
-                    src={event.image} 
-                    alt="" 
-                    onError={(e) => { e.target.src = '/default-event.png'; }}
-                  />
+                  <img src={event.image} alt="" onError={(e) => { e.target.src = '/default-event.png'; }} />
                 ) : null}
-                <span 
-                  className="event-emoji-placeholder" 
-                  style={{ display: event.image ? 'none' : 'flex' }}
-                >
+                <span className="event-emoji-placeholder" style={{ display: event.image ? 'none' : 'flex' }}>
                   {getCategoryEmoji(event.category)}
                 </span>
                 <span className="event-image-title">{event.name}</span>
-                <span className={`event-status ${event.status}`}>
-                  {event.status}
-                </span>
+                <span className={`event-status ${event.status}`}>{event.status}</span>
               </div>
 
               <div className="event-content">
                 <h3>{event.name}</h3>
                 <p className="event-description">{event.description}</p>
-                
+
                 <div className="event-details">
                   <div className="detail-item">
                     <span className="label">📍 Venue:</span>
@@ -111,13 +96,12 @@ function EventList({ events, onUpdatePrice, onSelectEvent, onRefresh }) {
                   </div>
                   <div className="detail-item">
                     <span className="label">📅 Start:</span>
-                    <span>{formatDateTime(event.startDate) || 'N/A'}</span>
+                    <span>{formatDateTime(event.startDate)}</span>
                   </div>
                   <div className="detail-item">
                     <span className="label">📅 End:</span>
-                    <span>{formatDateTime(event.endDate) || 'N/A'}</span>
+                    <span>{formatDateTime(event.endDate)}</span>
                   </div>
-                  {/* Removed Days Until display */}
                   <div className="detail-item">
                     <span className="label">🎭 Category:</span>
                     <span>{event.category}</span>
@@ -127,13 +111,10 @@ function EventList({ events, onUpdatePrice, onSelectEvent, onRefresh }) {
                 <div className="occupancy-bar">
                   <div className="occupancy-label">
                     <span>Occupancy</span>
-                    <span>{getOccupancyPercentage(event)}%</span>
+                    <span>{getOccupancyPct(event)}%</span>
                   </div>
                   <div className="progress-bar">
-                    <div 
-                      className="progress-fill" 
-                      style={{ width: `${getOccupancyPercentage(event)}%` }}
-                    />
+                    <div className="progress-fill" style={{ width: `${getOccupancyPct(event)}%` }} />
                   </div>
                   <span className="capacity-text">
                     {getTicketsSold(event)} / {getTotalCapacity(event)} tickets sold
@@ -141,7 +122,7 @@ function EventList({ events, onUpdatePrice, onSelectEvent, onRefresh }) {
                 </div>
 
                 <div className="event-actions">
-                  <button 
+                  <button
                     className="btn-primary"
                     onClick={() => onSelectEvent(event)}
                     disabled={isSoldOut(event)}
@@ -150,11 +131,7 @@ function EventList({ events, onUpdatePrice, onSelectEvent, onRefresh }) {
                   </button>
                 </div>
 
-                <AutoPriceUpdater 
-                  eventId={event._id} 
-                  onPriceUpdate={onRefresh}
-                  compact={true}
-                />
+                <AutoPriceUpdater eventId={event._id} onPriceUpdate={onRefresh} compact={true} />
               </div>
             </div>
           ))}
@@ -164,13 +141,11 @@ function EventList({ events, onUpdatePrice, onSelectEvent, onRefresh }) {
   );
 }
 
-  import Footer from './Footer';
-
-  export default function EventListWrapper(props) {
-    return (
-      <>
-        <EventList {...props} />
-        <Footer />
-      </>
-    );
-  }
+export default function EventListWrapper(props) {
+  return (
+    <>
+      <EventList {...props} />
+      <Footer />
+    </>
+  );
+}

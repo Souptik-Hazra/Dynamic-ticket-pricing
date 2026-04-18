@@ -1,6 +1,6 @@
 import React, { createContext, useState, useContext, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
-import { API_URL, ENDPOINTS } from '../config/api';
+import { API_URL, ENDPOINTS, buildUrl } from '../config/api';
 
 const AuthContext = createContext();
 
@@ -19,43 +19,39 @@ export const AuthProvider = ({ children }) => {
 
   // Schedule token refresh before expiration
   const scheduleTokenRefresh = useCallback(() => {
-    // Clear any existing timeout
     if (refreshTimeoutRef.current) {
       clearTimeout(refreshTimeoutRef.current);
     }
-    
+
     const refreshToken = localStorage.getItem('refreshToken');
     if (!refreshToken) return;
-    
+
     // Refresh 5 minutes before expiration (token expires in 1h, so refresh at ~55min)
-    const refreshTime = 55 * 60 * 1000; // 55 minutes
-    
+    const refreshTime = 55 * 60 * 1000;
+
     refreshTimeoutRef.current = setTimeout(async () => {
       try {
         const response = await axios.post(buildUrl(ENDPOINTS.REFRESH_TOKEN), {
           refreshToken
         });
-        
+
         if (response.data.token) {
           localStorage.setItem('token', response.data.token);
           axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
-          setToken(response.data.token);
-          setUser(response.data.user);
-          
+          if (response.data.user) setUser(response.data.user);
+
           // Schedule next refresh
           scheduleTokenRefresh();
         }
       } catch (error) {
         console.error('Token refresh failed:', error);
-        // If refresh fails, log user out
         logout();
       }
     }, refreshTime);
   }, []);
 
-  // Set axios default header
+  // Set axios defaults and load user on mount
   useEffect(() => {
-    // Always send credentials (cookies) with requests
     axios.defaults.withCredentials = true;
     loadUser();
     return () => {
@@ -65,7 +61,7 @@ export const AuthProvider = ({ children }) => {
     };
   }, []);
 
-  // Load user data
+  // Load user data from stored token
   const loadUser = async () => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -79,7 +75,10 @@ export const AuthProvider = ({ children }) => {
       setUser(response.data.user);
     } catch (error) {
       console.error('Load user error:', error);
-      logout();
+      localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
+      delete axios.defaults.headers.common['Authorization'];
+      setUser(null);
     } finally {
       setLoading(false);
     }
@@ -93,6 +92,14 @@ export const AuthProvider = ({ children }) => {
         email,
         password
       }, { withCredentials: true });
+
+      if (response.data.token) {
+        localStorage.setItem('token', response.data.token);
+        axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
+      }
+      if (response.data.refreshToken) {
+        localStorage.setItem('refreshToken', response.data.refreshToken);
+      }
       setUser(response.data.user);
       return { success: true };
     } catch (error) {
@@ -111,6 +118,14 @@ export const AuthProvider = ({ children }) => {
         email,
         password
       }, { withCredentials: true });
+
+      if (response.data.token) {
+        localStorage.setItem('token', response.data.token);
+        axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
+      }
+      if (response.data.refreshToken) {
+        localStorage.setItem('refreshToken', response.data.refreshToken);
+      }
       setUser(response.data.user);
       return { success: true };
     } catch (error) {
@@ -126,10 +141,15 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       await axios.post(buildUrl('/auth/logout'), {}, { withCredentials: true });
-    } catch (e) {}
+    } catch (e) {
+      // Ignore logout endpoint errors
+    }
     if (refreshTimeoutRef.current) {
       clearTimeout(refreshTimeoutRef.current);
     }
+    localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
+    delete axios.defaults.headers.common['Authorization'];
     setUser(null);
   };
 
@@ -137,7 +157,6 @@ export const AuthProvider = ({ children }) => {
   const isAdmin = () => {
     return user?.role === 'admin';
   };
-
 
   // Update user profile
   const updateUser = async (profileData) => {

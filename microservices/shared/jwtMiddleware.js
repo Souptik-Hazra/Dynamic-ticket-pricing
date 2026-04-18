@@ -1,16 +1,26 @@
 import jwt from 'jsonwebtoken';
 
-export default function jwtMiddleware(req, res, next) {
+/**
+ * Express middleware — validates JWT from Authorization header.
+ * Sets req.user = { id, email, role } on success.
+ */
+const jwtMiddleware = (req, res, next) => {
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'No token provided' });
+  if (!authHeader?.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Authentication required. Please provide a valid token.' });
   }
+
   const token = authHeader.split(' ')[1];
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
-    req.user = decoded;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'SouptikHazraSecretKey');
+    req.user = decoded; // { id, email, role, iat, exp }
     next();
   } catch (err) {
-    return res.status(401).json({ error: 'Invalid token' });
+    const message = err.name === 'TokenExpiredError'
+      ? 'Session expired. Please log in again.'
+      : 'Invalid token. Please log in again.';
+    return res.status(401).json({ error: message });
   }
-}
+};
+
+export default jwtMiddleware;

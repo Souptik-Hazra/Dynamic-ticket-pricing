@@ -1,8 +1,10 @@
 
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import Footer from './Footer';
 import { API_URL } from '../config/api';
 import './HomePage.css';
+
 
 const HomePage = ({ onNavigate }) => {
   const [events, setEvents] = useState([]);
@@ -163,13 +165,11 @@ const HomePage = ({ onNavigate }) => {
   );
 };
 
-  import Footer from './Footer';
-
-  export default function HomePageWrapper(props) {
-    return (
-      <>
-        <HomePage {...props} />
-        <Footer />
-      </>
-    );
-  }
+export default function HomePageWrapper(props) {
+  return (
+    <>
+      <HomePage {...props} />
+      <Footer />
+    </>
+  );
+}

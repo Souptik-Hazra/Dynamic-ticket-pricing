@@ -1,29 +1,121 @@
-// WebSocket Service Entry Point
 import express from 'express';
 import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
 import dotenv from 'dotenv';
 import cors from 'cors';
+import jwt from 'jsonwebtoken';
 
 dotenv.config();
 
 const app = express();
-const server = createServer(app);
-const wss = new WebSocketServer({ server });
-
 app.use(cors());
+app.use(express.json());
 
-wss.on('connection', ws => {
-  ws.send('WebSocket Service Connected');
-  ws.on('message', message => {
-    // Echo message for demo
-    ws.send(`Echo: ${message}`);
+const server = createServer(app);
+const wss    = new WebSocketServer({ server });
+
+const JWT_SECRET = process.env.JWT_SECRET || 'SouptikHazraSecretKey';
+
+// ── Connected client registry ─────────────────────────────────────────────
+// Map<userId, Set<WebSocket>>  — supports multiple tabs per user
+const clients = new Map();
+
+const broadcast = (payload) => {
+  const msg = JSON.stringify(payload);
+  wss.clients.forEach((ws) => {
+    if (ws.readyState === ws.OPEN) ws.send(msg);
   });
+};
+
+const sendToUser = (userId, payload) => {
+  const userSockets = clients.get(String(userId));
+  if (!userSockets) return;
+  const msg = JSON.stringify(payload);
+  userSockets.forEach((ws) => {
+    if (ws.readyState === ws.OPEN) ws.send(msg);
+  });
+};
+
+// ── WebSocket connection handler ───────────────────────────────────────────
+wss.on('connection', (ws, req) => {
+  // Client sends { type:'auth', token:'<jwt>' } as first message
+  let userId = null;
+
+  ws.on('message', (raw) => {
+    try {
+      const msg = JSON.parse(raw.toString());
+
+      if (msg.type === 'auth') {
+        // Authenticate the connection
+        try {
+          const decoded = jwt.verify(msg.token, JWT_SECRET);
+          userId = String(decoded.id);
+          if (!clients.has(userId)) clients.set(userId, new Set());
+          clients.get(userId).add(ws);
+          ws.send(JSON.stringify({ type: 'auth_success', userId }));
+          console.log(`WS: user ${userId} connected`);
+        } catch {
+          ws.send(JSON.stringify({ type: 'auth_error', message: 'Invalid token' }));
+        }
+        return;
+      }
+
+      if (msg.type === 'ping') {
+        ws.send(JSON.stringify({ type: 'pong', ts: Date.now() }));
+        return;
+      }
+
+    } catch {
+      // ignore malformed messages
+    }
+  });
+
+  ws.on('close', () => {
+    if (userId) {
+      const set = clients.get(userId);
+      if (set) {
+        set.delete(ws);
+        if (set.size === 0) clients.delete(userId);
+      }
+    }
+  });
+
+  ws.on('error', (err) => console.error('WS error:', err.message));
 });
 
-app.get('/health', (req, res) => res.json({ status: 'ok', service: 'websocket-service', timestamp: new Date().toISOString() }));
+// ── Health ─────────────────────────────────────────────────────────────────
+app.get('/health', (_req, res) =>
+  res.json({
+    status:           'ok',
+    service:          'websocket-service',
+    connectedClients: wss.clients.size,
+    ts:               new Date().toISOString(),
+  })
+);
 
+// ── Internal REST endpoints (called by other services to push events) ─────
+
+// Broadcast price update to all connected clients
+app.post('/api/ws/price-update', (req, res) => {
+  const { eventId, prices, occupancyRate } = req.body;
+  broadcast({ type: 'price_update', eventId, prices, occupancyRate, ts: Date.now() });
+  res.json({ message: 'Broadcast sent', clients: wss.clients.size });
+});
+
+// Send notification to a specific user
+app.post('/api/ws/notify-user', (req, res) => {
+  const { userId, type, title, message, meta } = req.body;
+  sendToUser(userId, { type: 'notification', notificationType: type, title, message, meta, ts: Date.now() });
+  res.json({ message: 'Sent to user', userId });
+});
+
+// Broadcast ticket-sold event (causes seat count to update on all browsers)
+app.post('/api/ws/ticket-sold', (req, res) => {
+  const { eventId, categoryName, remainingSeats } = req.body;
+  broadcast({ type: 'ticket_sold', eventId, categoryName, remainingSeats, ts: Date.now() });
+  res.json({ message: 'Broadcast sent' });
+});
+
+// ── Start ──────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 4010;
-server.listen(PORT, () => {
-  console.log(`WebSocket Service running on port ${PORT}`);
-});
+server.listen(PORT, () => console.log(`WebSocket Service running on port ${PORT}`));
