@@ -53,120 +53,67 @@ def health_check():
 
 @app.route('/predict', methods=['POST'])
 def predict_price():
-    """Predict ticket price based on input features"""
+    """Predict ticket price based on strict DB features"""
     try:
         if model is None or scaler is None:
             return jsonify({'error': 'Model not loaded'}), 500
         
         data = request.get_json()
-        
         if not data:
             return jsonify({'error': 'No input data provided'}), 400
         
-        # Validate input features - Enhanced 14-feature model with event duration
+        # Extract features (Strict DB Alignment)
         try:
-            demand = float(data.get('demand', 100))
             capacity = float(data.get('capacity', 1000))
+            tickets_sold = float(data.get('tickets_sold', 0))
+            base_price = float(data.get('base_price', 500))
             days_until = float(data.get('days_until_event', 30))
-            event_duration = float(data.get('event_duration_days', 1))
+            duration = float(data.get('event_duration', 1))
             popularity = float(data.get('event_popularity', 0.5))
-            competitor = float(data.get('competitor_price', 100))
-            historical = float(data.get('historical_sales', 50))
-            season = int(data.get('season', 1))
-            day_of_week = int(data.get('day_of_week', 1))
-            hour_of_day = int(data.get('hour_of_day', 12))
             venue_tier = int(data.get('venue_tier', 2))
             artist_tier = int(data.get('artist_tier', 3))
+            is_holiday = int(data.get('is_holiday', 0))
+            category = data.get('category', 'other').lower()
         except (ValueError, TypeError):
-            return jsonify({'error': 'Invalid input: All values must be numeric'}), 400
+            return jsonify({'error': 'Invalid numeric input'}), 400
         
-        # Calculate derived features
-        is_weekend = 1 if day_of_week >= 6 else 0
-        is_holiday = int(data.get('is_holiday', 0))
-        
-        # Validate ranges
-        demand = max(0, min(demand, 100000))
-        capacity = max(1, min(capacity, 100000))
-        days_until = max(0, min(days_until, 365))
-        event_duration = max(1, min(event_duration, 365))
-        popularity = max(0, min(popularity, 1))
-        competitor = max(0, min(competitor, 50000))
-        historical = max(0, min(historical, 100000))
-        season = max(1, min(season, 4))
-        day_of_week = max(1, min(day_of_week, 7))
-        hour_of_day = max(0, min(hour_of_day, 23))
-        venue_tier = max(1, min(venue_tier, 3))
-        artist_tier = max(1, min(artist_tier, 5))
-        
-        # Build feature vector (14 features: added event_duration_days)
+        # Build 15-feature vector (9 numeric + 6 categorical)
         features = [
-            demand,
-            capacity,
-            days_until,
-            event_duration,
-            popularity,
-            competitor,
-            historical,
-            season,
-            day_of_week,
-            hour_of_day,
-            is_weekend,
-            is_holiday,
-            venue_tier,
-            artist_tier
+            capacity, tickets_sold, base_price, days_until, duration,
+            popularity, venue_tier, artist_tier, is_holiday
         ]
         
-        # Scale features and predict
+        # One-hot encoding for category
+        categories = ['concert', 'sports', 'theater', 'conference', 'festival', 'other']
+        for cat in categories:
+            features.append(1 if category == cat else 0)
+        
         features_scaled = scaler.transform([features])
-        predicted_price = model.predict(features_scaled)[0]
+        pred = model.predict(features_scaled)[0]
         
-        # Ensure reasonable price bounds (INR)
-        predicted_price = max(50, min(predicted_price, 50000))
+        # Bounds: 80% of base to 10x base
+        final_price = max(base_price * 0.8, min(pred, base_price * 10))
         
-        # Calculate confidence interval based on model agreement
-        confidence = 0.95
-        margin = predicted_price * 0.06  # 6% margin (enhanced accuracy)
-        
-        response = {
-            'predicted_price': round(predicted_price, 2),
-            'price_range': {
-                'min': round(max(50, predicted_price - margin), 2),
-                'max': round(min(50000, predicted_price + margin), 2)
-            },
-            'confidence': confidence,
-            'model_version': model_version,
+        return jsonify({
+            'predicted_price': float(round(final_price, 2)),
             'currency': 'INR',
+            'model_version': model_version,
             'features_used': {
-                'demand': features[0],
-                'capacity': features[1],
-                'days_until_event': features[2],
-                'event_duration_days': features[3],
-                'event_popularity': features[4],
-                'competitor_price': features[5],
-                'historical_sales': features[6],
-                'season': features[7],
-                'day_of_week': features[8],
-                'hour_of_day': features[9],
-                'is_weekend': features[10],
-                'is_holiday': features[11],
-                'venue_tier': features[12],
-                'artist_tier': features[13]
+                'capacity': capacity,
+                'tickets_sold': tickets_sold,
+                'base_price': base_price,
+                'days_until': days_until,
+                'category': category
             },
             'timestamp': datetime.now().isoformat()
-        }
-        
-        return jsonify(response)
-    
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
 @app.route('/batch-predict', methods=['POST'])
 def batch_predict():
-    """Predict prices for multiple scenarios"""
+    """Predict prices for multiple event scenarios"""
     try:
-        if model is None or scaler is None:
-            return jsonify({'error': 'Model not loaded'}), 500
-        
         data = request.get_json()
         scenarios = data.get('scenarios', [])
         
@@ -176,44 +123,44 @@ def batch_predict():
         predictions = []
         
         for scenario in scenarios:
-            demand = float(scenario.get('demand', 100))
-            capacity = float(scenario.get('capacity', 1000))
-            days_until = float(scenario.get('days_until_event', 30))
-            event_duration = float(scenario.get('event_duration_days', 1))
-            popularity = float(scenario.get('event_popularity', 0.5))
-            competitor = float(scenario.get('competitor_price', 100))
-            historical = float(scenario.get('historical_sales', 50))
-            season = int(scenario.get('season', 1))
-            day_of_week = int(scenario.get('day_of_week', 1))
-            hour_of_day = int(scenario.get('hour_of_day', 12))
-            venue_tier = int(scenario.get('venue_tier', 2))
-            artist_tier = int(scenario.get('artist_tier', 3))
+            capacity = float(data.get('capacity', 1000))
+            tickets_sold = float(data.get('tickets_sold', 0))
+            base_price = float(data.get('base_price', 500))
+            days_until = float(data.get('days_until_event', 30))
+            duration = float(data.get('event_duration', 1))
+            popularity = float(data.get('event_popularity', 0.5))
+            venue_tier = int(data.get('venue_tier', 2))
+            artist_tier = int(data.get('artist_tier', 3))
+            is_holiday = int(data.get('is_holiday', 0))
+            category = data.get('category', 'other').lower()
             
-            # Calculate derived features
-            is_weekend = 1 if day_of_week >= 6 else 0
-            is_holiday = int(scenario.get('is_holiday', 0))
-            
+            # Numeric features
             features = [
-                demand, capacity, days_until, event_duration, popularity, competitor,
-                historical, season, day_of_week, hour_of_day, is_weekend,
-                is_holiday, venue_tier, artist_tier
+                capacity, tickets_sold, base_price, days_until, duration,
+                popularity, venue_tier, artist_tier, is_holiday
             ]
             
-            features_scaled = scaler.transform([features])
-            predicted_price = max(50, min(model.predict(features_scaled)[0], 50000))
+            # One-hot encoding for category
+            categories = ['concert', 'sports', 'theater', 'conference', 'festival', 'other']
+            for cat in categories:
+                features.append(1 if category == cat else 0)
             
-            predictions.append({
-                'scenario': scenario.get('name', 'Unnamed'),
-                'predicted_price': round(predicted_price, 2),
+            features_scaled = scaler.transform([features])
+            predicted_price = max(base_price * 0.7, min(model.predict(features_scaled)[0], base_price * 10))
+            
+            return jsonify({
+                'predicted_price': float(round(predicted_price, 2)),
                 'currency': 'INR',
-                'features': scenario
+                'model_version': model_version,
+                'features_used': {k: v for k, v in {
+                    'capacity': capacity,
+                    'tickets_sold': tickets_sold,
+                    'base_price': base_price,
+                    'days_until': days_until,
+                    'category': category
+                }.items()},
+                'timestamp': datetime.now().isoformat()
             })
-        
-        return jsonify({
-            'predictions': predictions,
-            'count': len(predictions),
-            'timestamp': datetime.now().isoformat()
-        })
     
     except Exception as e:
         return jsonify({'error': str(e)}), 400
@@ -225,36 +172,21 @@ def model_info():
         'model_type': 'VotingRegressor Ensemble (RF + GradientBoosting + ExtraTrees + Ridge + XGBoost)',
         'version': model_version,
         'features': [
-            'demand',
-            'capacity',
-            'days_until_event',
-            'event_duration_days',
-            'event_popularity',
-            'competitor_price',
-            'historical_sales',
-            'season',
-            'day_of_week',
-            'hour_of_day',
-            'is_weekend',
-            'is_holiday',
-            'venue_tier',
-            'artist_tier'
+            'capacity', 'tickets_sold', 'base_price', 'days_until_event', 'event_duration', 
+            'event_popularity', 'venue_tier', 'artist_tier', 'is_holiday',
+            'cat_concert', 'cat_sports', 'cat_theater', 'cat_conference', 'cat_festival', 'cat_other'
         ],
         'feature_descriptions': {
-            'demand': 'Current ticket demand (number of inquiries)',
             'capacity': 'Venue capacity (total seats)',
+            'tickets_sold': 'Number of tickets already sold',
+            'base_price': 'The original/starting price per ticket',
             'days_until_event': 'Days remaining until event',
-            'event_duration_days': 'Total duration of event in days',
+            'event_duration': 'Total duration of event in days',
             'event_popularity': 'Event popularity score (0-1)',
-            'competitor_price': 'Average competitor ticket price (₹)',
-            'historical_sales': 'Historical sales for similar events',
-            'season': 'Season (1=Winter, 2=Spring, 3=Summer, 4=Fall)',
-            'day_of_week': 'Day of week (1=Monday, 7=Sunday)',
-            'hour_of_day': 'Hour of day (0-23)',
-            'is_weekend': 'Weekend indicator (0/1)',
-            'is_holiday': 'Holiday indicator (0/1)',
             'venue_tier': 'Venue tier (1=Small, 2=Medium, 3=Large)',
-            'artist_tier': 'Artist/Event tier (1-5, 5=Superstar)'
+            'artist_tier': 'Artist/Event tier (1-5, 5=Superstar)',
+            'is_holiday': 'Holiday indicator (0/1)',
+            'category': 'Event category (concert, sports, etc.)'
         },
         'currency': 'INR',
         'price_range': {'min': 50, 'max': 50000},
@@ -266,8 +198,8 @@ def model_info():
         if os.path.exists(MODEL_INFO_PATH):
             with open(MODEL_INFO_PATH, 'r') as f:
                 saved_info = json.load(f)
-                info['train_score'] = saved_info.get('trainScore')
-                info['test_score'] = saved_info.get('testScore')
+                info['train_score'] = float(saved_info.get('trainScore')) if saved_info.get('trainScore') is not None else None
+                info['test_score'] = float(saved_info.get('testScore')) if saved_info.get('testScore') is not None else None
                 info['feature_importance'] = saved_info.get('featureImportance')
                 info['trained_at'] = saved_info.get('metadata', {}).get('trainedAt')
     except:

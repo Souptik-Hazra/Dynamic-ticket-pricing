@@ -3,19 +3,30 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import cors from 'cors';
-import connectDB, { requireDB, registerProcessHandlers } from '../shared/db.js';
+import helmet from 'helmet';
+import compression from 'compression';
+import connectDB, { requireDB, registerProcessHandlers, tuneExpressServer } from '../shared/db.js';
 import { errorHandler, notFound } from '../shared/errorHandler.js';
 import User from '../shared/models/User.js';
 
 dotenv.config();
 
 const app = express();
-app.use(cors());
+app.use(compression());
+app.use(helmet());
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGINS === '*' ? '*' : (process.env.ALLOWED_ORIGINS || '').split(','),
+  credentials: true,
+}));
 app.use(express.json());
 
 connectDB('AuthService');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'SouptikHazraSecretKey';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('[AuthService] CRITICAL: JWT_SECRET environment variable is missing.');
+  process.exit(1); 
+}
 const JWT_EXPIRE  = '7d';
 
 const issueToken = (user) =>
@@ -143,6 +154,7 @@ app.post('/api/auth/logout', (_req, res) => res.json({ message: 'Logged out' }))
 app.use(notFound);
 app.use(errorHandler);
 
-const PORT   = process.env.PORT_AUTHENTICATION_SERVICE || process.env.PORT || 4001;
+const PORT   = process.env.PORT_AUTHENTICATION_SERVICE || 4001;
 const server = app.listen(PORT, () => console.log(`Authentication Service running on port ${PORT}`));
 registerProcessHandlers(server, 'AuthService');
+tuneExpressServer(server);

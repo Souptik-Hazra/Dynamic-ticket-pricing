@@ -2,7 +2,9 @@ import express from 'express';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import cors from 'cors';
-import connectDB, { requireDB, registerProcessHandlers } from '../shared/db.js';
+import helmet from 'helmet';
+import compression from 'compression';
+import connectDB, { requireDB, registerProcessHandlers, tuneExpressServer } from '../shared/db.js';
 import { errorHandler, notFound } from '../shared/errorHandler.js';
 import jwtMiddleware from '../shared/jwtMiddleware.js';
 import Ticket from '../shared/models/Ticket.js';
@@ -12,7 +14,12 @@ import { notify, wsNotifyUser, sendEmailTemplate, revertPurchase, creditUserWall
 dotenv.config();
 
 const app = express();
-app.use(cors());
+app.use(compression());
+app.use(helmet());
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGINS === '*' ? '*' : (process.env.ALLOWED_ORIGINS || '').split(','),
+  credentials: true,
+}));
 app.use(express.json());
 
 // ── Health ──────────────────────────────────────────────────────────────────
@@ -241,6 +248,7 @@ app.post('/api/payments/:id/refund', jwtMiddleware, requireDB, async (req, res, 
 app.use(notFound);
 app.use(errorHandler);
 
-const PORT   = process.env.PORT_PAYMENT_SERVICE || process.env.PORT || 4004;
+const PORT   = process.env.PORT_PAYMENT_SERVICE || 4004;
 const server = app.listen(PORT, () => console.log(`Payment Service running on port ${PORT}`));
 registerProcessHandlers(server, 'PaymentService');
+tuneExpressServer(server);

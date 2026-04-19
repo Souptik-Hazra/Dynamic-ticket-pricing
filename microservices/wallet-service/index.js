@@ -2,7 +2,9 @@ import express from 'express';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import cors from 'cors';
-import connectDB, { requireDB, registerProcessHandlers } from '../shared/db.js';
+import helmet from 'helmet';
+import compression from 'compression';
+import connectDB, { requireDB, registerProcessHandlers, tuneExpressServer } from '../shared/db.js';
 import { errorHandler, notFound } from '../shared/errorHandler.js';
 import jwtMiddleware from '../shared/jwtMiddleware.js';
 import Wallet from '../shared/models/Wallet.js';
@@ -11,7 +13,12 @@ import { notify, wsNotifyUser } from '../shared/interservice.js';
 dotenv.config();
 
 const app = express();
-app.use(cors());
+app.use(compression());
+app.use(helmet());
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGINS === '*' ? '*' : (process.env.ALLOWED_ORIGINS || '').split(','),
+  credentials: true,
+}));
 app.use(express.json());
 
 connectDB('WalletService');
@@ -158,6 +165,7 @@ async function processDebit(userId, amount, description, res, next) {
 app.use(notFound);
 app.use(errorHandler);
 
-const PORT = process.env.PORT_WALLET_SERVICE || 4016;
+const PORT   = process.env.PORT_WALLET_SERVICE || 4016;
 const server = app.listen(PORT, () => console.log(`Wallet Service running on port ${PORT}`));
 registerProcessHandlers(server, 'WalletService');
+tuneExpressServer(server);

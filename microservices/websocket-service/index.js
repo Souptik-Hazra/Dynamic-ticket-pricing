@@ -3,12 +3,17 @@ import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
 import dotenv from 'dotenv';
 import cors from 'cors';
+import helmet from 'helmet';
 import jwt from 'jsonwebtoken';
 
 dotenv.config();
 
 const app = express();
-app.use(cors());
+app.use(helmet());
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGINS === '*' ? '*' : (process.env.ALLOWED_ORIGINS || '').split(','),
+  credentials: true,
+}));
 app.use(express.json());
 
 // ── Health ──────────────────────────────────────────────────────────────────
@@ -42,7 +47,14 @@ const sendToUser = (userId, payload) => {
 };
 
 // ── WebSocket connection handler ───────────────────────────────────────────
+function heartbeat() {
+  this.isAlive = true;
+}
+
 wss.on('connection', (ws, req) => {
+  ws.isAlive = true;
+  ws.on('pong', heartbeat);
+
   // Client sends { type:'auth', token:'<jwt>' } as first message
   let userId = null;
 
@@ -88,6 +100,23 @@ wss.on('connection', (ws, req) => {
   ws.on('error', (err) => console.error('WS error:', err.message));
 });
 
+// ── Heartbeat Interval ─────────────────────────────────────────────────────
+// Check every 30 seconds for dead connections
+const interval = setInterval(() => {
+  wss.clients.forEach((ws) => {
+    if (ws.isAlive === false) {
+      console.log('WS: Terminating dead connection');
+      return ws.terminate();
+    }
+    ws.isAlive = false;
+    ws.ping();
+  });
+}, 30000);
+
+wss.on('close', () => {
+  clearInterval(interval);
+});
+
 // ── Health ─────────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) =>
   res.json({
@@ -129,5 +158,5 @@ app.post('/api/ws/ticket-sold', (req, res) => {
 });
 
 // ── Start ──────────────────────────────────────────────────────────────────
-const PORT = process.env.PORT_WEBSOCKET_SERVICE || process.env.PORT || 4010;
+const PORT = process.env.PORT_WEBSOCKET_SERVICE || 4010;
 server.listen(PORT, () => console.log(`WebSocket Service running on port ${PORT}`));

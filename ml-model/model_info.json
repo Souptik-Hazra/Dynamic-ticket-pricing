@@ -1,29 +1,30 @@
 {
-  "modelVersion": "v2.0.20260418",
+  "modelVersion": "v2.0.20260419",
   "modelType": "XGBRegressor (XGBoost)",
   "features": [
-    "demand",
     "capacity",
+    "tickets_sold",
+    "base_price",
     "days_until_event",
-    "event_duration_days",
+    "event_duration",
     "event_popularity",
-    "competitor_price",
-    "historical_sales",
-    "season",
-    "day_of_week",
-    "hour_of_day",
-    "is_weekend",
-    "is_holiday",
     "venue_tier",
-    "artist_tier"
+    "artist_tier",
+    "is_holiday",
+    "cat_concert",
+    "cat_sports",
+    "cat_theater",
+    "cat_conference",
+    "cat_festival",
+    "cat_other"
   ],
-  "numFeatures": 14,
-  "trainScore": 0.9999976016125998,
-  "testScore": 0.9235585206319488,
-  "trainMAE": 0.5862904773069981,
-  "testMAE": 92.90563000619987,
-  "trainRMSE": 0.8855972161809773,
-  "testRMSE": 158.72348595780767,
+  "numFeatures": 15,
+  "trainScore": 0.999997056359301,
+  "testScore": 0.9829082619756047,
+  "trainMAE": 7.420632099615315,
+  "testMAE": 593.817598031979,
+  "trainRMSE": 10.677057736658204,
+  "testRMSE": 819.5043038680319,
   "parameters": {
     "n_estimators": 500,
     "max_depth": 10,
@@ -31,7 +32,7 @@
     "subsample": 0.9
   },
   "metadata": {
-    "trainedAt": "2026-04-18T14:55:46.188878",
+    "trainedAt": "2026-04-19T11:39:03.131115",
     "currency": "INR"
   }
 }

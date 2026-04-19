@@ -12,13 +12,21 @@ import axios from 'axios';
 
 // ── Service URLs ──────────────────────────────────────────────────────────
 const SERVICES = {
+  auth: process.env.AUTH_SERVICE_URL || 'http://localhost:4001',
+  user: process.env.USER_SERVICE_URL || 'http://localhost:4002',
+  admin: process.env.ADMIN_SERVICE_URL || 'http://localhost:4003',
+  payment: process.env.PAYMENT_SERVICE_URL || 'http://localhost:4004',
+  cache: process.env.CACHE_SERVICE_URL || 'http://localhost:4005',
+  email: process.env.EMAIL_SERVICE_URL || 'http://localhost:4007',
   notification: process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:4009',
-  websocket:    process.env.WEBSOCKET_SERVICE_URL    || 'http://localhost:4010',
-  email:        process.env.EMAIL_SERVICE_URL        || 'http://localhost:4007',
-  payment:      process.env.PAYMENT_SERVICE_URL      || 'http://localhost:4004',
-  cache:        process.env.CACHE_SERVICE_URL        || 'http://localhost:4005',
-  organizer:    process.env.ORGANIZER_SERVICE_URL    || 'http://localhost:4013',
-  wallet:       process.env.WALLET_SERVICE_URL       || 'http://localhost:4016',
+  websocket: process.env.WEBSOCKET_SERVICE_URL || 'http://localhost:4010',
+  analytics: process.env.ANALYTICS_SERVICE_URL || 'http://localhost:4011',
+  subscription: process.env.SUBSCRIPTION_SERVICE_URL || 'http://localhost:4012',
+  organizer: process.env.ORGANIZER_SERVICE_URL || 'http://localhost:4013',
+  qr: process.env.QR_SERVICE_URL || 'http://localhost:4014',
+  scanner: process.env.SCANNER_SERVICE_URL || 'http://localhost:4015',
+  wallet: process.env.WALLET_SERVICE_URL || 'http://localhost:4016',
+  ml: process.env.ML_SERVICE_URL || 'http://localhost:5000',
 };
 
 // ── Generic fire-and-forget helper ────────────────────────────────────────
@@ -178,12 +186,12 @@ export const cacheLock = async (key, ttl = 5000, retries = 5) => {
     try {
       const { data } = await axios.post(`${SERVICES.cache}/api/cache/lock`, { key, ttl }, { timeout: 2000 });
       if (data.success) return { success: true, token: data.token };
-      
+
       // Wait before retrying (exponential backoff)
       const delay = Math.pow(2, i) * 100;
       await new Promise(r => setTimeout(r, delay));
     } catch (err) {
-      console.error(`[Inter-service] cacheLock attempt ${i+1} failed:`, err.message);
+      console.error(`[Inter-service] cacheLock attempt ${i + 1} failed:`, err.message);
     }
   }
   return { success: false };

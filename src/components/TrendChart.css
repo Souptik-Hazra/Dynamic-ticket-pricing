@@ -1,0 +1,134 @@
+.trend-chart-container {
+  background: rgba(26, 26, 26, 0.6);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 24px;
+  margin-top: 24px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.chart-header h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+}
+
+.chart-legend {
+  display: flex;
+  gap: 16px;
+  font-size: 0.8rem;
+  color: #888;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.indicator-revenue { background: #4facfe; }
+.indicator-count { background: #f093fb; }
+
+.chart-bars-wrapper {
+  height: 250px;
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  overflow-x: auto;
+}
+
+.chart-column {
+  flex: 1;
+  min-width: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.chart-column:hover {
+  transform: scaleY(1.05);
+  z-index: 10;
+}
+
+.bar-revenue {
+  width: 100%;
+  background: linear-gradient(180deg, #4facfe 0%, #00f2fe 100%);
+  border-radius: 4px 4px 0 0;
+  transition: height 1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.bar-count {
+  width: 60%;
+  background: linear-gradient(180deg, #f093fb 0%, #f5576c 100%);
+  border-radius: 2px 2px 0 0;
+  transition: height 1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  margin-top: -2px;
+}
+
+.x-axis-label {
+  font-size: 0.65rem;
+  color: #666;
+  white-space: nowrap;
+  transform: rotate(-45deg);
+  margin-top: 10px;
+  opacity: 0.8;
+}
+
+.chart-tooltip {
+  position: absolute;
+  top: -60px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #000;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  visibility: hidden;
+  opacity: 0;
+  transition: all 0.2s;
+  pointer-events: none;
+  border: 1px solid #4facfe;
+  width: max-content;
+  z-index: 20;
+}
+
+.chart-column:hover .chart-tooltip {
+  visibility: visible;
+  opacity: 1;
+  top: -70px;
+}
+
+/* Scrollbar styling for horizontal chart */
+.chart-bars-wrapper::-webkit-scrollbar {
+  height: 4px;
+}
+
+.chart-bars-wrapper::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.chart-bars-wrapper::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}

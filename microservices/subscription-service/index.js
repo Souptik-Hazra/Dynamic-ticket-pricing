@@ -1,17 +1,24 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
-import connectDB, { requireDB, registerProcessHandlers } from '../shared/db.js';
+import helmet from 'helmet';
+import compression from 'compression';
+import connectDB, { requireDB, registerProcessHandlers, tuneExpressServer } from '../shared/db.js';
 import { errorHandler, notFound } from '../shared/errorHandler.js';
 import jwtMiddleware from '../shared/jwtMiddleware.js';
-import Subscription, { PLAN_DURATIONS_DAYS } from '../shared/models/Subscription.js';
+import Subscription, { SUBSCRIPTION_PLANS, getPlanDuration } from '../shared/models/Subscription.js';
 import User from '../shared/models/User.js';
 import { notify, wsNotifyUser, sendEmailTemplate } from '../shared/interservice.js';
 
 dotenv.config();
 
 const app = express();
-app.use(cors());
+app.use(compression());
+app.use(helmet());
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGINS === '*' ? '*' : (process.env.ALLOWED_ORIGINS || '').split(','),
+  credentials: true,
+}));
 app.use(express.json());
 
 connectDB('SubscriptionService');
@@ -19,6 +26,11 @@ connectDB('SubscriptionService');
 app.get('/health', (_req, res) =>
   res.json({ status: 'ok', service: 'subscription-service', ts: new Date().toISOString() })
 );
+
+// GET all available plans
+app.get('/api/subscription/plans', (_req, res) => {
+  res.json(SUBSCRIPTION_PLANS);
+});
 
 // GET current subscription
 app.get('/api/subscription', jwtMiddleware, requireDB, async (req, res, next) => {
@@ -49,11 +61,11 @@ app.post('/api/subscription/upgrade', jwtMiddleware, requireDB, async (req, res,
     const { plan } = req.body;
     if (!plan) return res.status(400).json({ error: 'plan is required' });
 
-    const durationDays = PLAN_DURATIONS_DAYS[plan];
+    const durationDays = getPlanDuration(plan);
     if (!durationDays) {
       return res.status(400).json({
         error:      `Invalid plan '${plan}'`,
-        validPlans: Object.keys(PLAN_DURATIONS_DAYS),
+        validPlans: SUBSCRIPTION_PLANS.map(p => p.id),
       });
     }
 
@@ -109,6 +121,7 @@ app.post('/api/subscription/upgrade', jwtMiddleware, requireDB, async (req, res,
 app.use(notFound);
 app.use(errorHandler);
 
-const PORT   = process.env.PORT_SUBSCRIPTION_SERVICE || process.env.PORT || 4012;
+const PORT   = process.env.PORT_SUBSCRIPTION_SERVICE || 4012;
 const server = app.listen(PORT, () => console.log(`Subscription Service running on port ${PORT}`));
 registerProcessHandlers(server, 'SubscriptionService');
+tuneExpressServer(server);

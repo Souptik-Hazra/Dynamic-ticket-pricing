@@ -12,7 +12,12 @@ const jwtMiddleware = (req, res, next) => {
 
   const token = authHeader.split(' ')[1];
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'SouptikHazraSecretKey');
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      console.error('[JWT] CRITICAL: JWT_SECRET environment variable is missing.');
+      return res.status(500).json({ error: 'Internal Server Error: Secure configuration missing.' });
+    }
+    const decoded = jwt.verify(token, secret);
     req.user = decoded; // { id, email, role, iat, exp }
     next();
   } catch (err) {

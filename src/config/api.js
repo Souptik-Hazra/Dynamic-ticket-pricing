@@ -5,6 +5,11 @@
 // Auto-detect host to allow mobile devices on same Wi-Fi to reach the API
 // Auto-detect host to allow mobile devices on same Wi-Fi to reach the API via Vite Proxy
 const getBaseUrl = () => {
+    // In production, we might want to specify a full URL (e.g. https://api.example.com)
+    // Vite injects environment variables prefixed with VITE_
+    const envUrl = import.meta.env.VITE_API_URL;
+    if (envUrl) return envUrl;
+
     // In dev, always use relative /api which Vite proxies to port 3001
     return '/api';
 };
@@ -42,10 +47,12 @@ export const ENDPOINTS = {
   PLATFORM_HEALTH:   '/health-all',
 
   // Analytics (Analytics Service)
-  ANALYTICS: '/analytics',
+  ANALYTICS:           '/analytics',
+  ANALYTICS_DASHBOARD: '/analytics/dashboard',
 
   // Subscription (Subscription Service)
   SUBSCRIPTION:         '/subscription',
+  SUBSCRIPTION_PLANS:   '/subscription/plans',
   SUBSCRIPTION_UPGRADE: '/subscription/upgrade',
 
   // Notifications (Notification Service)

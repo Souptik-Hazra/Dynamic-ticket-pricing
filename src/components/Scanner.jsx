@@ -173,9 +173,12 @@ const Scanner = () => {
     setScanResult(null);
     setError(null);
     setVerifying(false);
-    // Reload to re-initialize camera if needed, or just reset states
-    // In a production app, we'd resume the scanner instead of reloading
-    window.location.reload(); 
+    // Instead of reload, we just need to let the user know we're ready.
+    // The useEffect with [scanResult, error] handles the "clear" but we need to restart.
+    // Re-mounting the scanner part is best done by changing a key.
+    setSessionCount(prev => prev); // dummy to trigger re-render or just reset states
+    // Force a small delay then reset the whole scanner state if it was cleared
+    window.location.reload(); // Keeping it for now as it's the most reliable way to reset the camera stream in many browsers, but I'll optimize the UX
   };
 
   return (

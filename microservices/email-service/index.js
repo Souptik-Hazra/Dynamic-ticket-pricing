@@ -2,13 +2,20 @@ import express from 'express';
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 import cors from 'cors';
+import helmet from 'helmet';
+import compression from 'compression';
 import { errorHandler, notFound } from '../shared/errorHandler.js';
-import { registerProcessHandlers } from '../shared/db.js';
+import { registerProcessHandlers, tuneExpressServer } from '../shared/db.js';
 
 dotenv.config();
 
 const app = express();
-app.use(cors());
+app.use(compression());
+app.use(helmet());
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGINS === '*' ? '*' : (process.env.ALLOWED_ORIGINS || '').split(','),
+  credentials: true,
+}));
 app.use(express.json());
 
 // ── SMTP transporter ──────────────────────────────────────────────────────
@@ -139,6 +146,7 @@ app.post('/api/email/send-template', async (req, res, next) => {
 app.use(notFound);
 app.use(errorHandler);
 
-const PORT = process.env.PORT_EMAIL_SERVICE || process.env.PORT || 4007;
+const PORT = process.env.PORT_EMAIL_SERVICE || 4007;
 const server = app.listen(PORT, () => console.log(`Email Service running on port ${PORT}`));
 registerProcessHandlers(server, 'EmailService');
+tuneExpressServer(server);

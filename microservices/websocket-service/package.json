@@ -1,16 +1,17 @@
 {
-  "name": "websocket-service",
-  "version": "1.0.0",
-  "type": "module",
-  "main": "index.js",
-  "scripts": {
-    "start": "node index.js",
-    "dev": "node --watch index.js"
-  },
-  "dependencies": {
-    "cors": "*",
-    "dotenv": "*",
-    "express": "*",
-    "ws": "*"
-  }
+    "name":  "websocket-service",
+    "version":  "1.0.0",
+    "type":  "module",
+    "main":  "index.js",
+    "scripts":  {
+                    "start":  "node index.js",
+                    "dev":  "node --watch index.js"
+                },
+    "dependencies":  {
+                         "cors":  "*",
+                         "dotenv":  "*",
+                         "express":  "*",
+                         "ws":  "*",
+                         "helmet":  "^7.1.0"
+                     }
 }

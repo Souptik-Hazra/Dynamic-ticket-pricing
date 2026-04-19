@@ -20,7 +20,8 @@ const connectDB = async (serviceName = 'Service') => {
       socketTimeoutMS:          45000,  // close sockets after 45s of inactivity
       maxPoolSize:              10,     // max concurrent connections per service
     });
-    console.log(`[${serviceName}] MongoDB connected → ${SHARED_DB_URI}`);
+    const maskedUri = SHARED_DB_URI.replace(/\/\/([^:]+):([^@]+)@/, '//$1:****@');
+    console.log(`[${serviceName}] MongoDB connected → ${maskedUri}`);
   } catch (err) {
     // Non-fatal: service starts anyway so /health still responds.
     // Mongoose will keep retrying in the background.
@@ -74,7 +75,18 @@ export const registerProcessHandlers = (server, serviceName = 'Service') => {
   });
 
   process.on('SIGTERM', () => gracefulShutdown(server, 'SIGTERM'));
-  process.on('SIGINT',  () => gracefulShutdown(server, 'SIGINT'));
+  process.on('SIGINT',  ()    => gracefulShutdown(server, 'SIGINT'));
+};
+
+/**
+ * Align Node.js server timeouts with Nginx/Proxy.
+ * Prevents race conditions where backend closes connection before proxy is ready.
+ */
+export const tuneExpressServer = (server) => {
+  // Nginx default is 65s. We set Node higher (70s) to avoid race conditions.
+  server.keepAliveTimeout = 70000;
+  server.headersTimeout   = 71000;
+  console.log('[OS/Network] Server keep-alive timeouts tuned (70s/71s)');
 };
 
 export default connectDB;

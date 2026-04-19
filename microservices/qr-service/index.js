@@ -1,16 +1,24 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
+import helmet from 'helmet';
+import compression from 'compression';
 import QRCode from 'qrcode';
 import sharp from 'sharp';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { registerProcessHandlers, tuneExpressServer } from '../shared/db.js';
 
 dotenv.config();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
-app.use(cors());
+app.use(compression());
+app.use(helmet());
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGINS === '*' ? '*' : (process.env.ALLOWED_ORIGINS || '').split(','),
+  credentials: true,
+}));
 app.use(express.json({ limit: '10mb' }));
 
 /**
@@ -108,5 +116,7 @@ app.post('/api/qr/generate', async (req, res) => {
 
 app.get('/health', (req, res) => res.json({ status: 'ok', service: 'qr-service' }));
 
-const PORT = process.env.PORT || 4014;
-app.listen(PORT, () => console.log(`QR Service running on port ${PORT}`));
+const PORT   = process.env.PORT_QR_SERVICE || 4014;
+const server = app.listen(PORT, () => console.log(`QR Service running on port ${PORT}`));
+registerProcessHandlers(server, 'QRService');
+tuneExpressServer(server);

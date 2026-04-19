@@ -1,7 +1,9 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
-import connectDB, { requireDB, registerProcessHandlers } from '../shared/db.js';
+import helmet from 'helmet';
+import compression from 'compression';
+import connectDB, { requireDB, registerProcessHandlers, tuneExpressServer } from '../shared/db.js';
 import { errorHandler, notFound } from '../shared/errorHandler.js';
 import jwtMiddleware from '../shared/jwtMiddleware.js';
 import crypto from 'crypto';
@@ -26,8 +28,15 @@ import {
 
 dotenv.config();
 
+const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:5000';
+
 const app = express();
-app.use(cors());
+app.use(compression());
+app.use(helmet());
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGINS === '*' ? '*' : (process.env.ALLOWED_ORIGINS || '').split(','),
+  credentials: true,
+}));
 app.use(express.json({ limit: '10mb' }));
 
 // ── Health ──────────────────────────────────────────────────────────────────
@@ -37,11 +46,10 @@ app.get('/health', (_req, res) =>
 
 connectDB('OrganizerService');
 
-// ── Dynamic price helper ───────────────────────────────────────────────────
-const getDynamicPrice = (category, event) => {
+// ── Dynamic price helper (Fallback) ──────────────────────────────────────────
+const getDynamicPriceFallback = (category, event) => {
   if (!event) return 0;
   
-  // If no category (e.g. general capacity event), use event basePrice as base
   const basePrice = category ? (Number(category.price) || 0) : (Number(event.basePrice) || 0);
   if (basePrice <= 0) return 0;
 
@@ -56,6 +64,59 @@ const getDynamicPrice = (category, event) => {
   
   return Math.round(basePrice * Math.min(multiplier, maxMult));
 };
+
+/**
+ * predictMLPrice — extract features and call ML service
+ */
+async function predictMLPrice(category, event) {
+  try {
+    const now = new Date();
+    const start = new Date(event.startDate);
+    const end = event.endDate ? new Date(event.endDate) : start;
+    
+    // Feature extraction
+    const totalCap = (event.ticketCategories || []).reduce((s, c) => s + (Number(c.seats) || 0), 0) || Number(event.capacity) || 1;
+    const totalSold = (event.ticketCategories || []).reduce((s, c) => s + (Number(c.seats) || 0) - (Number(c.availableSeats) ?? (Number(c.seats) || 0)), 0);
+    
+    const daysUntil = Math.max(0, (start - now) / (1000 * 60 * 60 * 24));
+    const duration = Math.max(1, (end - start) / (1000 * 60 * 60 * 24));
+    
+    // Season mapping (1:Winter, 2:Spring, 3:Summer, 4:Fall)
+    const month = start.getMonth() + 1;
+    const season = (month >= 3 && month <= 5) ? 2 : (month >= 6 && month <= 8) ? 3 : (month >= 9 && month <= 11) ? 4 : 1;
+
+    const payload = {
+      capacity: totalCap,
+      tickets_sold: totalSold,
+      base_price: category ? category.price : event.basePrice,
+      days_until_event: daysUntil,
+      event_duration: duration,
+      event_popularity: event.eventPopularity || 0.5,
+      venue_tier: event.venueTier || 2,
+      artist_tier: event.artistTier || 3,
+      is_holiday: event.isHoliday ? 1 : 0,
+      category: event.category || 'other'
+    };
+
+    const { data } = await axios.post(`${ML_SERVICE_URL}/predict`, payload, { timeout: 2000 });
+    
+    // Adjust predicted generic price to this specific category's base ratio
+    const basePrice = category ? category.price : event.basePrice;
+    const eventBase = event.basePrice || basePrice;
+    const ratio = basePrice / eventBase;
+    
+    let finalPrice = data.predicted_price * ratio;
+    
+    // Safety bounds
+    const maxPrice = category?.maxPrice || (basePrice * 2.5);
+    finalPrice = Math.max(basePrice * 0.8, Math.min(maxPrice, finalPrice));
+    
+    return isNaN(finalPrice) ? getDynamicPriceFallback(category, event) : Math.round(finalPrice);
+  } catch (err) {
+    console.error(`[OrganizerService] ML Prediction failed for event ${event._id}:`, err.message);
+    return getDynamicPriceFallback(category, event);
+  }
+}
 
 /* ── Health ───────────────────────────────────────────────────────────────── */
 app.get('/health', (_req, res) =>
@@ -215,9 +276,13 @@ app.get('/api/events/:id/dynamic-prices', async (req, res, next) => {
 
     const prices = {};
     if (event.ticketCategories?.length > 0) {
-      event.ticketCategories.forEach((cat) => {
-        prices[cat.name] = getDynamicPrice(cat, event);
+      // Use concurrent prediction for all categories
+      const predPromises = event.ticketCategories.map(async (cat) => {
+        prices[cat.name] = await predictMLPrice(cat, event);
       });
+      await Promise.all(predPromises);
+    } else {
+      prices['standard'] = await predictMLPrice(null, event);
     }
 
     const totalCap  = event.ticketCategories?.reduce((s, c) => s + Number(c.seats), 0) || 0;
@@ -225,7 +290,7 @@ app.get('/api/events/:id/dynamic-prices', async (req, res, next) => {
     const occupancyRate = totalCap ? ((totalSold / totalCap) * 100).toFixed(1) : '0.0';
 
     wsPriceUpdate(req.params.id, prices, occupancyRate);
-    res.json({ prices, occupancyRate });
+    res.json({ prices, occupancyRate, source: 'ml-model' });
   } catch (err) { next(err); }
 });
 
@@ -314,7 +379,7 @@ app.post('/api/tickets', jwtMiddleware, requireDB, async (req, res, next) => {
     }
 
     // 3. Update inventory & revenue (Constrained update would also work, but we use Lock)
-    const amount = (pricePerTicket || getDynamicPrice(category, event)) * qty;
+    const amount = (pricePerTicket || await predictMLPrice(category, event)) * qty;
     
     if (category) {
       await Event.findOneAndUpdate(
@@ -342,7 +407,8 @@ app.post('/api/tickets', jwtMiddleware, requireDB, async (req, res, next) => {
     const tickets = [];
     for (let i = 0; i < qty; i++) {
         const qrToken = crypto.randomBytes(32).toString('hex');
-        const qrUrl   = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify?token=${qrToken}`;
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+        const qrUrl   = `${frontendUrl}/verify?token=${qrToken}`;
         
         let qrCode = '';
         try {
@@ -350,7 +416,7 @@ app.post('/api/tickets', jwtMiddleware, requireDB, async (req, res, next) => {
             text: qrUrl,
             logoPath: '../../public/default-event.png',
             position: 'center'
-          });
+          }, { timeout: 5000 });
           qrCode = qrResponse.data.qrCode;
         } catch (qrErr) {
           console.error(`[OrganizerService] QR generation failed for ticket ${i+1}:`, qrErr.message);
@@ -362,9 +428,9 @@ app.post('/api/tickets', jwtMiddleware, requireDB, async (req, res, next) => {
           categoryName: catName || 'standard',
           customerName: qty > 1 ? `${customerName} (Ticket ${i + 1})` : customerName,
           customerEmail,
-          pricePerTicket: pricePerTicket || getDynamicPrice(category, event),
+          pricePerTicket: pricePerTicket || await predictMLPrice(category, event),
           quantity: 1, // Individual ticket
-          totalAmount: pricePerTicket || getDynamicPrice(category, event),
+          totalAmount: pricePerTicket || await predictMLPrice(category, event),
           status: 'confirmed',
           qrToken,
           qrCode,
@@ -416,6 +482,7 @@ app.get('/api/tickets', jwtMiddleware, requireDB, async (req, res, next) => {
 app.use(notFound);
 app.use(errorHandler);
 
-const PORT   = process.env.PORT_ORGANIZER_SERVICE || process.env.PORT || 4013;
+const PORT   = process.env.PORT_ORGANIZER_SERVICE || 4013;
 const server = app.listen(PORT, () => console.log(`Organizer Service running on port ${PORT}`));
 registerProcessHandlers(server, 'OrganizerService');
+tuneExpressServer(server);

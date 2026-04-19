@@ -11,8 +11,7 @@ import Analytics from './components/Analytics';
 import TicketPurchase from './components/TicketPurchase';
 import Subscription from './components/Subscription';
 import { buildUrl, ENDPOINTS } from './config/api';
-import './App.css';
-import './components/NavBadge.css';
+import './components/Navigation.css';
 import UserProfile from "./components/UserProfile.jsx";
 import Notifications from "./components/Notifications.jsx";
 import OrganizerDashboard from "./components/OrganizerDashboard.jsx";
@@ -121,15 +120,15 @@ function AppContent() {
           <span className="brand-icon">🎫</span>
           <span className="brand-name">FanFeverTickets</span>
         </div>
-        
-        <button 
-          className="mobile-menu-toggle" 
+
+        <button
+          className="mobile-menu-toggle"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           aria-label="Toggle menu"
         >
           {mobileMenuOpen ? '✕' : '☰'}
         </button>
-        
+
         <div className={`nav-links ${mobileMenuOpen ? 'mobile-open' : ''}`}>
           <button onClick={() => setView('home')} className={view === 'home' ? 'active' : ''}>
             Home
@@ -164,7 +163,7 @@ function AppContent() {
               🛡️ Staff Scanner
             </button>
           )}
-          
+
           {/* Mobile-only auth buttons */}
           <div className="mobile-auth-buttons">
             {!isAuthenticated ? (
@@ -182,10 +181,10 @@ function AppContent() {
                 {user?.subscription && user.subscription.isActive && user.subscription.plan !== 'none' && (
                   <span className="nav-subscription-badge">
                     {user.subscription.plan === '7_days' ? 'WEEKLY' :
-                     user.subscription.plan === '30_days' ? 'MONTHLY' :
-                     user.subscription.plan === '3_months' ? 'QUARTERLY' :
-                     user.subscription.plan === '6_months' ? 'BIANNUAL' :
-                     user.subscription.plan === '1_year' ? 'ANNUAL' : 'MEMBER'}
+                      user.subscription.plan === '30_days' ? 'MONTHLY' :
+                        user.subscription.plan === '3_months' ? 'QUARTERLY' :
+                          user.subscription.plan === '6_months' ? 'BIANNUAL' :
+                            user.subscription.plan === '1_year' ? 'ANNUAL' : 'MEMBER'}
                   </span>
                 )}
                 {!isAdmin() && (
@@ -198,7 +197,7 @@ function AppContent() {
             )}
           </div>
         </div>
-        
+
         <div className="nav-actions">
           {!isAuthenticated ? (
             <>
@@ -212,15 +211,15 @@ function AppContent() {
           ) : (
             <div className="nav-user">
               <span className="user-name">{user?.name}</span>
-               {user?.subscription && user.subscription.isActive && user.subscription.plan !== 'none' && (
-                  <span className="nav-subscription-badge">
-                      {user.subscription.plan === '7_days' ? 'WEEKLY' :
-                       user.subscription.plan === '30_days' ? 'MONTHLY' :
-                       user.subscription.plan === '3_months' ? 'QUARTERLY' :
-                       user.subscription.plan === '6_months' ? 'BIANNUAL' :
-                       user.subscription.plan === '1_year' ? 'ANNUAL' : 'MEMBER'}
-                  </span>
-               )}
+              {user?.subscription && user.subscription.isActive && user.subscription.plan !== 'none' && (
+                <span className="nav-subscription-badge">
+                  {user.subscription.plan === '7_days' ? 'WEEKLY' :
+                    user.subscription.plan === '30_days' ? 'MONTHLY' :
+                      user.subscription.plan === '3_months' ? 'QUARTERLY' :
+                        user.subscription.plan === '6_months' ? 'BIANNUAL' :
+                          user.subscription.plan === '1_year' ? 'ANNUAL' : 'MEMBER'}
+                </span>
+              )}
               {!isAdmin() && (
                 <button onClick={() => setView('subscription')} className="nav-profile-btn">Membership</button>
               )}
@@ -265,7 +264,7 @@ function AppContent() {
       {view === 'events' && (
         <div className="main-content">
           {loading && <div className="loading">Loading...</div>}
-          <EventList 
+          <EventList
             events={events}
             onSelectEvent={handleSelectEvent}
             onUpdatePrice={handleUpdatePrice}
@@ -286,7 +285,7 @@ function AppContent() {
       )}
 
       {view === 'purchase' && selectedEvent && (
-        <TicketPurchase 
+        <TicketPurchase
           event={selectedEvent}
           onBack={() => setView('events')}
           onSuccess={() => {

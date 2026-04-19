@@ -1,7 +1,9 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
-import connectDB, { requireDB, registerProcessHandlers } from '../shared/db.js';
+import helmet from 'helmet';
+import compression from 'compression';
+import connectDB, { requireDB, registerProcessHandlers, tuneExpressServer } from '../shared/db.js';
 import { errorHandler, notFound } from '../shared/errorHandler.js';
 import jwtMiddleware from '../shared/jwtMiddleware.js';
 import Ticket from '../shared/models/Ticket.js';
@@ -11,7 +13,12 @@ import { wsAttendanceUpdate, notify, wsNotifyUser } from '../shared/interservice
 dotenv.config();
 
 const app = express();
-app.use(cors());
+app.use(compression());
+app.use(helmet());
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGINS === '*' ? '*' : (process.env.ALLOWED_ORIGINS || '').split(','),
+  credentials: true,
+}));
 app.use(express.json());
 
 connectDB('ScannerService');
@@ -86,6 +93,7 @@ app.get('/health', (req, res) =>
 app.use(notFound);
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 4015;
+const PORT = process.env.PORT_SCANNER_SERVICE || 4015;
 const server = app.listen(PORT, () => console.log(`Scanner Service running on port ${PORT}`));
 registerProcessHandlers(server, 'ScannerService');
+tuneExpressServer(server);

@@ -1,7 +1,9 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
-import connectDB, { requireDB, registerProcessHandlers } from '../shared/db.js';
+import helmet from 'helmet';
+import compression from 'compression';
+import connectDB, { requireDB, registerProcessHandlers, tuneExpressServer } from '../shared/db.js';
 import { errorHandler, notFound } from '../shared/errorHandler.js';
 import jwtMiddleware from '../shared/jwtMiddleware.js';
 import User from '../shared/models/User.js';
@@ -9,6 +11,12 @@ import User from '../shared/models/User.js';
 dotenv.config();
 
 const app = express();
+app.use(compression());
+app.use(helmet());
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGINS === '*' ? '*' : (process.env.ALLOWED_ORIGINS || '').split(','),
+  credentials: true,
+}));
 app.use(express.json());
 
 // ── Health ──────────────────────────────────────────────────────────────────
@@ -74,6 +82,7 @@ app.delete('/api/users/:id', requireDB, async (req, res, next) => {
 app.use(notFound);
 app.use(errorHandler);
 
-const PORT   = process.env.PORT_USER_SERVICE || process.env.PORT || 4002;
+const PORT   = process.env.PORT_USER_SERVICE || 4002;
 const server = app.listen(PORT, () => console.log(`User Service running on port ${PORT}`));
 registerProcessHandlers(server, 'UserService');
+tuneExpressServer(server);

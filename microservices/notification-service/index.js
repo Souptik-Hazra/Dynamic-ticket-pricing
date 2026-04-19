@@ -2,14 +2,21 @@ import express from 'express';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import cors from 'cors';
-import connectDB, { requireDB, registerProcessHandlers } from '../shared/db.js';
+import helmet from 'helmet';
+import compression from 'compression';
+import connectDB, { requireDB, registerProcessHandlers, tuneExpressServer } from '../shared/db.js';
 import { errorHandler, notFound } from '../shared/errorHandler.js';
 import jwtMiddleware from '../shared/jwtMiddleware.js';
 
 dotenv.config();
 
 const app = express();
-app.use(cors());
+app.use(compression());
+app.use(helmet());
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGINS === '*' ? '*' : (process.env.ALLOWED_ORIGINS || '').split(','),
+  credentials: true,
+}));
 app.use(express.json());
 
 // ── Health ──────────────────────────────────────────────────────────────────
@@ -92,6 +99,7 @@ app.delete('/api/notifications/:id', jwtMiddleware, requireDB, async (req, res, 
 app.use(notFound);
 app.use(errorHandler);
 
-const PORT   = process.env.PORT_NOTIFICATION_SERVICE || process.env.PORT || 4009;
+const PORT   = process.env.PORT_NOTIFICATION_SERVICE || 4009;
 const server = app.listen(PORT, () => console.log(`Notification Service running on port ${PORT}`));
 registerProcessHandlers(server, 'NotificationService');
+tuneExpressServer(server);

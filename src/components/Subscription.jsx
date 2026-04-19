@@ -2,14 +2,13 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { buildUrl, ENDPOINTS } from '../config/api';
-import { subscriptionPlans } from '../utils/subscriptionPlans';
 import './Subscription.css';
-
 const Subscription = () => {
   const { user, refreshUser } = useAuth();
   const [loading,    setLoading]    = useState(false);
   const [fetchingLive, setFetchingLive] = useState(true);
   const [liveSub,    setLiveSub]    = useState(null);   // fresh from API
+  const [subscriptionPlans, setSubscriptionPlans] = useState([]); // Dynamic from backend
   const [message,   setMessage]    = useState({ text: '', isError: false });
 
   const authHeader = () => {
@@ -17,24 +16,29 @@ const Subscription = () => {
     return token ? { Authorization: `Bearer ${token}` } : {};
   };
 
-  // Fetch live subscription on mount (GET /subscription)
+  // Fetch plans and current subscription on mount
   useEffect(() => {
-    const fetchSub = async () => {
+    const fetchData = async () => {
       try {
-        const { data } = await axios.get(buildUrl(ENDPOINTS.SUBSCRIPTION), {
+        // 1. Fetch available plans (Public data)
+        const plansRes = await axios.get(buildUrl(ENDPOINTS.SUBSCRIPTION_PLANS));
+        setSubscriptionPlans(plansRes.data);
+
+        // 2. Fetch user's live subscription (Protected)
+        const subRes = await axios.get(buildUrl(ENDPOINTS.SUBSCRIPTION), {
           headers: authHeader(),
         });
-        setLiveSub(data);
+        setLiveSub(subRes.data);
       } catch (err) {
-        console.warn('Could not fetch live subscription:', err.message);
-        // Fallback to AuthContext snapshot
+        console.warn('Could not fetch subscription data:', err.message);
+        // Fallback to AuthContext snapshot if API fails
         setLiveSub(user?.subscription || { plan: 'none', isActive: false });
       } finally {
         setFetchingLive(false);
       }
     };
-    fetchSub();
-  }, []); // eslint-disable-line
+    fetchData();
+  }, [user]); // eslint-disable-line
 
   const currentPlan = liveSub?.plan || user?.subscription?.plan || 'none';
   const isActive    = liveSub?.isActive ?? (user?.subscription?.isActive ?? false);

@@ -2,13 +2,20 @@ import express from 'express';
 import Redis from 'ioredis';
 import dotenv from 'dotenv';
 import cors from 'cors';
+import helmet from 'helmet';
+import compression from 'compression';
 import { errorHandler, notFound } from '../shared/errorHandler.js';
-import { registerProcessHandlers } from '../shared/db.js';
+import { registerProcessHandlers, tuneExpressServer } from '../shared/db.js';
 
 dotenv.config();
 
 const app = express();
-app.use(cors());
+app.use(compression());
+app.use(helmet());
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGINS === '*' ? '*' : (process.env.ALLOWED_ORIGINS || '').split(','),
+  credentials: true,
+}));
 app.use(express.json());
 
 // ── Redis client with graceful degradation ────────────────────────────────
@@ -279,6 +286,7 @@ app.use(notFound);
 app.use(errorHandler);
 
 // ── Start ──────────────────────────────────────────────────────────────────
-const PORT = process.env.PORT_CACHE_SERVICE || process.env.PORT || 4005;
+const PORT = process.env.PORT_CACHE_SERVICE || 4005;
 const server = app.listen(PORT, () => console.log(`Cache Service running on port ${PORT}`));
 registerProcessHandlers(server, 'CacheService');
+tuneExpressServer(server);

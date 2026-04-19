@@ -1,7 +1,9 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
-import connectDB, { requireDB, registerProcessHandlers } from '../shared/db.js';
+import helmet from 'helmet';
+import compression from 'compression';
+import connectDB, { requireDB, registerProcessHandlers, tuneExpressServer } from '../shared/db.js';
 import { errorHandler, notFound } from '../shared/errorHandler.js';
 import jwtMiddleware from '../shared/jwtMiddleware.js';
 import Event from '../shared/models/Event.js';
@@ -13,7 +15,12 @@ import { cacheDel, cacheDelPattern, CACHE_KEYS, creditUserWallet, debitUserWalle
 dotenv.config();
 
 const app = express();
-app.use(cors());
+app.use(compression());
+app.use(helmet());
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGINS === '*' ? '*' : (process.env.ALLOWED_ORIGINS || '').split(','),
+  credentials: true,
+}));
 app.use(express.json({ limit: '10mb' }));
 
 connectDB('AdminService');
@@ -321,7 +328,8 @@ app.use(notFound);
 app.use(errorHandler);
 
 // ── Start ──────────────────────────────────────────────────────────────────
-const PORT   = process.env.PORT_ADMIN_SERVICE || process.env.PORT || 4003;
+const PORT   = process.env.PORT_ADMIN_SERVICE || 4003;
 const server = app.listen(PORT, () => console.log(`Admin Service running on port ${PORT}`));
 registerProcessHandlers(server, 'AdminService');
+tuneExpressServer(server);
 

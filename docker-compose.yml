@@ -1,0 +1,201 @@
+version: '3.8'
+
+services:
+  # ── Infrastructure ────────────────────────────────────────────────────────
+  mongodb:
+    image: mongo:latest
+    profiles: ["core", "full"]
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+
+  redis:
+    image: redis:alpine
+    profiles: ["core", "full"]
+    ports:
+      - "6379:6379"
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    profiles: ["full"]
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  # ── Core Microservices ────────────────────────────────────────────────────
+  api-gateway:
+    build:
+      context: ./microservices
+      dockerfile: Dockerfile.node
+      args: { SERVICE_PATH: api-gateway, PORT: 3001 }
+    profiles: ["core", "full"]
+    ports: ["3001:3001"]
+    depends_on: [mongodb, redis]
+    environment:
+      - PORT=3001
+      - MONGODB_URI=mongodb://mongodb:27017/dynamic-ticket-pricing
+      - REDIS_URL=redis://redis:6379
+      - AUTH_SERVICE_URL=http://authentication-service:4001
+      - USER_SERVICE_URL=http://user-service:4002
+      - ORGANIZER_SERVICE_URL=http://organizer-service:4013
+
+  authentication-service:
+    build:
+      context: ./microservices
+      dockerfile: Dockerfile.node
+      args: { SERVICE_PATH: authentication-service, PORT: 4001 }
+    profiles: ["core", "full"]
+    ports: ["4001:4001"]
+    depends_on: [mongodb]
+    environment:
+      - PORT=4001
+      - MONGODB_URI=mongodb://mongodb:27017/dynamic-ticket-pricing
+      - JWT_SECRET=SouptikHazraSecretKey
+
+  user-service:
+    build:
+      context: ./microservices
+      dockerfile: Dockerfile.node
+      args: { SERVICE_PATH: user-service, PORT: 4002 }
+    profiles: ["core", "full"]
+    ports: ["4002:4002"]
+    depends_on: [mongodb]
+    environment:
+      - PORT=4002
+      - MONGODB_URI=mongodb://mongodb:27017/dynamic-ticket-pricing
+
+  organizer-service:
+    build:
+      context: ./microservices
+      dockerfile: Dockerfile.node
+      args: { SERVICE_PATH: organizer-service, PORT: 4013 }
+    profiles: ["core", "full"]
+    ports: ["4013:4013"]
+    depends_on: [mongodb]
+    environment:
+      - PORT=4013
+      - MONGODB_URI=mongodb://mongodb:27017/dynamic-ticket-pricing
+
+  # ── Dynamic Pricing ML ───────────────────────────────────────────────────
+  ml-model:
+    build: { context: ./ml-model }
+    profiles: ["ml", "full"]
+    ports: ["5000:5000"]
+    depends_on: [mongodb]
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/dynamic-ticket-pricing
+
+  # ── Secondary & Support Services (Included in 'full') ──────────────────────
+  admin-service:
+    build:
+      context: ./microservices
+      dockerfile: Dockerfile.node
+      args: { SERVICE_PATH: admin-service, PORT: 4003 }
+    profiles: ["full"]
+    ports: ["4003:4003"]
+    environment: [ "PORT=4003", "MONGODB_URI=mongodb://mongodb:27017/dynamic-ticket-pricing" ]
+
+  payment-service:
+    build:
+      context: ./microservices
+      dockerfile: Dockerfile.node
+      args: { SERVICE_PATH: payment-service, PORT: 4004 }
+    profiles: ["full"]
+    ports: ["4004:4004"]
+    environment: [ "PORT=4004", "MONGODB_URI=mongodb://mongodb:27017/dynamic-ticket-pricing" ]
+
+  cache-service:
+    build:
+      context: ./microservices
+      dockerfile: Dockerfile.node
+      args: { SERVICE_PATH: cache-service, PORT: 4005 }
+    profiles: ["full"]
+    ports: ["4005:4005"]
+    environment: [ "PORT=4005", "REDIS_URL=redis://redis:6379" ]
+
+  email-service:
+    build:
+      context: ./microservices
+      dockerfile: Dockerfile.node
+      args: { SERVICE_PATH: email-service, PORT: 4007 }
+    profiles: ["full"]
+    ports: ["4007:4007"]
+    environment: [ "PORT=4007" ]
+
+  notification-service:
+    build:
+      context: ./microservices
+      dockerfile: Dockerfile.node
+      args: { SERVICE_PATH: notification-service, PORT: 4009 }
+    profiles: ["full"]
+    ports: ["4009:4009"]
+    environment: [ "PORT=4009" ]
+
+  websocket-service:
+    build:
+      context: ./microservices
+      dockerfile: Dockerfile.node
+      args: { SERVICE_PATH: websocket-service, PORT: 4010 }
+    profiles: ["full"]
+    ports: ["4010:4010"]
+    environment: [ "PORT=4010" ]
+
+  analytics-service:
+    build:
+      context: ./microservices
+      dockerfile: Dockerfile.node
+      args: { SERVICE_PATH: analytics-service, PORT: 4011 }
+    profiles: ["full"]
+    ports: ["4011:4011"]
+    environment: [ "PORT=4011", "MONGODB_URI=mongodb://mongodb:27017/dynamic-ticket-pricing" ]
+
+  subscription-service:
+    build:
+      context: ./microservices
+      dockerfile: Dockerfile.node
+      args: { SERVICE_PATH: subscription-service, PORT: 4012 }
+    profiles: ["full"]
+    ports: ["4012:4012"]
+    environment: [ "PORT=4012" ]
+
+  qr-service:
+    build:
+      context: ./microservices
+      dockerfile: Dockerfile.node
+      args: { SERVICE_PATH: qr-service, PORT: 4014 }
+    profiles: ["full"]
+    ports: ["4014:4014"]
+    environment: [ "PORT=4014" ]
+
+  scanner-service:
+    build:
+      context: ./microservices
+      dockerfile: Dockerfile.node
+      args: { SERVICE_PATH: scanner-service, PORT: 4015 }
+    profiles: ["full"]
+    ports: ["4015:4015"]
+    environment: [ "PORT=4015" ]
+
+  wallet-service:
+    build:
+      context: ./microservices
+      dockerfile: Dockerfile.node
+      args: { SERVICE_PATH: wallet-service, PORT: 4016 }
+    profiles: ["full"]
+    ports: ["4016:4016"]
+    environment: [ "PORT=4016", "MONGODB_URI=mongodb://mongodb:27017/dynamic-ticket-pricing" ]
+
+  # ── Frontend ────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    profiles: ["core", "full"]
+    ports: ["5173:80"]
+    depends_on: [api-gateway]
+    environment:
+      - VITE_API_URL=http://api-gateway:3001/api
+
+volumes:
+  mongodb_data:
