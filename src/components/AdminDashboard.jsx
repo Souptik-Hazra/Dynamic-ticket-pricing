@@ -117,6 +117,7 @@ function AdminDashboard() {
       await axios.post(buildUrl(`${ENDPOINTS.ADMIN_EVENTS}/${eventId}/complete`), {}, authHeaders());
       alert('Event completed and commission transferred!');
       fetchEvents();
+      fetchAdminWallet();
     } catch (err) {
       console.error('Completion error:', err);
       alert(err.response?.data?.error || 'Failed to complete event');
@@ -174,6 +175,7 @@ function AdminDashboard() {
     try {
       await axios.delete(buildUrl(`${ENDPOINTS.ADMIN_EVENTS}/${eventId}`), authHeaders());
       fetchEvents();
+      fetchAdminWallet();
     } catch (err) {
       console.error('Delete error:', err);
       alert('Failed to delete event');

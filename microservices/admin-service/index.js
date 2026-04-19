@@ -258,25 +258,28 @@ app.post('/api/admin/events/:id/complete', auth, async (req, res, next) => {
     const admin = await User.findOne({ role: 'admin' });
     if (!admin) return res.status(500).json({ error: 'No system admin found' });
 
-    // 2. Calculate Commission (15%)
+    // 2. Calculate Commission (20% - Standardized)
     const revenue = event.totalRevenue || 0;
-    const commissionAmount = Math.round(revenue * 0.15);
+    const commissionAmount = Math.round(revenue * 0.20);
 
-    // 3. Process Wallet Transfers
-    if (commissionAmount > 0) {
-      debitUserWallet(event.organizerId, commissionAmount, `Commission payout (15%) for event: ${event.name}`);
+    // 3. Process Wallet Transfers (Only if organizer exists and amount > 0)
+    if (commissionAmount > 0 && event.organizerId) {
+      debitUserWallet(event.organizerId, commissionAmount, `Commission payout (20%) for event: ${event.name}`);
       creditUserWallet(admin._id, commissionAmount, `Commission received from ${event.organizerId} for event: ${event.name}`);
     }
 
-    // 4. Create Commission Record
-    await Commission.create({
-      eventId: event._id,
-      organizerId: event.organizerId,
-      adminId: admin._id,
-      totalRevenue: revenue,
-      commissionAmount,
-      status: 'paid'
-    });
+    // 4. Create Commission Record (Only if organizer exists)
+    if (event.organizerId) {
+      await Commission.create({
+        eventId: event._id,
+        organizerId: event.organizerId,
+        adminId: admin._id,
+        totalRevenue: revenue,
+        commissionAmount,
+        percentage: 20,
+        status: 'paid'
+      });
+    }
 
     // 5. Update Event Status
     event.status = 'completed';
@@ -288,8 +291,10 @@ app.post('/api/admin/events/:id/complete', auth, async (req, res, next) => {
 
     res.json({ 
       success: true, 
-      message: 'Event completed and commission processed',
-      commissionAmount,
+      message: event.organizerId 
+        ? 'Event completed and commission processed' 
+        : 'Event completed (No commission processed as no organizer was assigned)',
+      commissionAmount: event.organizerId ? commissionAmount : 0,
       revenue
     });
   } catch (err) { next(err); }
