@@ -39,9 +39,7 @@ button {
   cursor: pointer;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    background-color: #0f172a;
-    color: #e2e8f0;
-  }
+/* Standardizing on a clean light theme as requested */
+:root {
+  background-color: #ffffff;
 }

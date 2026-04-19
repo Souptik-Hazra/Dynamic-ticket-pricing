@@ -220,6 +220,7 @@ export const cacheDelPattern = (pattern) =>
 export const CACHE_KEYS = {
   // Event-related
   EVENT_DETAIL: (id) => `event:${id}`,
+  EVENT_PRICES: (id) => `prices:${id}`,
   EVENT_LIST: (query = '{}') => `events:list:${query}`,
   EVENT_LIST_ALL: 'events:list:*',
 

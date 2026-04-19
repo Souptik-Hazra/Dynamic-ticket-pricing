@@ -30,15 +30,27 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" } // Allow cross-origin requests
 }));
 
-// Rate limiting — prevents brute force/DDoS
-const limiter = rateLimit({
+// 1. Global Rate limiting — prevents brute force/DDoS
+const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 200, // Slightly increased for high-pulse services
+  max: 500, // Balanced for SPA navigation
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Too many requests from this IP, please try again after 15 minutes' },
+  message: { error: 'Too many requests, please try again after 15 minutes' },
 });
-app.use('/api', limiter);
+
+// 2. Hardened Pricing Limiter — prevents price scraping & "hunting"
+const pricingLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, 
+  max: 30, // Strict: 30 requests per IP per 15 minutes
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Price lookup limit exceeded. Please wait 15 minutes.' },
+  skipSuccessfulRequests: false,
+});
+
+app.use('/api', globalLimiter);
+app.use('/api/events/:id/dynamic-prices', pricingLimiter);
 
 // ── Service registry ───────────────────────────────────────────────────────
 const SERVICES = {
@@ -109,7 +121,8 @@ app.use(proxy('/api/scanner', SERVICES.scanner));
 app.use(proxy('/api/wallet', SERVICES.wallet));
 
 // ── WebSocket Proxy (Direct Upgrade support) ──────────────────────────────
-app.use(proxy('/api/ws', SERVICES.websocket));
+const wsProxy = proxy('/api/ws', SERVICES.websocket);
+app.use(wsProxy);
 
 // ── ML Model (Special case: strips prefix) ─────────────────────────────────
 app.use(
@@ -156,3 +169,11 @@ const server = app.listen(PORT, '0.0.0.0', () => console.log(`API Gateway runnin
 
 // Apply OS/Network tuning to the server instance
 tuneExpressServer(server);
+
+// ── WebSocket Upgrade Handler ─────────────────────────────────────────────
+// Manually forward 'upgrade' events to the WebSocket proxy
+server.on('upgrade', (req, socket, head) => {
+  if (req.url?.startsWith('/api/ws')) {
+    wsProxy.upgrade(req, socket, head);
+  }
+});

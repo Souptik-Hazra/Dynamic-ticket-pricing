@@ -28,4 +28,21 @@ const jwtMiddleware = (req, res, next) => {
   }
 };
 
+export const requireRole = (role) => (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Authentication required.' });
+  }
+  
+  // Admin bypass: Admins can access everything
+  if (req.user.role === 'admin') return next();
+
+  if (req.user.role !== role) {
+    return res.status(403).json({ 
+      error: `Forbidden: This resource requires ${role} privileges. Your role: ${req.user.role}` 
+    });
+  }
+  
+  next();
+};
+
 export default jwtMiddleware;

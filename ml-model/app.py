@@ -4,6 +4,7 @@ import joblib
 import numpy as np
 import os
 import json
+import pandas as pd
 from datetime import datetime
 from dotenv import load_dotenv
 
@@ -88,14 +89,34 @@ def predict_price():
         for cat in categories:
             features.append(1 if category == cat else 0)
         
-        features_scaled = scaler.transform([features])
+        # Build feature DataFrame with names to avoid warnings and ensure alignment
+        cols = [
+            'capacity', 'tickets_sold', 'base_price', 'days_until_event', 'event_duration',
+            'event_popularity', 'venue_tier', 'artist_tier', 'is_holiday'
+        ]
+        # Append one-hot categories in SAME ORDER as training
+        for cat in categories:
+            cols.append(f'cat_{cat}')
+            
+        df_features = pd.DataFrame([features], columns=cols)
+        
+        # Scale and predict
+        features_scaled = scaler.transform(df_features)
         pred = model.predict(features_scaled)[0]
         
-        # Bounds: 80% of base to 10x base
-        final_price = max(base_price * 0.8, min(pred, base_price * 10))
+        # ── Refined Bounds & Surge Protection ────────────────────────────────
+        # Minimum: 80% of base
+        # Maximum: 2.5x of base (Production safety cap)
+        final_price = max(base_price * 0.8, min(pred, base_price * 2.5))
+        
+        # ── Shadow Model Simulation ──────────────────────────────────────────
+        # In a real environment, this would call a different experimental model.
+        # We simulate a "Challenger" model that tests a 15% more aggressive surge.
+        shadow_price = final_price * 1.15
         
         return jsonify({
             'predicted_price': float(round(final_price, 2)),
+            'shadow_price': float(round(shadow_price, 2)),
             'currency': 'INR',
             'model_version': model_version,
             'features_used': {

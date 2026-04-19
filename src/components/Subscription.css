@@ -2,7 +2,7 @@
     padding: 2rem;
     max-width: 1200px;
     margin: 0 auto;
-    color: #e0e0e0;
+    color: #333;
 }
 
 .subscription-container h2 {
@@ -113,7 +113,7 @@
 .plan-features li {
     padding: 0.8rem 0;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    color: #ccc;
+    color: #eee;
     display: flex;
     align-items: center;
 }

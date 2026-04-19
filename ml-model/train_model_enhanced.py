@@ -269,7 +269,7 @@ def main():
         print(f"      Predicted Price: {result['price']:.2f}")
     
     # Save model info
-    model_version = f"v2.0.{datetime.now().strftime('%Y%m%d')}"
+    model_version = f"v2.1.{datetime.now().strftime('%Y%m%d')}"
     model_info = {
         'modelVersion': model_version,
         'modelType': "XGBRegressor (XGBoost)",

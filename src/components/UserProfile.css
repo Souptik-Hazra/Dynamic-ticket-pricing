@@ -110,7 +110,7 @@
   display: flex;
   gap: 0.5rem;
   margin-bottom: 1.5rem;
-  background: #1e1e2e;
+  background: #f1f3f9;
   border-radius: 14px;
   padding: 0.35rem;
   flex-wrap: wrap; /* Fixed: Allow wrapping on mobile */
@@ -123,7 +123,7 @@
   border: none;
   border-radius: 11px;
   background: transparent;
-  color: #aaa;
+  color: #666;
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
@@ -159,17 +159,17 @@
 
 /* ===== Cards ===== */
 .profile-card {
-  background: #1e1e2e;
+  background: #ffffff;
   border-radius: 18px;
   padding: 2rem;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e0e0e0;
 }
 
 .card-title {
   font-size: 1.4rem;
   font-weight: 700;
-  color: #fff;
+  color: #111;
   margin: 0 0 0.3rem;
 }
 
@@ -222,7 +222,7 @@
 .form-group-profile label {
   font-size: 0.85rem;
   font-weight: 600;
-  color: #ccc;
+  color: #555;
   margin-left: 0.2rem;
 }
 
@@ -244,9 +244,9 @@
   width: 100%;
   padding: 0.8rem 1rem 0.8rem 2.8rem;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.05);
-  color: #fff;
+  border: 1px solid #e0e0e0;
+  background: #f9fafb;
+  color: #111;
   font-size: 1rem;
   outline: none;
   transition: border-color 0.25s, box-shadow 0.25s;
@@ -414,15 +414,15 @@
   justify-content: space-between;
   align-items: center;
   padding: 1.15rem 1.3rem;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: #f9f9fb;
+  border: 1px solid #e5e7eb;
   border-radius: 12px;
   transition: background 0.2s, border-color 0.2s;
 }
 
 .ticket-card-profile:hover {
-  background: rgba(255, 255, 255, 0.07);
-  border-color: rgba(102, 126, 234, 0.25);
+  background: #f3f4f6;
+  border-color: #667eea;
 }
 
 .ticket-left {
@@ -433,7 +433,7 @@
 .ticket-event-name {
   font-size: 1.05rem;
   font-weight: 600;
-  color: #fff;
+  color: #111;
   margin-bottom: 0.35rem;
   white-space: nowrap;
   overflow: hidden;
@@ -467,7 +467,7 @@
 .ticket-amount {
   font-size: 1.15rem;
   font-weight: 700;
-  color: #fff;
+  color: #111;
   margin-bottom: 0.3rem;
 }
 
@@ -611,12 +611,12 @@
 }
 
 .print-ticket-modal {
-  background: #1a1a2e;
+  background: #ffffff;
   border-radius: 18px;
   max-width: 560px;
   width: 100%;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  border: 1px solid #e0e0e0;
   position: relative;
   max-height: 90vh;
   overflow-y: auto;
@@ -746,7 +746,7 @@
 .print-event-name {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #fff;
+  color: #111;
   margin: 0 0 1rem;
 }
 
@@ -1030,8 +1030,8 @@
 /* ===== Payment History Table ===== */
 .payments-table-container {
   margin-top: 1.5rem;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
   border-radius: 12px;
   overflow: hidden;
 }
@@ -1044,8 +1044,8 @@
 
 .payments-table th {
   padding: 1rem;
-  background: rgba(255, 255, 255, 0.04);
-  color: #888;
+  background: #f9fafb;
+  color: #4b5563;
   font-size: 0.8rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -1054,8 +1054,8 @@
 
 .payments-table td {
   padding: 1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  color: #ddd;
+  border-bottom: 1px solid #f3f4f6;
+  color: #374151;
   font-size: 0.9rem;
 }
 

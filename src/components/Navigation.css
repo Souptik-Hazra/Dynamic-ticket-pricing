@@ -141,6 +141,22 @@
   cursor: pointer;
 }
 
+.nav-subscription-badge {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.2);
+  text-transform: uppercase;
+  margin-left: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
 /* Mobile Menu Toggle Button */
 .mobile-menu-toggle {
   display: none;

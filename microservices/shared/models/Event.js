@@ -6,6 +6,7 @@ const ticketCategorySchema = new mongoose.Schema(
     name:           { type: String, required: true, trim: true, lowercase: true },
     price:          { type: Number, required: true, min: 0 },
     maxPrice:       { type: Number },       // ceiling for dynamic pricing
+    lastCalculatedPrice: { type: Number },  // for smoothing/safety walls
     seats:          { type: Number, required: true, min: 1 },
     availableSeats: { type: Number },       // set to `seats` on creation
   },
