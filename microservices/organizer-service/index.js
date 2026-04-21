@@ -3,12 +3,13 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
-import connectDB, { requireDB, registerProcessHandlers, tuneExpressServer } from '../shared/db.js';
+import connectDB, { requireDB, registerProcessHandlers, tuneExpressServer, startSessionWithFallback } from '../shared/db.js';
 import { errorHandler, notFound } from '../shared/errorHandler.js';
 import jwtMiddleware from '../shared/jwtMiddleware.js';
 import { requestLogger } from '../shared/logger.js';
 import crypto from 'crypto';
 import axios from 'axios';
+import mongoose from 'mongoose';
 import Event from '../shared/models/Event.js';
 import Ticket from '../shared/models/Ticket.js';
 import User from '../shared/models/User.js';
@@ -495,14 +496,17 @@ app.post('/api/tickets/revert', requireDB, async (req, res, next) => {
 // POST /api/tickets — buy a ticket with Distributed Lock protection
 app.post('/api/tickets', jwtMiddleware, requireDB, async (req, res, next) => {
   const { eventId, categoryName: catName, quantity: qty, customerName, customerEmail, pricePerTicket, username_real } = req.body;
+  console.log('[OrganizerService] Purchase request payload:', {
+    eventId, categoryName: catName, quantity: qty, customerName, customerEmail, pricePerTicket, honeypot: !!username_real
+  });
   
   // 🛡️ API EXPERT: Idempotency Protection
   const idempKey = req.headers['x-idempotency-key'];
   if (idempKey) {
-      const { data: cachedResult } = await cacheGet(`idemp:${idempKey}`);
+      const cachedResult = await cacheGet(`idemp:${idempKey}`);
       if (cachedResult) {
-          console.log(`[API Expert] ♻️ Idempotency Hit for key ${idempKey}. Returning cached response.`);
-          return res.json(cachedResult);
+        console.log(`[API Expert] ♻️ Idempotency Hit for key ${idempKey}. Returning cached response.`);
+        return res.json(cachedResult);
       }
   }
   if (!eventId || !qty || qty < 1) {
@@ -536,19 +540,28 @@ app.post('/api/tickets', jwtMiddleware, requireDB, async (req, res, next) => {
     return res.status(503).json({ error: 'System busy. Please try again in a few seconds.' });
   }
 
-  // ── Start Transaction Session ──────────────────────────────────────────
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
+  // ── Start Transaction Session (uses shared helper with fallback) ─
+  let session = null;
+  let usingTransactions = false;
   try {
-    const event = await Event.findById(eventId).session(session);
+    const result = await startSessionWithFallback();
+    session = result.session;
+    usingTransactions = result.usingTransactions;
+  } catch (e) {
+    console.warn('[OrganizerService] startSessionWithFallback failed:', e.message);
+    session = null;
+    usingTransactions = false;
+  }
+
+  // Wrap the core purchase flow so we can retry without transactions if needed
+  const doPurchase = async (useSession, activeSession) => {
+    const s = useSession ? activeSession : null;
+    const event = s ? await Event.findById(eventId).session(s) : await Event.findById(eventId);
     if (!event) throw new Error('Event not found');
 
-    // 1. Find the specific category (case-insensitive)
     const category = event.ticketCategories?.find(c => c.name === catName?.toLowerCase());
     if (catName && !category) return res.status(400).json({ error: 'Invalid ticket category' });
 
-    // 2. Check availability
     if (category) {
       if (category.availableSeats < qty) return res.status(400).json({ error: 'Not enough seats available' });
     } else {
@@ -556,140 +569,125 @@ app.post('/api/tickets', jwtMiddleware, requireDB, async (req, res, next) => {
       if (avail < qty) return res.status(400).json({ error: 'Sold out' });
     }
 
-    // 3. Update inventory & revenue (Atomic + Lock Protection)
     const finalPricePerTicket = pricePerTicket || await predictMLPrice(category, event);
     const amount = finalPricePerTicket * qty;
-    
+
     let updatedEvent;
     if (category) {
       updatedEvent = await Event.findOneAndUpdate(
-        { 
-          _id: eventId, 
-          'ticketCategories.name': catName?.toLowerCase(),
-          'ticketCategories.availableSeats': { $gte: qty } 
-        },
-        { 
-          $inc: { 
-            'ticketCategories.$.availableSeats': -qty, 
-            ticketsSold: qty,
-            totalRevenue: amount
-          } 
-        },
-        { new: true, session }
+        { _id: eventId, 'ticketCategories.name': catName?.toLowerCase(), 'ticketCategories.availableSeats': { $gte: qty } },
+        { $inc: { 'ticketCategories.$.availableSeats': -qty, ticketsSold: qty, totalRevenue: amount } },
+        { new: true, ...(s ? { session: s } : {}) }
       );
     } else {
       updatedEvent = await Event.findOneAndUpdate(
         { _id: eventId, availableTickets: { $gte: qty } },
         { $inc: { ticketsSold: qty, totalRevenue: amount } },
-        { new: true, session }
+        { new: true, ...(s ? { session: s } : {}) }
       );
     }
 
-    if (!updatedEvent) {
-      throw new Error('Tickets sold out during processing');
+    if (!updatedEvent) throw new Error('Tickets sold out during processing');
+
+    await (s ? updatedEvent.save({ session: s }) : updatedEvent.save());
+
+    if (s) {
+      await User.findByIdAndUpdate(req.user.id, { $set: { lastPurchaseAt: new Date() } }).session(s);
+    } else {
+      await User.findByIdAndUpdate(req.user.id, { $set: { lastPurchaseAt: new Date() } });
     }
 
-    // 4. Force sync financial fields
-    await updatedEvent.save({ session });
-
-    // 5. Update User Cooldown
-    await User.findByIdAndUpdate(req.user.id, { 
-        $set: { lastPurchaseAt: new Date() } 
-    }).session(session);
-
-    // 5. Generate unique QR codes for EACH individual ticket
     const tickets = [];
     for (let i = 0; i < qty; i++) {
-        const qrToken = crypto.randomBytes(32).toString('hex');
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-        const qrUrl   = `${frontendUrl}/verify?token=${qrToken}`;
-        
-        let qrCode = '';
-        try {
-          const qrResponse = await axios.post(`${process.env.QR_SERVICE_URL || 'http://localhost:4014'}/api/qr/generate`, {
-            text: qrUrl,
-            logoPath: '../../public/default-event.png',
-            position: 'center'
-          }, { timeout: 5000 });
-          qrCode = qrResponse.data.qrCode;
-        } catch (qrErr) {
-          console.error(`[OrganizerService] QR generation failed for ticket ${i+1}:`, qrErr.message);
+      const qrToken = crypto.randomBytes(32).toString('hex');
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      const qrUrl = `${frontendUrl}/verify?token=${qrToken}`;
+      let qrCode = '';
+      try {
+        const qrResponse = await axios.post(`${process.env.QR_SERVICE_URL || 'http://localhost:4014'}/api/qr/generate`, { text: qrUrl, logoPath: '../../public/default-event.png', position: 'center' }, { timeout: 5000 });
+        qrCode = qrResponse.data.qrCode;
+      } catch (qrErr) {
+        console.error(`[OrganizerService] QR generation failed for ticket ${i + 1}:`, qrErr.message);
+      }
+
+      const ticketDoc = new Ticket({
+        eventId,
+        userId: req.user.id,
+        categoryName: catName || 'standard',
+        customerName: qty > 1 ? `${customerName} (Ticket ${i + 1})` : customerName,
+        customerEmail,
+        pricePerTicket: finalPricePerTicket,
+        quantity: 1,
+        totalAmount: finalPricePerTicket,
+        status: 'confirmed',
+        qrToken,
+        qrCode,
+        expiresAt: updatedEvent.startDate
+      });
+      if (s) await ticketDoc.save({ session: s }); else await ticketDoc.save();
+      tickets.push(ticketDoc);
+    }
+
+    return { tickets, updatedEvent, amount, category };
+  };
+
+  try {
+    let result;
+    try {
+      result = await doPurchase(!!session, session);
+    } catch (errInner) {
+      // If the failure is due to transactions not being allowed, retry without session
+      const msg = String(errInner?.message || '').toLowerCase();
+      if (msg.includes('transaction numbers are only allowed') || msg.includes('transactions are only allowed')) {
+        console.warn('[OrganizerService] Transaction error detected, retrying purchase without transactions');
+        if (session) {
+          try { session.endSession(); } catch (e) {}
+          session = null;
+          usingTransactions = false;
         }
-
-        const ticket = await Ticket.create({
-          eventId,
-          userId: req.user.id,
-          categoryName: catName || 'standard',
-          customerName: qty > 1 ? `${customerName} (Ticket ${i + 1})` : customerName,
-          customerEmail,
-          pricePerTicket: finalPricePerTicket,
-          quantity: 1, // Individual ticket
-          totalAmount: finalPricePerTicket,
-          status: 'confirmed',
-          qrToken,
-          qrCode,
-          expiresAt: updatedEvent.startDate
-        }, { session }); // 🛡️ Link to transaction
-        tickets.push(ticket);
+        result = await doPurchase(false, null);
+      } else {
+        throw errInner;
+      }
     }
 
-    // Commit Transaction
-    await session.commitTransaction();
-    session.endSession();
+    // If we got here, purchase succeeded
+    const { tickets, updatedEvent, amount, category } = result;
 
-    const responseData = { 
-      success: true, 
-      message: 'Ticket purchased successfully', 
-      tickets,
-      metadata: { traceId: req.headers['x-request-id'] || 'no-trace' }
-    };
-
-    // 🛡️ API EXPERT: Store Result for Idempotency retries (24h TTL)
-    if (idempKey) {
-        await cacheSet(`idemp:${idempKey}`, responseData, 86400); 
+    if (session && usingTransactions) {
+      try { await session.commitTransaction(); } catch (e) { console.warn('[OrganizerService] Commit failed:', e.message); }
+      try { session.endSession(); } catch (e) {}
     }
 
-    // 6. side effects
-    const newAvail = (category 
-      ? updatedEvent.ticketCategories.find(c => c.name === catName?.toLowerCase())?.availableSeats 
-      : (updatedEvent.capacity - updatedEvent.ticketsSold)) || 0;
-      
+    const responseData = { success: true, message: 'Ticket purchased successfully', tickets, metadata: { traceId: req.headers['x-request-id'] || 'no-trace' } };
+
+    if (idempKey) await cacheSet(`idemp:${idempKey}`, responseData, 86400);
+
+    const newAvail = (category ? updatedEvent.ticketCategories.find(c => c.name === catName?.toLowerCase())?.availableSeats : (updatedEvent.capacity - updatedEvent.ticketsSold)) || 0;
     wsTicketSold(eventId, catName || 'standard', newAvail);
     notify(req.user.id, 'ticket_purchase', '🎟️ Tickets Purchased', `You successfully bought ${qty} ticket(s) for ${updatedEvent.name}`);
-    sendEmailTemplate(customerEmail, 'TICKET_CONFIRMATION', {
-      customerName,
-      eventName: updatedEvent.name,
-      quantity: qty,
-      totalAmount: amount,
-      bookingReference: tickets[0].bookingReference // Use first one as ref
-    });
+    sendEmailTemplate(customerEmail, 'TICKET_CONFIRMATION', { customerName, eventName: updatedEvent.name, quantity: qty, totalAmount: amount, bookingReference: tickets[0].bookingReference }).catch(e => console.error('Email send failed:', e.message));
 
-    // Invalidate caches
     cacheDel(CACHE_KEYS.EVENT_DETAIL(eventId));
     cacheDelPattern(CACHE_KEYS.EVENT_LIST_ALL);
 
     res.status(201).json({ success: true, tickets });
 
-    // ── Feedback Loop: Mark last inference as a SUCCESS ──────────────────────
-    // This allows the ML model to learn which prices actually lead to sales.
-    PriceLog.findOneAndUpdate(
-      { eventId, categoryId: category?._id },
-      { $set: { isSale: true, userId: req.user.id } },
-      { sort: { timestamp: -1 } } // Update the most recent one
-    ).catch(e => console.error('[OrganizerService] Feedback Loop update failed:', e.message));
-
+    PriceLog.findOneAndUpdate({ eventId, categoryId: category?._id }, { $set: { isSale: true, userId: req.user.id } }, { sort: { timestamp: -1 } }).catch(e => console.error('[OrganizerService] Feedback Loop update failed:', e.message));
   } catch (err) {
-    if (session.inTransaction()) {
-        await session.abortTransaction();
-    }
-    session.endSession();
-    
+    // Ensure session abort/cleanup
+    try {
+      if (session && typeof session.inTransaction === 'function' && session.inTransaction()) await session.abortTransaction();
+    } catch (e) { console.warn('[OrganizerService] Error aborting transaction:', e.message); }
+    if (session) try { session.endSession(); } catch (e) {}
+
     console.error('[OrganizerService] Purchase error:', err);
-    res.status(err.message === 'Event not found' ? 404 : 400).json({ 
-        error: err.message || 'Purchase process failed' 
-    });
+    // Sanitize DB-specific errors before sending to client
+    if (String(err?.message || '').toLowerCase().includes('transaction numbers are only allowed')) {
+      return res.status(500).json({ error: 'Purchase failed due to database configuration. Please contact the administrator.' });
+    }
+    return res.status(err.message === 'Event not found' ? 404 : 400).json({ error: err.message || 'Purchase process failed' });
   } finally {
-    // ── ALWAYS Release the Lock ──────────────────────────────────────────
     cacheUnlock(lockKey, lockToken);
   }
 });

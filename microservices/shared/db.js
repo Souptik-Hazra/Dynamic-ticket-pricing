@@ -111,3 +111,57 @@ export const tuneExpressServer = (server) => {
 };
 
 export default connectDB;
+
+/**
+ * startSessionWithFallback
+ * Tries to start a mongoose session and transaction. If the MongoDB server
+ * does not support transactions (standalone mongod), this will return
+ * { session: null, usingTransactions: false } so callers can fall back.
+ *
+ * Usage:
+ *   const { session, usingTransactions } = await startSessionWithFallback();
+ *   // use session when present, or perform non-transactional updates otherwise
+ */
+export const startSessionWithFallback = async () => {
+  let session = null;
+  let usingTransactions = false;
+
+  // If DB not connected, return fallback
+  if (mongoose.connection.readyState !== 1) {
+    return { session: null, usingTransactions: false };
+  }
+
+  try {
+    // Check server capabilities: logicalSessionTimeoutMinutes indicates session support
+    const admin = mongoose.connection.db.admin();
+    const info = await admin.command({ hello: 1 }).catch(() => null);
+    const supportsSessions = info && (typeof info.logicalSessionTimeoutMinutes === 'number');
+
+    if (!supportsSessions) {
+      console.warn('[DB Helper] MongoDB does not support logical sessions (standalone). Skipping session creation.');
+      return { session: null, usingTransactions: false };
+    }
+
+    // Safe to start a session
+    session = await mongoose.startSession();
+    // Attempt to start a transaction; this may still throw on exotic setups
+    try {
+      session.startTransaction();
+      usingTransactions = true;
+    } catch (txErr) {
+      console.warn('[DB Helper] startTransaction failed, continuing without transactions:', txErr.message);
+      try { session.endSession(); } catch (e) {}
+      session = null;
+      usingTransactions = false;
+    }
+  } catch (err) {
+    console.warn('[DB Helper] Failed to initialize session helper:', err.message);
+    if (session) {
+      try { session.endSession(); } catch (e) {}
+    }
+    session = null;
+    usingTransactions = false;
+  }
+
+  return { session, usingTransactions };
+};

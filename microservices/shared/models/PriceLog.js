@@ -24,7 +24,7 @@ const priceLogSchema = new mongoose.Schema(
     // Feedback Loop
     isSale: { type: Boolean, default: false, index: true },
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    expiresAt: { type: Date, index: true }, // Tiered TTL field
+    expiresAt: { type: Date }, // Tiered TTL field (TTL index defined below)
   },
   { timestamps: true }
 );
