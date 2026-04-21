@@ -52,10 +52,15 @@ const eventSchema = new mongoose.Schema(
     artistTier:      { type: Number, min: 0, max: 5, default: 0 },
     isHoliday:       { type: Boolean, default: false },
 
-    organizerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    organizerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
   },
   { timestamps: true }
 );
+
+// ── Optimized Indexes ──────────────────────────────────────────────────────
+eventSchema.index({ status: 1 });
+eventSchema.index({ category: 1 });
+eventSchema.index({ startDate: 1 }); // Supports chronological sorting
 
 /* ── Pre-save: default availableSeats, maxPrice, sync derived fields ─────── */
 eventSchema.pre('save', async function () {

@@ -17,9 +17,11 @@ mongoose.connection.on('error',        (err) => console.error('[MongoDB] Connect
 const connectDB = async (serviceName = 'Service') => {
   try {
     await mongoose.connect(SHARED_DB_URI, {
-      serverSelectionTimeoutMS: 5000,   // fail fast at startup if Mongo is down
-      socketTimeoutMS:          45000,  // close sockets after 45s of inactivity
-      maxPoolSize:              10,     // max concurrent connections per service
+      serverSelectionTimeoutMS: 10000,   // fail fast at startup if Mongo is down
+      socketTimeoutMS:          60000,  // close sockets after 60s of inactivity
+      connectTimeoutMS:         15000,  // wait 15s to establish connection
+      maxPoolSize:              50,     // ⚡ Increased for high-concurrency
+      minPoolSize:              5,      // ⚡ Keep 5 connections warm
     });
     const maskedUri = SHARED_DB_URI.replace(/\/\/([^:]+):([^@]+)@/, '//$1:****@');
     console.log(`[${serviceName}] MongoDB connected → ${maskedUri}`);

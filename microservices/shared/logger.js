@@ -10,16 +10,25 @@ export const traceStorage = new AsyncLocalStorage();
 
 const SENSITIVE_FIELDS = ['password', 'token', 'secret', 'cvv', 'key', 'creditCard'];
 
-const maskData = (data) => {
-  if (!data || typeof data !== 'object') return data;
-  const masked = { ...data };
-  Object.keys(masked).forEach(key => {
-    if (SENSITIVE_FIELDS.some(f => key.toLowerCase().includes(f))) {
+const maskData = (data, depth = 0) => {
+  // OS Expert: Prevent recursion depth madness (max 3 levels)
+  // and abort if the object is too large to process safely on the main thread.
+  if (!data || typeof data !== 'object' || depth > 3) return data;
+  
+  const masked = Array.isArray(data) ? [...data] : { ...data };
+  const keys = Object.keys(masked);
+  
+  // Abort masking if object has > 100 keys (Performance safety wall)
+  if (keys.length > 100) return '[Object too large for safe masking]';
+
+  for (const key of keys) {
+    const lowerKey = key.toLowerCase();
+    if (SENSITIVE_FIELDS.some(f => lowerKey.includes(f))) {
       masked[key] = '********';
-    } else if (typeof masked[key] === 'object') {
-      masked[key] = maskData(masked[key]);
+    } else if (typeof masked[key] === 'object' && masked[key] !== null) {
+      masked[key] = maskData(masked[key], depth + 1);
     }
-  });
+  }
   return masked;
 };
 

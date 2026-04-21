@@ -213,28 +213,51 @@
         }
 
         function updateCharts(data) {
-            // 1. Line Graph WRT Time
+            // 1. Line Graph WRT Time (Filling in 0s for missing hours to ensure it's a "Line" graph)
             const canvas = document.getElementById('timeChart');
-            const formattedTimeline = data.errorTimeline.map(t => ({
-                x: new Date(`${new Date().toISOString().split('T')[0]}T${t.time}:00`),
-                y: t.errors
-            }));
+            
+            // Generate last 24 hours
+            const now = new Date();
+            const fullTimeline = [];
+            for (let i = 23; i >= 0; i--) {
+                const hourDate = new Date(now.getTime() - i * 3600000);
+                hourDate.setMinutes(0, 0, 0);
+                
+                // Find data for this specific local hour
+                const found = data.errorTimeline.find(t => {
+                    const logDate = new Date(t.timestamp);
+                    return logDate.getHours() === hourDate.getHours() && 
+                           logDate.getDate() === hourDate.getDate();
+                });
+                
+                fullTimeline.push({
+                    x: hourDate,
+                    y: found ? found.errors : 0
+                });
+            }
 
             if (!timeChart) {
+                const ctx = canvas.getContext('2d');
+                const gradient = ctx.createLinearGradient(0, 0, 0, 350);
+                gradient.addColorStop(0, 'rgba(0, 242, 254, 0.4)');
+                gradient.addColorStop(1, 'rgba(0, 242, 254, 0)');
+
                 timeChart = new Chart(canvas, {
                     type: 'line',
                     data: {
                         datasets: [{
                             label: 'Incidents',
-                            data: formattedTimeline,
+                            data: fullTimeline,
                             borderColor: '#00f2fe',
-                            backgroundColor: 'rgba(0, 242, 254, 0.1)',
+                            backgroundColor: gradient,
                             borderWidth: 3,
                             fill: true,
                             tension: 0.4,
-                            pointRadius: 6,
-                            pointHoverRadius: 10,
-                            pointBackgroundColor: '#00f2fe'
+                            pointRadius: i => (fullTimeline[i.dataIndex]?.y > 0 ? 5 : 0), // Show points only where there's data
+                            pointHoverRadius: 8,
+                            pointBackgroundColor: '#00f2fe',
+                            pointBorderColor: '#050914',
+                            pointBorderWidth: 2
                         }]
                     },
                     options: {
@@ -243,14 +266,22 @@
                         scales: {
                             x: {
                                 type: 'time',
-                                time: { unit: 'hour', displayFormats: { hour: 'HH:mm' } },
-                                grid: { display: false },
-                                ticks: { color: '#94a3b8' }
+                                time: { 
+                                    unit: 'hour', 
+                                    stepSize: 2,
+                                    displayFormats: { hour: 'HH:mm' } 
+                                },
+                                grid: { color: 'rgba(255,255,255,0.02)' },
+                                ticks: { color: '#94a3b8', font: { size: 10 } }
                             },
                             y: {
                                 beginAtZero: true,
                                 grid: { color: 'rgba(255,255,255,0.05)' },
-                                ticks: { color: '#94a3b8', stepSize: 1 }
+                                ticks: { 
+                                    color: '#94a3b8', 
+                                    stepSize: 1,
+                                    callback: function(value) { if (Math.floor(value) === value) return value; }
+                                }
                             }
                         },
                         plugins: {
@@ -259,14 +290,19 @@
                                 backgroundColor: '#0a1128',
                                 titleColor: '#00f2fe',
                                 bodyColor: '#ffffff',
-                                borderColor: 'rgba(255,255,255,0.1)',
-                                borderWidth: 1
+                                borderColor: 'rgba(0, 242, 254, 0.3)',
+                                borderWidth: 1,
+                                padding: 12,
+                                displayColors: false,
+                                callbacks: {
+                                    label: (ctx) => ` ${ctx.parsed.y} Incidents`
+                                }
                             }
                         }
                     }
                 });
             } else {
-                timeChart.data.datasets[0].data = formattedTimeline;
+                timeChart.data.datasets[0].data = fullTimeline;
                 timeChart.update('none');
             }
 

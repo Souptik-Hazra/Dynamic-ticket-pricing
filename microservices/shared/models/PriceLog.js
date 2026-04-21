@@ -24,12 +24,22 @@ const priceLogSchema = new mongoose.Schema(
     // Feedback Loop
     isSale: { type: Boolean, default: false, index: true },
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    expiresAt: { type: Date, index: true }, // Tiered TTL field
   },
   { timestamps: true }
 );
 
-// TTL index to automatically prune logs after 90 days to save DB space
-priceLogSchema.index({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 90 });
+// ── Tiered Retention Policy ────────────────────────────────────────────────
+// Shadow logs (no sale) = 30 days
+// Sale logs = 90 days
+priceLogSchema.pre('save', function(next) {
+    const days = this.isSale ? 90 : 30;
+    this.expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+    next();
+});
+
+// TTL index to automatically prune logs based on the calculated expiresAt
+priceLogSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 const PriceLog = mongoose.models.PriceLog || mongoose.model('PriceLog', priceLogSchema);
 export default PriceLog;

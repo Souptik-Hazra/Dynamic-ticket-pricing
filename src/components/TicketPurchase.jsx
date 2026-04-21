@@ -11,7 +11,8 @@ function TicketPurchase({ event, onBack, onSuccess }) {
   const [formData, setFormData] = useState({
     customerName: '',
     customerEmail: '',
-    quantity: 1
+    quantity: 1,
+    username_real: '' // 🍯 Honeypot field
   });
   const [loading, setLoading] = useState(false);
   const [priceLoading, setPriceLoading] = useState(true);
@@ -312,6 +313,17 @@ function TicketPurchase({ event, onBack, onSuccess }) {
           <h3>📝 Your Details</h3>
           
           <form onSubmit={handleSubmit} className="purchase-form">
+            {/* 🍯 Anti-Bot Honeypot: Invisible to humans, filled by common scripts */}
+            <input 
+              type="text" 
+              name="username_real" 
+              value={formData.username_real} 
+              onChange={handleChange} 
+              style={{ display: 'none' }} 
+              tabIndex="-1" 
+              autoComplete="off" 
+            />
+
             <div className="form-group">
               <label htmlFor="customerName">Full Name *</label>
               <input

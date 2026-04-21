@@ -29,6 +29,10 @@ const ticketSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// ── Optimized Indexes ──────────────────────────────────────────────────────
+ticketSchema.index({ eventId: 1, status: 1 }); // Essential for reporting
+ticketSchema.index({ purchaseDate: -1 });      // Essential for recent feed
+
 /* ── Pre-save: auto-generate booking reference ───────────────────────────── */
 ticketSchema.pre('save', async function () {
   if (!this.bookingReference) {

@@ -18,11 +18,23 @@ const MONGO_DUPLICATE_KEY = 11000;
  *  - Everything else           → 500
  */
 export const errorHandler = (err, req, res, _next) => {
-  // ── Mongoose CastError (e.g. invalid ObjectId in :id param) ───────────
-  if (err instanceof mongoose.Error.CastError) {
-    return res.status(400).json({
-      error: `Invalid value '${err.value}' for field '${err.path}'`,
+  const traceId = traceStorage.getStore()?.traceId || 'no-trace';
+
+  // ── Helper: Standardized Error Envelope ────────────────────────────────
+  const sendError = (status, code, message, extra = {}) => {
+    return res.status(status).json({
+      error: {
+        code,
+        message,
+        traceId,
+        ...extra
+      }
     });
+  };
+
+  // ── Mongoose CastError ──────────────────────────────────────────
+  if (err instanceof mongoose.Error.CastError) {
+    return sendError(400, 'INVALID_PARAMETER', `Invalid value '${err.value}' for field '${err.path}'`);
   }
 
   // ── Mongoose ValidationError ──────────────────────────────────────────
@@ -31,36 +43,35 @@ export const errorHandler = (err, req, res, _next) => {
       field:   e.path,
       message: e.message,
     }));
-    return res.status(400).json({ error: 'Validation failed', details });
+    return sendError(400, 'VALIDATION_FAILED', 'Input validation failed', { details });
   }
 
   // ── MongoDB duplicate key (unique index) ──────────────────────────────
   if (err.code === MONGO_DUPLICATE_KEY) {
     const field = Object.keys(err.keyValue || {})[0] || 'field';
     const value = err.keyValue?.[field] || '';
-    return res.status(409).json({ error: `'${value}' is already registered for ${field}` });
+    return sendError(409, 'CONFLICT', `'${value}' is already registered for ${field}`);
   }
 
   // ── JWT errors ────────────────────────────────────────────────────────
   if (err.name === 'JsonWebTokenError') {
-    return res.status(401).json({ error: 'Invalid token. Please log in again.' });
+    return sendError(401, 'INVALID_TOKEN', 'Invalid token. Please log in again.');
   }
   if (err.name === 'TokenExpiredError') {
-    return res.status(401).json({ error: 'Session expired. Please log in again.' });
+    return sendError(401, 'TOKEN_EXPIRED', 'Session expired. Please log in again.');
   }
 
   // ── Express/body-parser — malformed JSON ─────────────────────────────
   if (err.type === 'entity.parse.failed') {
-    return res.status(400).json({ error: 'Malformed JSON in request body' });
+    return sendError(400, 'MALFORMED_JSON', 'Malformed JSON in request body');
   }
 
   // ── Custom application errors with explicit status ───────────────────
   if (err.status && err.status < 500) {
-    return res.status(err.status).json({ error: err.message });
+    return sendError(err.status, 'APP_ERROR', err.message);
   }
 
   // ── Unknown / server error ────────────────────────────────────────────
-  const traceId = traceStorage.getStore()?.traceId || 'unknown';
   
   console.error(`[${new Date().toISOString()}] Unhandled error [${traceId}]:`, err.message, '\n', err.stack);
   
@@ -79,7 +90,13 @@ export const errorHandler = (err, req, res, _next) => {
     }
   });
 
-  res.status(500).json({ error: 'An unexpected error occurred. Please try again later.' });
+  res.status(500).json({ 
+    error: {
+      code: 'INTERNAL_SERVER_ERROR',
+      message: 'An unexpected error occurred. Please try again later.',
+      traceId
+    }
+  });
 };
 
 /**
@@ -88,5 +105,11 @@ export const errorHandler = (err, req, res, _next) => {
  *   app.use(errorHandler)
  */
 export const notFound = (req, res) => {
-  res.status(404).json({ error: `Route ${req.method} ${req.originalUrl} not found` });
+  res.status(404).json({ 
+    error: {
+      code: 'NOT_FOUND',
+      message: `Route ${req.method} ${req.originalUrl} not found`,
+      traceId: 'no-trace'
+    }
+  });
 };

@@ -19,8 +19,8 @@ import { traceStorage } from './logger.js';
 // maxFreeSockets: 10 (Idle pool)
 const keepAliveAgentOptions = {
   keepAlive: true,
-  maxSockets: 100,
-  maxFreeSockets: 10,
+  maxSockets: 500,     // ⚡ Increased for massive inter-service parallelism
+  maxFreeSockets: 50,  // ⚡ Keep 50 internal sockets 'hot' for instant reuse
   timeout: 60000, 
 };
 

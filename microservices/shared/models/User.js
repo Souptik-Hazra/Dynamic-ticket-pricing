@@ -16,6 +16,8 @@ const userSchema = new mongoose.Schema(
     // Extended profile
     city:      { type: String, default: '' },
     birthdate: { type: Date, default: null },
+    lastPurchaseAt: { type: Date },
+    botScore:    { type: Number, default: 0 },
 
     // Subscription snapshot (denormalised for fast reads)
     subscription: { type: subscriptionSchema, default: () => ({}) },

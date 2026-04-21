@@ -494,10 +494,38 @@ app.post('/api/tickets/revert', requireDB, async (req, res, next) => {
 
 // POST /api/tickets — buy a ticket with Distributed Lock protection
 app.post('/api/tickets', jwtMiddleware, requireDB, async (req, res, next) => {
-  const { eventId, categoryName: catName, quantity: qty, customerName, customerEmail, pricePerTicket } = req.body;
+  const { eventId, categoryName: catName, quantity: qty, customerName, customerEmail, pricePerTicket, username_real } = req.body;
   
+  // 🛡️ API EXPERT: Idempotency Protection
+  const idempKey = req.headers['x-idempotency-key'];
+  if (idempKey) {
+      const { data: cachedResult } = await cacheGet(`idemp:${idempKey}`);
+      if (cachedResult) {
+          console.log(`[API Expert] ♻️ Idempotency Hit for key ${idempKey}. Returning cached response.`);
+          return res.json(cachedResult);
+      }
+  }
   if (!eventId || !qty || qty < 1) {
     return res.status(400).json({ error: 'Invalid purchase request' });
+  }
+
+  // 🛡️ BOT DEFENCE: Honeypot Check
+  if (username_real) {
+      console.warn(`[BotShield] 🚩 Honeypot triggered by user ${req.user.id}`);
+      return res.status(403).json({ error: 'SECURITY_VIOLATION', message: 'Automated activity detected.' });
+  }
+
+  // 🛡️ BOT DEFENCE: Cooldown Check (30 seconds)
+  const user = await User.findById(req.user.id);
+  if (user && user.lastPurchaseAt) {
+      const secondsSinceLast = (Date.now() - new Date(user.lastPurchaseAt).getTime()) / 1000;
+      if (secondsSinceLast < 30) {
+          console.warn(`[BotShield] 🚩 Purchase cooldown in effect for user ${req.user.id}`);
+          return res.status(429).json({ 
+              error: 'ABUSE_PREVENTION', 
+              message: `Please wait ${Math.ceil(30 - secondsSinceLast)}s before buying more tickets.` 
+          });
+      }
   }
 
   // ── Distributed Locking ────────────────────────────────────────────────
@@ -508,9 +536,13 @@ app.post('/api/tickets', jwtMiddleware, requireDB, async (req, res, next) => {
     return res.status(503).json({ error: 'System busy. Please try again in a few seconds.' });
   }
 
+  // ── Start Transaction Session ──────────────────────────────────────────
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
-    const event = await Event.findById(eventId);
-    if (!event) return res.status(404).json({ error: 'Event not found' });
+    const event = await Event.findById(eventId).session(session);
+    if (!event) throw new Error('Event not found');
 
     // 1. Find the specific category (case-insensitive)
     const category = event.ticketCategories?.find(c => c.name === catName?.toLowerCase());
@@ -534,7 +566,7 @@ app.post('/api/tickets', jwtMiddleware, requireDB, async (req, res, next) => {
         { 
           _id: eventId, 
           'ticketCategories.name': catName?.toLowerCase(),
-          'ticketCategories.availableSeats': { $gte: qty } // Atomic inventory safety wall
+          'ticketCategories.availableSeats': { $gte: qty } 
         },
         { 
           $inc: { 
@@ -543,22 +575,27 @@ app.post('/api/tickets', jwtMiddleware, requireDB, async (req, res, next) => {
             totalRevenue: amount
           } 
         },
-        { new: true }
+        { new: true, session }
       );
     } else {
       updatedEvent = await Event.findOneAndUpdate(
         { _id: eventId, availableTickets: { $gte: qty } },
         { $inc: { ticketsSold: qty, totalRevenue: amount } },
-        { new: true }
+        { new: true, session }
       );
     }
 
     if (!updatedEvent) {
-      return res.status(400).json({ error: 'Tickets sold out during processing. Please try again.' });
+      throw new Error('Tickets sold out during processing');
     }
 
-    // 4. Force sync financial fields (triggers pre-save hook)
-    await updatedEvent.save();
+    // 4. Force sync financial fields
+    await updatedEvent.save({ session });
+
+    // 5. Update User Cooldown
+    await User.findByIdAndUpdate(req.user.id, { 
+        $set: { lastPurchaseAt: new Date() } 
+    }).session(session);
 
     // 5. Generate unique QR codes for EACH individual ticket
     const tickets = [];
@@ -592,8 +629,24 @@ app.post('/api/tickets', jwtMiddleware, requireDB, async (req, res, next) => {
           qrToken,
           qrCode,
           expiresAt: updatedEvent.startDate
-        });
+        }, { session }); // 🛡️ Link to transaction
         tickets.push(ticket);
+    }
+
+    // Commit Transaction
+    await session.commitTransaction();
+    session.endSession();
+
+    const responseData = { 
+      success: true, 
+      message: 'Ticket purchased successfully', 
+      tickets,
+      metadata: { traceId: req.headers['x-request-id'] || 'no-trace' }
+    };
+
+    // 🛡️ API EXPERT: Store Result for Idempotency retries (24h TTL)
+    if (idempKey) {
+        await cacheSet(`idemp:${idempKey}`, responseData, 86400); 
     }
 
     // 6. side effects
@@ -626,8 +679,15 @@ app.post('/api/tickets', jwtMiddleware, requireDB, async (req, res, next) => {
     ).catch(e => console.error('[OrganizerService] Feedback Loop update failed:', e.message));
 
   } catch (err) {
+    if (session.inTransaction()) {
+        await session.abortTransaction();
+    }
+    session.endSession();
+    
     console.error('[OrganizerService] Purchase error:', err);
-    next(err);
+    res.status(err.message === 'Event not found' ? 404 : 400).json({ 
+        error: err.message || 'Purchase process failed' 
+    });
   } finally {
     // ── ALWAYS Release the Lock ──────────────────────────────────────────
     cacheUnlock(lockKey, lockToken);

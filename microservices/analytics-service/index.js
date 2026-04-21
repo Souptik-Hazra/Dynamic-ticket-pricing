@@ -173,7 +173,10 @@ app.get('/api/analytics/system-health', async (req, res, next) => {
 
     res.json({
       serviceDistribution: serviceDistribution.map(s => ({ name: s._id, value: s.count })),
-      errorTimeline: errorTimeline.map(t => ({ time: t._id.split(' ')[1], errors: t.count }))
+      errorTimeline: errorTimeline.map(t => ({ 
+        timestamp: t._id.replace(' ', 'T') + ':00Z', 
+        errors: t.count 
+      }))
     });
   } catch (err) { next(err); }
 });

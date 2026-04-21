@@ -8,9 +8,33 @@ import compression from 'compression';
 import http from 'http';
 import { tuneExpressServer } from '../shared/db.js';
 import { requestLogger } from '../shared/logger.js';
+import { botShield } from './botShield.js';
+import cluster from 'cluster';
+import os from 'os';
+
 dotenv.config();
 
-const app = express();
+const numCPUs = os.cpus().length;
+
+if (cluster.isPrimary) {
+  console.log(`[OS Expert] 🚀 API Gateway Master [${process.pid}] starting...`);
+  console.log(`[OS Expert] 🏁 Spawning ${numCPUs} workers for multi-core scaling...`);
+
+  // Fork workers.
+  for (let i = 0; i < numCPUs; i++) {
+    cluster.fork();
+  }
+
+  cluster.on('exit', (worker, code, signal) => {
+    console.error(`[OS Expert] 🚩 Worker ${worker.process.pid} died (code: ${code}, signal: ${signal}). Spawning replacement...`);
+    cluster.fork();
+  });
+} else {
+  const app = express();
+  const workerId = cluster.worker.id;
+  console.log(`[OS Expert] 🏗️ Worker ${workerId} [${process.pid}] online`);
+// ── Bot Protection ──────────────────────────────────────────────────────────
+app.use(botShield);
 // Increase listener limit for the 14+ proxied microservices
 app.setMaxListeners(20);
 
@@ -107,25 +131,27 @@ const proxy = (path, target, extraOptions = {}) =>
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', gateway: true }));
 
 // ── Route map ──────────────────────────────────────────────────────────────
-// Note: We use the proxy middleware directly to ensure URL prefixes are NOT stripped
-app.use(proxy('/api/auth', SERVICES.auth));
-app.use(proxy('/api/users', SERVICES.user));
-app.use(proxy('/api/admin', SERVICES.admin));
-app.use(proxy('/api/payments', SERVICES.payment));
-app.use(proxy('/api/cache', SERVICES.cache));
-app.use(proxy('/api/email', SERVICES.email));
-app.use(proxy('/api/notifications', SERVICES.notification));
-app.use(proxy('/api/analytics', SERVICES.analytics));
-app.use(proxy('/api/subscription', SERVICES.subscription));
-app.use(proxy('/api/events', SERVICES.organizer));
-app.use(proxy('/api/tickets', SERVICES.organizer));
-app.use(proxy('/api/organizers', SERVICES.organizer));
-app.use(proxy('/api/qr', SERVICES.qr));
-app.use(proxy('/api/scanner', SERVICES.scanner));
-app.use(proxy('/api/wallet', SERVICES.wallet));
+// API Expert: Supports both legacy /api/ and modern /api/v1/ prefixes
+const v1 = (p) => [p, p.replace('/api/', '/api/v1/')];
+
+app.use(proxy(v1('/api/auth'), SERVICES.auth));
+app.use(proxy(v1('/api/users'), SERVICES.user));
+app.use(proxy(v1('/api/admin'), SERVICES.admin));
+app.use(proxy(v1('/api/payments'), SERVICES.payment));
+app.use(proxy(v1('/api/cache'), SERVICES.cache));
+app.use(proxy(v1('/api/email'), SERVICES.email));
+app.use(proxy(v1('/api/notifications'), SERVICES.notification));
+app.use(proxy(v1('/api/analytics'), SERVICES.analytics));
+app.use(proxy(v1('/api/subscription'), SERVICES.subscription));
+app.use(proxy(v1('/api/events'), SERVICES.organizer));
+app.use(proxy(v1('/api/tickets'), SERVICES.organizer));
+app.use(proxy(v1('/api/organizers'), SERVICES.organizer));
+app.use(proxy(v1('/api/qr'), SERVICES.qr));
+app.use(proxy(v1('/api/scanner'), SERVICES.scanner));
+app.use(proxy(v1('/api/wallet'), SERVICES.wallet));
 
 // ── WebSocket Proxy (Direct Upgrade support) ──────────────────────────────
-const wsProxy = proxy('/api/ws', SERVICES.websocket);
+const wsProxy = proxy(v1('/api/ws'), SERVICES.websocket);
 app.use(wsProxy);
 
 // ── ML Model (Special case: strips prefix) ─────────────────────────────────
@@ -184,3 +210,4 @@ server.on('upgrade', (req, socket, head) => {
     wsProxy.upgrade(req, socket, head);
   }
 });
+}
