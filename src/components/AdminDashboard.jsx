@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import AdminEventForm from './AdminEventForm';
 import Footer from './Footer';
-import { buildUrl, ENDPOINTS } from '../config/api';
+import { ENDPOINTS } from '../config/api';
 import { useWebSocket } from '../hooks/useWebSocket';
 import './AdminDashboard.css';
 
@@ -34,10 +34,6 @@ function AdminDashboard() {
     }
   }, [lastEvent]); // eslint-disable-line
 
-  const authHeaders = () => ({
-    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-  });
-
   useEffect(() => {
     if (view === 'stats')   fetchStats();
     if (view === 'events')  fetchEvents();
@@ -51,7 +47,7 @@ function AdminDashboard() {
   const fetchPlatformHealth = async () => {
     try {
       setHealthData(prev => ({ ...prev, loading: true }));
-      const { data } = await axios.get(buildUrl(ENDPOINTS.PLATFORM_HEALTH), authHeaders());
+      const { data } = await api.get(ENDPOINTS.PLATFORM_HEALTH);
       setHealthData({ services: data.services || {}, loading: false });
     } catch (err) {
       console.error('Health check error:', err);
@@ -61,7 +57,7 @@ function AdminDashboard() {
 
   const fetchAdminWallet = async () => {
     try {
-      const { data } = await axios.get(buildUrl(ENDPOINTS.WALLET_BALANCE), authHeaders());
+      const { data } = await api.get(ENDPOINTS.WALLET_BALANCE);
       setAdminWallet(data);
     } catch (err) { console.error('Admin wallet error:', err); }
   };
@@ -69,7 +65,7 @@ function AdminDashboard() {
   const fetchStats = async () => {
     try {
       setLoading(true);
-      const { data } = await axios.get(buildUrl(ENDPOINTS.ADMIN_STATS), authHeaders());
+      const { data } = await api.get(ENDPOINTS.ADMIN_STATS);
       setStats(data.stats);
     } catch (err) {
       console.error('Stats error:', err);
@@ -80,7 +76,7 @@ function AdminDashboard() {
   const fetchEvents = async () => {
     try {
       setLoading(true);
-      const { data } = await axios.get(buildUrl(ENDPOINTS.ADMIN_EVENTS), authHeaders());
+      const { data } = await api.get(ENDPOINTS.ADMIN_EVENTS);
       setEvents(data.events);
     } catch (err) {
       console.error('Events error:', err);
@@ -91,7 +87,7 @@ function AdminDashboard() {
   const fetchTickets = async () => {
     try {
       setLoading(true);
-      const { data } = await axios.get(buildUrl(ENDPOINTS.ADMIN_TICKETS), authHeaders());
+      const { data } = await api.get(ENDPOINTS.ADMIN_TICKETS);
       setTickets(data.tickets);
     } catch (err) {
       console.error('Tickets error:', err);
@@ -103,7 +99,7 @@ function AdminDashboard() {
   const fetchCommissions = async () => {
     try {
       setLoading(true);
-      const { data } = await axios.get(buildUrl(ENDPOINTS.ADMIN_COMMISSIONS), authHeaders());
+      const { data } = await api.get(ENDPOINTS.ADMIN_COMMISSIONS);
       setCommissions(data.commissions || []);
     } catch (err) {
       console.error('Commissions error:', err);
@@ -114,7 +110,7 @@ function AdminDashboard() {
     if (!window.confirm('Mark this event as COMPLETED and process 20% commission? This action is irreversible.')) return;
     try {
       setLoading(true);
-      await axios.post(buildUrl(`${ENDPOINTS.ADMIN_EVENTS}/${eventId}/complete`), {}, authHeaders());
+      await api.post(`${ENDPOINTS.ADMIN_EVENTS}/${eventId}/complete`, {});
       alert('Event completed and commission transferred!');
       fetchEvents();
       fetchAdminWallet();
@@ -127,7 +123,7 @@ function AdminDashboard() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const { data } = await axios.get(buildUrl(ENDPOINTS.ADMIN_USERS), authHeaders());
+      const { data } = await api.get(ENDPOINTS.ADMIN_USERS);
       setUsers(data.users || []);
     } catch (err) {
       console.error('Users error:', err);
@@ -139,7 +135,7 @@ function AdminDashboard() {
     if (!window.confirm(`Are you sure you want to change this user's role to ${newRole.toUpperCase()}?`)) return;
     try {
       setLoading(true);
-      await axios.put(buildUrl(`${ENDPOINTS.ADMIN_USERS}/${userId}/role`), { role: newRole }, authHeaders());
+      await api.put(`${ENDPOINTS.ADMIN_USERS}/${userId}/role`, { role: newRole });
       alert('Role updated successfully!');
       fetchUsers();
     } catch (err) {
@@ -158,10 +154,7 @@ function AdminDashboard() {
     if (!messageForm.title || !messageForm.message) return alert('Title and message required');
     try {
       setLoading(true);
-      const token = localStorage.getItem("token");
-      await axios.post(buildUrl(ENDPOINTS.ADMIN_BROADCAST), messageForm, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.post(ENDPOINTS.ADMIN_BROADCAST, messageForm);
       alert('Broadcast dispatched successfully!');
       setMessageForm({ ...messageForm, title: '', message: '' });
     } catch (err) {
@@ -173,7 +166,7 @@ function AdminDashboard() {
   const handleDeleteEvent = async (eventId) => {
     if (!window.confirm('Are you sure you want to delete this event?')) return;
     try {
-      await axios.delete(buildUrl(`${ENDPOINTS.ADMIN_EVENTS}/${eventId}`), authHeaders());
+      await api.delete(`${ENDPOINTS.ADMIN_EVENTS}/${eventId}`);
       fetchEvents();
       fetchAdminWallet();
     } catch (err) {

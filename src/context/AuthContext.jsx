@@ -1,17 +1,14 @@
-import React, { createContext, useState, useContext, useEffect, useCallback, useRef } from 'react';
-import axios from 'axios';
-import { buildUrl, ENDPOINTS } from '../config/api';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import api from '../api/client';
+import { ENDPOINTS } from '../config/api';
 
-const AuthContext = createContext();
+const AuthContext = React.createContext();
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
+  const context = React.useContext(AuthContext);
   if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 };
-
-// ── Axios defaults ────────────────────────────────────────────────────────
-axios.defaults.withCredentials = false; // We use Bearer tokens, not cookies
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -29,14 +26,12 @@ export const AuthProvider = ({ children }) => {
 
     refreshTimeoutRef.current = setTimeout(async () => {
       try {
-        const response = await axios.post(
-          buildUrl(ENDPOINTS.REFRESH_TOKEN),
-          {},
-          { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+        const response = await api.post(
+          ENDPOINTS.REFRESH_TOKEN,
+          {}
         );
         if (response.data.token) {
           localStorage.setItem('token', response.data.token);
-          setAxiosToken(response.data.token);
           if (response.data.user) setUser(response.data.user);
           scheduleTokenRefresh(response.data.token); // schedule next refresh
         }
@@ -47,13 +42,7 @@ export const AuthProvider = ({ children }) => {
     }, SIX_DAYS_MS);
   }, []); // eslint-disable-line
 
-  const setAxiosToken = (token) => {
-    if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    } else {
-      delete axios.defaults.headers.common['Authorization'];
-    }
-  };
+  // loadUser handles initial mount verification
 
   // ── Load user on mount ────────────────────────────────────────────────────
   useEffect(() => {
@@ -71,8 +60,7 @@ export const AuthProvider = ({ children }) => {
       return;
     }
     try {
-      setAxiosToken(token);
-      const response = await axios.get(buildUrl(ENDPOINTS.ME));
+      const response = await api.get(ENDPOINTS.ME);
       setUser(response.data.user);
       scheduleTokenRefresh(token);
     } catch (error) {
@@ -80,7 +68,6 @@ export const AuthProvider = ({ children }) => {
       const status = error.response?.status;
       if (status === 401 || status === 403) {
         localStorage.removeItem('token');
-        setAxiosToken(null);
         setUser(null);
       } else {
         // Network error — keep token, try again later
@@ -95,10 +82,9 @@ export const AuthProvider = ({ children }) => {
   // ── Signup ────────────────────────────────────────────────────────────────
   const signup = async (name, email, password, role = 'user') => {
     try {
-      const response = await axios.post(buildUrl(ENDPOINTS.SIGNUP), { name, email, password, role });
+      const response = await api.post(ENDPOINTS.SIGNUP, { name, email, password, role });
       if (response.data.token) {
         localStorage.setItem('token', response.data.token);
-        setAxiosToken(response.data.token);
         scheduleTokenRefresh(response.data.token);
       }
       setUser(response.data.user);
@@ -114,10 +100,9 @@ export const AuthProvider = ({ children }) => {
   // ── Signin ────────────────────────────────────────────────────────────────
   const signin = async (email, password) => {
     try {
-      const response = await axios.post(buildUrl(ENDPOINTS.LOGIN), { email, password });
+      const response = await api.post(ENDPOINTS.LOGIN, { email, password });
       if (response.data.token) {
         localStorage.setItem('token', response.data.token);
-        setAxiosToken(response.data.token);
         scheduleTokenRefresh(response.data.token);
       }
       setUser(response.data.user);
@@ -134,14 +119,13 @@ export const AuthProvider = ({ children }) => {
   const performLogout = () => {
     if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current);
     localStorage.removeItem('token');
-    setAxiosToken(null);
     setUser(null);
   };
 
   const logout = async () => {
     try {
       // Fire-and-forget logout call (server-side is stateless, just for logs)
-      await axios.post(buildUrl(ENDPOINTS.LOGOUT));
+      await api.post(ENDPOINTS.LOGOUT);
     } catch {
       // Ignore — we always log out client-side regardless
     }
@@ -150,11 +134,9 @@ export const AuthProvider = ({ children }) => {
 
   // ── Update user profile ────────────────────────────────────────────────────
   const updateUser = async (profileData) => {
-    const token = localStorage.getItem('token');
-    const response = await axios.put(
-      buildUrl(ENDPOINTS.UPDATE_PROFILE),
-      profileData,
-      { headers: { Authorization: `Bearer ${token}` } }
+    const response = await api.put(
+      ENDPOINTS.UPDATE_PROFILE,
+      profileData
     );
     if (response.data.user) setUser(response.data.user);
     return response.data.user;
@@ -166,10 +148,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
-      const response = await axios.get(
-        buildUrl(ENDPOINTS.ME),
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const response = await api.get(ENDPOINTS.ME);
       if (response.data.user) setUser(response.data.user);
     } catch {
       // Silently ignore — stale data is better than crashing

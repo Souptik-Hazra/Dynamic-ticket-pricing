@@ -9,6 +9,33 @@
  */
 
 import axios from 'axios';
+import http from 'http';
+import https from 'https';
+import { traceStorage } from './logger.js';
+
+// ── Shared Keep-Alive Agent ───────────────────────────────────────────────
+// Keep TCP connections "hot" between services.
+// maxSockets: 100 (Concurrency)
+// maxFreeSockets: 10 (Idle pool)
+const keepAliveAgentOptions = {
+  keepAlive: true,
+  maxSockets: 100,
+  maxFreeSockets: 10,
+  timeout: 60000, 
+};
+
+const httpAgent  = new http.Agent(keepAliveAgentOptions);
+const httpsAgent = new https.Agent(keepAliveAgentOptions);
+
+// ── Trace ID Interceptor ──────────────────────────────────────────────────
+// Automatically inject the Trace ID from the current request context
+axios.interceptors.request.use((config) => {
+  const store = traceStorage.getStore();
+  if (store && store.traceId) {
+    config.headers['X-Request-ID'] = store.traceId;
+  }
+  return config;
+});
 
 // ── Service URLs ──────────────────────────────────────────────────────────
 const SERVICES = {
@@ -50,7 +77,7 @@ const fireAndForget = async (fn, label) => {
  */
 export const notify = (userId, type, title, message, meta = {}) =>
   fireAndForget(
-    () => axios.post(`${SERVICES.notification}/api/notifications`, { userId, type, title, message, meta }, { timeout: 5000 }),
+    () => axios.post(`${SERVICES.notification}/api/notifications`, { userId, type, title, message, meta }, { timeout: 5000, httpAgent, httpsAgent }),
     `notify(${type} → ${userId})`
   );
 
@@ -60,7 +87,7 @@ export const notify = (userId, type, title, message, meta = {}) =>
  */
 export const revertPurchase = (eventId, categoryName, quantity, amount) =>
   fireAndForget(
-    () => axios.post(`${SERVICES.organizer}/api/tickets/revert`, { eventId, categoryName, quantity, amount }, { timeout: 5000 }),
+    () => axios.post(`${SERVICES.organizer}/api/tickets/revert`, { eventId, categoryName, quantity, amount }, { timeout: 5000, httpAgent, httpsAgent }),
     `revertPurchase(${eventId})`
   );
 
@@ -70,7 +97,7 @@ export const revertPurchase = (eventId, categoryName, quantity, amount) =>
  */
 export const wsNotifyUser = (userId, type, title, message, meta = {}) =>
   fireAndForget(
-    () => axios.post(`${SERVICES.websocket}/api/ws/notify-user`, { userId, type, title, message, meta }, { timeout: 5000 }),
+    () => axios.post(`${SERVICES.websocket}/api/ws/notify-user`, { userId, type, title, message, meta }, { timeout: 5000, httpAgent, httpsAgent }),
     `wsNotifyUser(${userId})`
   );
 
@@ -79,7 +106,7 @@ export const wsNotifyUser = (userId, type, title, message, meta = {}) =>
  */
 export const wsTicketSold = (eventId, categoryName, remainingSeats) =>
   fireAndForget(
-    () => axios.post(`${SERVICES.websocket}/api/ws/ticket-sold`, { eventId, categoryName, remainingSeats }, { timeout: 5000 }),
+    () => axios.post(`${SERVICES.websocket}/api/ws/ticket-sold`, { eventId, categoryName, remainingSeats }, { timeout: 5000, httpAgent, httpsAgent }),
     `wsTicketSold(${eventId})`
   );
 
@@ -88,7 +115,7 @@ export const wsTicketSold = (eventId, categoryName, remainingSeats) =>
  */
 export const wsPriceUpdate = (eventId, prices, occupancyRate) =>
   fireAndForget(
-    () => axios.post(`${SERVICES.websocket}/api/ws/price-update`, { eventId, prices, occupancyRate }, { timeout: 5000 }),
+    () => axios.post(`${SERVICES.websocket}/api/ws/price-update`, { eventId, prices, occupancyRate }, { timeout: 5000, httpAgent, httpsAgent }),
     `wsPriceUpdate(${eventId})`
   );
 
@@ -97,7 +124,7 @@ export const wsPriceUpdate = (eventId, prices, occupancyRate) =>
  */
 export const wsAttendanceUpdate = (eventId, scannedCount, totalSold) =>
   fireAndForget(
-    () => axios.post(`${SERVICES.websocket}/api/ws/attendance-update`, { eventId, scannedCount, totalSold }, { timeout: 5000 }),
+    () => axios.post(`${SERVICES.websocket}/api/ws/attendance-update`, { eventId, scannedCount, totalSold }, { timeout: 5000, httpAgent, httpsAgent }),
     `wsAttendanceUpdate(${eventId})`
   );
 
@@ -107,7 +134,7 @@ export const wsAttendanceUpdate = (eventId, scannedCount, totalSold) =>
  */
 export const sendEmailTemplate = (to, templateName, data) =>
   fireAndForget(
-    () => axios.post(`${SERVICES.email}/api/email/send-template`, { to, templateName, data }, { timeout: 5000 }),
+    () => axios.post(`${SERVICES.email}/api/email/send-template`, { to, templateName, data }, { timeout: 5000, httpAgent, httpsAgent }),
     `sendEmailTemplate(${templateName} → ${to})`
   );
 
@@ -116,7 +143,7 @@ export const sendEmailTemplate = (to, templateName, data) =>
  */
 export const sendEmail = (to, subject, html) =>
   fireAndForget(
-    () => axios.post(`${SERVICES.email}/api/email/send`, { to, subject, html }, { timeout: 5000 }),
+    () => axios.post(`${SERVICES.email}/api/email/send`, { to, subject, html }, { timeout: 5000, httpAgent, httpsAgent }),
     `sendEmail(→ ${to})`
   );
 
@@ -126,7 +153,7 @@ export const sendEmail = (to, subject, html) =>
  */
 export const creditUserWallet = (userId, amount, description) =>
   fireAndForget(
-    () => axios.post(`${SERVICES.wallet}/api/wallet/credit`, { userId, amount, description }, { timeout: 5000 }),
+    () => axios.post(`${SERVICES.wallet}/api/wallet/credit`, { userId, amount, description }, { timeout: 5000, httpAgent, httpsAgent }),
     `creditUserWallet(${userId})`
   );
 
@@ -135,7 +162,7 @@ export const creditUserWallet = (userId, amount, description) =>
  */
 export const debitUserWallet = (userId, amount, description) =>
   fireAndForget(
-    () => axios.post(`${SERVICES.wallet}/api/wallet/debit`, { userId, amount, description, internal: true }, { timeout: 5000 }),
+    () => axios.post(`${SERVICES.wallet}/api/wallet/debit`, { userId, amount, description, internal: true }, { timeout: 5000, httpAgent, httpsAgent }),
     `debitUserWallet(${userId})`
   );
 
@@ -145,19 +172,27 @@ export const debitUserWallet = (userId, amount, description) =>
  */
 export const cacheSet = (key, value, ttlSeconds) =>
   fireAndForget(
-    () => axios.post(`${SERVICES.cache}/api/cache`, { key, value, ttl: ttlSeconds }, { timeout: 5000 }),
+    () => axios.post(`${SERVICES.cache}/api/cache`, { key, value, ttl: ttlSeconds }, { timeout: 5000, httpAgent, httpsAgent }),
     `cacheSet(${key})`
   );
 
 /**
- * Get a cached value. Returns null on miss or error.
+ * Get a cached value. Returns null on miss, timeout (1s), or error.
  */
 export const cacheGet = async (key) => {
   try {
-    const { data } = await axios.get(`${SERVICES.cache}/api/cache/${key}`, { timeout: 2000 });
+    const { data } = await axios.get(`${SERVICES.cache}/api/cache/${key}`, { 
+      timeout: 1000, // Reduced from 2s to fail faster
+      httpAgent, 
+      httpsAgent 
+    });
     return data.value;
-  } catch {
-    return null; // cache miss or service down — caller continues without cache
+  } catch (err) {
+    // If it's a 404, it's a simple cache miss — no need for error noise
+    if (err.response?.status !== 404) {
+      console.warn(`[Inter-service] cacheGet(${key}) failed or timed out: ${err.message}`);
+    }
+    return null; // caller continues without cache
   }
 };
 
@@ -168,7 +203,7 @@ export const cacheDel = (key) =>
   fireAndForget(
     async () => {
       try {
-        await axios.delete(`${SERVICES.cache}/api/cache/${key}`, { timeout: 2000 });
+        await axios.delete(`${SERVICES.cache}/api/cache/${key}`, { timeout: 2000, httpAgent, httpsAgent });
       } catch (err) {
         // If it's a 404, it means the key is already gone, which is our goal.
         if (err.response?.status !== 404) throw err;
@@ -184,7 +219,7 @@ export const cacheDel = (key) =>
 export const cacheLock = async (key, ttl = 5000, retries = 5) => {
   for (let i = 0; i < retries; i++) {
     try {
-      const { data } = await axios.post(`${SERVICES.cache}/api/cache/lock`, { key, ttl }, { timeout: 2000 });
+      const { data } = await axios.post(`${SERVICES.cache}/api/cache/lock`, { key, ttl }, { timeout: 2000, httpAgent, httpsAgent });
       if (data.success) return { success: true, token: data.token };
 
       // Wait before retrying (exponential backoff)
@@ -202,7 +237,7 @@ export const cacheLock = async (key, ttl = 5000, retries = 5) => {
  */
 export const cacheUnlock = (key, token) =>
   fireAndForget(
-    () => axios.post(`${SERVICES.cache}/api/cache/unlock`, { key, token }, { timeout: 2000 }),
+    () => axios.post(`${SERVICES.cache}/api/cache/unlock`, { key, token }, { timeout: 2000, httpAgent, httpsAgent }),
     `cacheUnlock(${key})`
   );
 
@@ -211,7 +246,7 @@ export const cacheUnlock = (key, token) =>
  */
 export const cacheDelPattern = (pattern) =>
   fireAndForget(
-    () => axios.delete(`${SERVICES.cache}/api/cache/pattern/${encodeURIComponent(pattern)}`, { timeout: 5000 }),
+    () => axios.delete(`${SERVICES.cache}/api/cache/pattern/${encodeURIComponent(pattern)}`, { timeout: 5000, httpAgent, httpsAgent }),
     `cacheDelPattern(${pattern})`
   );
 

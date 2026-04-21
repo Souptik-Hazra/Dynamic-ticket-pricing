@@ -7,6 +7,7 @@ import compression from 'compression';
 import connectDB, { requireDB, registerProcessHandlers, tuneExpressServer } from '../shared/db.js';
 import { errorHandler, notFound } from '../shared/errorHandler.js';
 import jwtMiddleware from '../shared/jwtMiddleware.js';
+import { requestLogger } from '../shared/logger.js';
 import Wallet from '../shared/models/Wallet.js';
 import { notify, wsNotifyUser } from '../shared/interservice.js';
 
@@ -20,6 +21,7 @@ app.use(cors({
   credentials: true,
 }));
 app.use(express.json());
+app.use(requestLogger('WalletService'));
 
 connectDB('WalletService');
 

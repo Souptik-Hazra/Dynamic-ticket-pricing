@@ -1,16 +1,27 @@
+/* ── Deep Blue Cyber-Luxe Global Styles ──────────────────────────────────────── */
+
+
 :root {
-  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  background-color: #f8f9fa;
-  color: #213547;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  /* Core Palette: Deep Blue / Navy Obsidian */
+  --bg-deep: #050914;               /* Near black navy */
+  --bg-surface: #0a1128;            /* Deep navy blue */
+  --bg-accent: #111e42;             /* Lighter navy for hover */
+  
+  --glare-top: rgba(255, 255, 255, 0.05);
+  --border-dim: rgba(255, 255, 255, 0.08);
+  --border-glow: rgba(79, 172, 254, 0.3);
+  
+  --text-main: #f0f4ff;             /* Bright cool white */
+  --text-muted: #8a99b8;            /* Desaturated blue gray */
+  --text-dim: #5c6b8a;              /* Darker blue gray */
+  
+  --accent-cyan: #4facfe;           /* Electric Cyan */
+  --accent-pink: #f093fb;           /* Neon Pink */
+  --accent-blue: #007cf0;           /* Pure Blue */
+  
+  --blur-strong: blur(24px);
+  --shadow-base: 0 12px 40px rgba(0, 0, 0, 0.6);
+  --font-inter: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
 * {
@@ -19,9 +30,22 @@
   box-sizing: border-box;
 }
 
-body {
+html, body {
   min-height: 100vh;
   width: 100%;
+  background-color: var(--bg-deep);
+  /* Deep Blue Radial Glow */
+  background-image: 
+    radial-gradient(circle at 50% 0%, rgba(0, 124, 240, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 100% 100%, rgba(240, 147, 251, 0.05) 0%, transparent 40%);
+  background-attachment: fixed;
+  color: var(--text-main);
+  font-family: var(--font-inter);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
   overflow-x: hidden;
 }
 
@@ -29,17 +53,62 @@ body {
   width: 100%;
 }
 
-a {
-  text-decoration: none;
-  color: inherit;
+/* ── Global Scrollbar (Cyber Stylized) ─────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
-button {
-  font-family: inherit;
-  cursor: pointer;
+::-webkit-scrollbar-track {
+  background: var(--bg-deep);
 }
 
-/* Standardizing on a clean light theme as requested */
-:root {
-  background-color: #ffffff;
+::-webkit-scrollbar-thumb {
+  background: var(--bg-accent);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-cyan);
+}
+
+/* ── Utility Classes ─────────────────────────────────────────────────── */
+.glass-panel {
+  background: rgba(10, 17, 40, 0.6);
+  backdrop-filter: var(--blur-strong);
+  -webkit-backdrop-filter: var(--blur-strong);
+  border: 1px solid var(--border-dim);
+  border-radius: 20px;
+  box-shadow: var(--shadow-base);
+}
+
+.bg-obsidian, .bg-deep {
+  background-color: var(--bg-deep) !important;
+}
+
+.text-glow {
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+}
+
+.btn-premium {
+  background: linear-gradient(135deg, var(--accent-cyan), #00d2ff);
+  color: #fff;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0, 210, 255, 0.3);
+}
+
+.btn-premium:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 210, 255, 0.5);
+  filter: brightness(1.1);
+}
+
+.App {
+  min-height: 100vh;
 }

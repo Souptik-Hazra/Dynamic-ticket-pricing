@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { buildUrl, ENDPOINTS } from '../config/api';
+import { ENDPOINTS } from '../config/api';
 import './Subscription.css';
 const Subscription = () => {
   const { user, refreshUser } = useAuth();
@@ -11,23 +11,18 @@ const Subscription = () => {
   const [subscriptionPlans, setSubscriptionPlans] = useState([]); // Dynamic from backend
   const [message,   setMessage]    = useState({ text: '', isError: false });
 
-  const authHeader = () => {
-    const token = localStorage.getItem('token');
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  };
+  // fetchData handles both public and protected endpoints
 
   // Fetch plans and current subscription on mount
   useEffect(() => {
     const fetchData = async () => {
       try {
         // 1. Fetch available plans (Public data)
-        const plansRes = await axios.get(buildUrl(ENDPOINTS.SUBSCRIPTION_PLANS));
+        const plansRes = await api.get(ENDPOINTS.SUBSCRIPTION_PLANS);
         setSubscriptionPlans(plansRes.data);
-
+ 
         // 2. Fetch user's live subscription (Protected)
-        const subRes = await axios.get(buildUrl(ENDPOINTS.SUBSCRIPTION), {
-          headers: authHeader(),
-        });
+        const subRes = await api.get(ENDPOINTS.SUBSCRIPTION);
         setLiveSub(subRes.data);
       } catch (err) {
         console.warn('Could not fetch subscription data:', err.message);
@@ -48,10 +43,9 @@ const Subscription = () => {
     setLoading(true);
     setMessage({ text: '', isError: false });
     try {
-      const { data } = await axios.post(
-        buildUrl(ENDPOINTS.SUBSCRIPTION_UPGRADE),
-        { plan: planId },
-        { headers: authHeader() }
+      const { data } = await api.post(
+        ENDPOINTS.SUBSCRIPTION_UPGRADE,
+        { plan: planId }
       );
       if (data.success) {
         setLiveSub(data.subscription);                    // update local state immediately

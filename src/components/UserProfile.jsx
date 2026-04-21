@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../api/client";
 import { useAuth } from "../context/AuthContext.jsx";
-import { buildUrl, ENDPOINTS } from "../config/api";
+import { ENDPOINTS } from "../config/api";
 import { useWebSocket } from "../hooks/useWebSocket";
 import "./UserProfile.css";
 
@@ -30,10 +30,7 @@ const UserProfile = () => {
   const fetchWallet = async () => {
     try {
       setWalletLoading(true);
-      const token = localStorage.getItem("token");
-      const { data } = await axios.get(buildUrl(ENDPOINTS.WALLET_BALANCE), {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const { data } = await api.get(ENDPOINTS.WALLET_BALANCE);
       setWallet(data);
     } catch (err) {
       console.error("Error fetching wallet:", err);
@@ -54,10 +51,8 @@ const UserProfile = () => {
 
     try {
       setWalletLoading(true);
-      const token = localStorage.getItem("token");
-      await axios.post(buildUrl(ENDPOINTS.WALLET_DEPOSIT), 
-        { amount: parseFloat(amount) },
-        { headers: { Authorization: `Bearer ${token}` } }
+      await api.post(ENDPOINTS.WALLET_DEPOSIT, 
+        { amount: parseFloat(amount) }
       );
       alert(`₹${amount} added to your wallet successfully!`);
       fetchWallet();
@@ -80,10 +75,8 @@ const UserProfile = () => {
 
     try {
       setWalletLoading(true);
-      const token = localStorage.getItem("token");
-      await axios.post(buildUrl(ENDPOINTS.WALLET_WITHDRAW), 
-        { amount: parseFloat(amount) },
-        { headers: { Authorization: `Bearer ${token}` } }
+      await api.post(ENDPOINTS.WALLET_WITHDRAW, 
+        { amount: parseFloat(amount) }
       );
       alert(`₹${amount} withdrawn from your wallet successfully!`);
       fetchWallet();
@@ -105,10 +98,7 @@ const UserProfile = () => {
   const fetchTickets = async () => {
     try {
       setTicketsLoading(true);
-      const token = localStorage.getItem("token");
-      const response = await axios.get(buildUrl(ENDPOINTS.USER_TICKETS), {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await api.get(ENDPOINTS.USER_TICKETS);
       setTickets(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
       console.error("Error fetching tickets:", err);
@@ -120,10 +110,7 @@ const UserProfile = () => {
   const fetchPayments = async () => {
     try {
       setPaymentsLoading(true);
-      const token = localStorage.getItem("token");
-      const { data } = await axios.get(buildUrl(ENDPOINTS.PAYMENTS), {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const { data } = await api.get(ENDPOINTS.PAYMENTS);
       console.log("[UserProfile] Payments loaded:", data);
       
       // Handle various response structures gracefully
@@ -148,11 +135,9 @@ const UserProfile = () => {
     if (!window.confirm("Warning: Organiser/Admin will keep a 15% cancellation fee, and you will receive an 85% refund. Are you convinced now?")) return;
     try {
       setRefundingId(paymentId);
-      const token = localStorage.getItem("token");
-      await axios.post(
-        buildUrl(ENDPOINTS.PAYMENT_REFUND(paymentId)),
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
+      await api.post(
+        ENDPOINTS.PAYMENT_REFUND(paymentId),
+        {}
       );
       await fetchPayments(); // refresh list
     } catch (err) {

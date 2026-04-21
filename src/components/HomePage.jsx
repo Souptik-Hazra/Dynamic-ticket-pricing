@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api/client';
 import Footer from './Footer';
 import { API_URL } from '../config/api';
 import './HomePage.css';
@@ -18,7 +18,7 @@ const HomePage = ({ onNavigate }) => {
 
   const fetchEvents = async () => {
     try {
-      const response = await axios.get(`${API_URL}/events`);
+      const response = await api.get('/events');
       setEvents(response.data);
     } catch (error) {
       console.error('Error fetching events:', error);

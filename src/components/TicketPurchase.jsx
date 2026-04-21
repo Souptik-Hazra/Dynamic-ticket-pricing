@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { buildUrl, ENDPOINTS } from '../config/api';
+import { ENDPOINTS } from '../config/api';
 import './TicketPurchase.css';
 
 function TicketPurchase({ event, onBack, onSuccess }) {
@@ -25,7 +25,7 @@ function TicketPurchase({ event, onBack, onSuccess }) {
     const fetchDynamicPrices = async () => {
       try {
         setPriceLoading(true);
-        const response = await axios.get(buildUrl(`/events/${event._id}/dynamic-prices`));
+        const response = await api.get(`/events/${event._id}/dynamic-prices`);
         if (response.data.prices) {
           setDynamicPrices(response.data.prices);
         }
@@ -66,10 +66,7 @@ function TicketPurchase({ event, onBack, onSuccess }) {
   const fetchUserWallet = async () => {
     try {
       setWalletLoading(true);
-      const token = localStorage.getItem('token');
-      const { data } = await axios.get(buildUrl('/wallet/balance'), {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const { data } = await api.get('/wallet/balance');
       setUserWallet(data);
     } catch (err) { console.error('Checkout wallet error:', err); }
     finally { setWalletLoading(false); }
@@ -147,9 +144,8 @@ function TicketPurchase({ event, onBack, onSuccess }) {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.post(
-        buildUrl('/tickets'),
+      const response = await api.post(
+        '/tickets',
         {
           eventId: event._id,
           categoryId: selectedCategory?._id,
@@ -157,16 +153,13 @@ function TicketPurchase({ event, onBack, onSuccess }) {
           ...formData,
           quantity: parseInt(formData.quantity),
           pricePerTicket: getPrice()
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` }
         }
       );
 
       // Create Payment Record
       try {
-        await axios.post(
-          buildUrl('/payments'),
+        await api.post(
+          '/payments',
           {
             ticketId: response.data.tickets[0]._id, // Lead ticket
             bookingReference: response.data.tickets[0].bookingReference,
@@ -176,9 +169,6 @@ function TicketPurchase({ event, onBack, onSuccess }) {
               ticketIds: response.data.tickets.map(t => t._id),
               eventTitle: event.name
             }
-          },
-          {
-            headers: { Authorization: `Bearer ${token}` }
           }
         );
       } catch (payErr) {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from './api/client';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import HomePage from './components/HomePage';
@@ -10,7 +10,7 @@ import EventList from './components/EventList';
 import Analytics from './components/Analytics';
 import TicketPurchase from './components/TicketPurchase';
 import Subscription from './components/Subscription';
-import { buildUrl, ENDPOINTS } from './config/api';
+import { ENDPOINTS } from './config/api';
 import './components/Navigation.css';
 import UserProfile from "./components/UserProfile.jsx";
 import Notifications from "./components/Notifications.jsx";
@@ -63,7 +63,7 @@ function AppContent() {
   const fetchEvents = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(buildUrl(ENDPOINTS.EVENTS));
+      const response = await api.get(ENDPOINTS.EVENTS);
       setEvents(response.data);
     } catch (error) {
       console.error('Error fetching events:', error);
@@ -76,7 +76,7 @@ function AppContent() {
 
   const handleUpdatePrice = async (eventId) => {
     try {
-      const response = await axios.get(buildUrl(`/events/${eventId}/dynamic-prices`));
+      const response = await api.get(`/events/${eventId}/dynamic-prices`);
       const prices = response.data.prices;
       const occupancy = response.data.occupancyRate;
       const priceText = prices

@@ -1,16 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { buildUrl, ENDPOINTS } from '../config/api';
+import { ENDPOINTS } from '../config/api';
 import './AdminEventForm.css';
 
 function AdminEventForm({ event, onClose }) {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
-  const authHeader = () => {
-    const token = localStorage.getItem('token');
-    return token ? { headers: { Authorization: `Bearer ${token}` } } : {};
-  };
 
   const [formData, setFormData] = useState({
     name: '',
@@ -201,15 +197,15 @@ function AdminEventForm({ event, onClose }) {
 
       if (event) {
         const updateUrl = isAdmin 
-          ? buildUrl(`${ENDPOINTS.ADMIN_EVENTS}/${event._id}`) 
-          : buildUrl(`${ENDPOINTS.EVENTS}/${event._id}`);
-        await axios.put(updateUrl, eventData, authHeader());
+          ? `${ENDPOINTS.ADMIN_EVENTS}/${event._id}` 
+          : `${ENDPOINTS.EVENTS}/${event._id}`;
+        await api.put(updateUrl, eventData);
         alert('Event updated successfully!');
       } else {
         const createUrl = isAdmin 
-          ? buildUrl(ENDPOINTS.ADMIN_EVENTS) 
-          : buildUrl(ENDPOINTS.EVENTS);
-        await axios.post(createUrl, eventData, authHeader());
+          ? ENDPOINTS.ADMIN_EVENTS 
+          : ENDPOINTS.EVENTS;
+        await api.post(createUrl, eventData);
         alert('Event created successfully!');
       }
 

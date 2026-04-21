@@ -6,6 +6,7 @@ import compression from 'compression';
 import connectDB, { requireDB, registerProcessHandlers, tuneExpressServer } from '../shared/db.js';
 import { errorHandler, notFound } from '../shared/errorHandler.js';
 import jwtMiddleware from '../shared/jwtMiddleware.js';
+import { requestLogger } from '../shared/logger.js';
 import Event from '../shared/models/Event.js';
 import Ticket from '../shared/models/Ticket.js';
 import { cacheGet, cacheSet } from '../shared/interservice.js';
@@ -20,6 +21,7 @@ app.use(cors({
   credentials: true,
 }));
 app.use(express.json());
+app.use(requestLogger('AnalyticsService'));
 
 connectDB('AnalyticsService');
 
@@ -32,10 +34,15 @@ app.get('/api/analytics/dashboard', jwtMiddleware, requireDB, async (req, res, n
     if (req.user.role !== 'admin' && req.user.role !== 'organizer')
       return res.status(403).json({ error: 'Analytics access restricted' });
 
-    // Use cache only for heavy summary, let trends be more real-time
-    const cacheKey = `analytics:dashboard:${req.user.id}`;
-    const cached = await cacheGet(cacheKey);
-    if (cached) return res.json(cached);
+    const bypassCache = req.query.nocache === 'true';
+    const cacheKey    = `analytics:dashboard:${req.user.id}`;
+    
+    if (!bypassCache) {
+      const cached = await cacheGet(cacheKey);
+      if (cached) return res.json(cached);
+    } else {
+      console.log(`[AnalyticsService] ⚡ Bypassing cache for dashboard (Direct Aggregate hit)`);
+    }
 
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);

@@ -3,10 +3,21 @@ from flask_cors import CORS
 import joblib
 import numpy as np
 import os
+import sys
 import json
 import pandas as pd
 from datetime import datetime
 from dotenv import load_dotenv
+
+# Force UTF-8 output on Windows (fixes UnicodeEncodeError for emoji in print())
+if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stderr.reconfigure(encoding='utf-8')
+    except AttributeError:
+        import io
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
 
 # Load environment variables from root .env
@@ -42,15 +53,49 @@ except Exception as e:
     model = None
     scaler = None
 
+# ── Logging Setup ────────────────────────────────────────────────────────────
+
+@app.before_request
+def log_request_info():
+    trace_id = request.headers.get('X-Request-ID', 'no-trace')
+    method   = request.method
+    path     = request.path
+    print(f"[ML-MODEL] >> [{trace_id}] {method} {path}")
+    
+    if request.is_json:
+        # Mask potentially sensitive features (e.g. if we add user identifiers)
+        body = request.get_json()
+        print(f"[ML-MODEL] BODY [{trace_id}] {json.dumps(body)}")
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    from werkzeug.exceptions import HTTPException
+    if isinstance(e, HTTPException):
+        return e
+    trace_id = request.headers.get('X-Request-ID', 'no-trace')
+    print(f"[ML-MODEL] ERROR [{trace_id}] {str(e)}")
+    return jsonify({"error": "Internal Error", "message": str(e)}), 500
+
+@app.after_request
+def log_response_info(response):
+    try:
+        trace_id = request.headers.get('X-Request-ID', 'no-trace')
+        status   = response.status_code
+        icon = "[FAIL]" if status >= 400 else "[OK]"
+        print(f"[ML-MODEL] {icon} [{trace_id}] {status}")
+    except Exception:
+        pass  # Never crash a response just because of logging
+    return response
+
+# ── Routes ───────────────────────────────────────────────────────────────────
 @app.route('/health', methods=['GET'])
 def health_check():
-    """Health check endpoint"""
+    """Simple health check"""
     return jsonify({
         'status': 'healthy',
         'model_loaded': model is not None,
-        'model_version': model_version,
-        'timestamp': datetime.now().isoformat()
-    })
+        'version': model_version
+    }), 200
 
 @app.route('/predict', methods=['POST'])
 def predict_price():
@@ -144,44 +189,48 @@ def batch_predict():
         predictions = []
         
         for scenario in scenarios:
-            capacity = float(data.get('capacity', 1000))
-            tickets_sold = float(data.get('tickets_sold', 0))
-            base_price = float(data.get('base_price', 500))
-            days_until = float(data.get('days_until_event', 30))
-            duration = float(data.get('event_duration', 1))
-            popularity = float(data.get('event_popularity', 0.5))
-            venue_tier = int(data.get('venue_tier', 2))
-            artist_tier = int(data.get('artist_tier', 3))
-            is_holiday = int(data.get('is_holiday', 0))
-            category = data.get('category', 'other').lower()
-            
-            # Numeric features
-            features = [
-                capacity, tickets_sold, base_price, days_until, duration,
-                popularity, venue_tier, artist_tier, is_holiday
-            ]
-            
-            # One-hot encoding for category
-            categories = ['concert', 'sports', 'theater', 'conference', 'festival', 'other']
-            for cat in categories:
-                features.append(1 if category == cat else 0)
-            
-            features_scaled = scaler.transform([features])
-            predicted_price = max(base_price * 0.7, min(model.predict(features_scaled)[0], base_price * 10))
-            
-            return jsonify({
-                'predicted_price': float(round(predicted_price, 2)),
-                'currency': 'INR',
-                'model_version': model_version,
-                'features_used': {k: v for k, v in {
-                    'capacity': capacity,
-                    'tickets_sold': tickets_sold,
-                    'base_price': base_price,
-                    'days_until': days_until,
-                    'category': category
-                }.items()},
-                'timestamp': datetime.now().isoformat()
-            })
+            try:
+                capacity = float(scenario.get('capacity', 1000))
+                tickets_sold = float(scenario.get('tickets_sold', 0))
+                base_price = float(scenario.get('base_price', 500))
+                days_until = float(scenario.get('days_until_event', 30))
+                duration = float(scenario.get('event_duration', 1))
+                popularity = float(scenario.get('event_popularity', 0.5))
+                venue_tier = int(scenario.get('venue_tier', 2))
+                artist_tier = int(scenario.get('artist_tier', 3))
+                is_holiday = int(scenario.get('is_holiday', 0))
+                category = scenario.get('category', 'other').lower()
+                
+                # Build 15-feature vector
+                features = [
+                    capacity, tickets_sold, base_price, days_until, duration,
+                    popularity, venue_tier, artist_tier, is_holiday
+                ]
+                
+                categories = ['concert', 'sports', 'theater', 'conference', 'festival', 'other']
+                for cat in categories:
+                    features.append(1 if category == cat else 0)
+                
+                # Scale and predict
+                features_scaled = scaler.transform([features])
+                predicted_price = max(base_price * 0.7, min(model.predict(features_scaled)[0], base_price * 5))
+                
+                predictions.append({
+                    'scenario_id': scenario.get('id', 'unknown'),
+                    'predicted_price': float(round(predicted_price, 2)),
+                    'currency': 'INR'
+                })
+            except Exception as inner_e:
+                predictions.append({
+                    'scenario_id': scenario.get('id', 'unknown'),
+                    'error': str(inner_e)
+                })
+        
+        return jsonify({
+            'predictions': predictions,
+            'model_version': model_version,
+            'timestamp': datetime.now().isoformat()
+        })
     
     except Exception as e:
         return jsonify({'error': str(e)}), 400

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import AdminEventForm from './AdminEventForm';
 import Footer from './Footer';
-import { buildUrl, ENDPOINTS } from '../config/api';
+import { ENDPOINTS } from '../config/api';
 import { useWebSocket } from '../hooks/useWebSocket';
 import './AdminDashboard.css'; // Reusing admin styles for consistency
 
@@ -55,10 +55,6 @@ function OrganizerDashboard() {
     }
   }, [lastEvent]); // eslint-disable-line
 
-  const authHeaders = () => ({
-    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-  });
-
   useEffect(() => {
     if (view === 'events'  ? fetchEvents()  : null);
     if (view === 'tickets' ? fetchTickets() : null);
@@ -67,7 +63,7 @@ function OrganizerDashboard() {
 
   const fetchOrganizerWallet = async () => {
     try {
-      const { data } = await axios.get(buildUrl(ENDPOINTS.WALLET_BALANCE), authHeaders());
+      const { data } = await api.get(ENDPOINTS.WALLET_BALANCE);
       setOrganizerWallet(data);
     } catch (err) { console.error('Organizer wallet error:', err); }
   };
@@ -75,7 +71,7 @@ function OrganizerDashboard() {
   const fetchStats = async () => {
     try {
       setLoading(true);
-      const { data } = await axios.get(buildUrl(ENDPOINTS.ORGANIZER_STATS), authHeaders());
+      const { data } = await api.get(ENDPOINTS.ORGANIZER_STATS);
       setStats(data.stats);
     } catch (err) {
       console.error('Stats error:', err);
@@ -86,7 +82,7 @@ function OrganizerDashboard() {
   const fetchEvents = async () => {
     try {
       setLoading(true);
-      const { data } = await axios.get(buildUrl(ENDPOINTS.ORGANIZER_EVENTS), authHeaders());
+      const { data } = await api.get(ENDPOINTS.ORGANIZER_EVENTS);
       setEvents(data.events);
     } catch (err) {
       console.error('Events error:', err);
@@ -97,7 +93,7 @@ function OrganizerDashboard() {
   const fetchTickets = async () => {
     try {
       setLoading(true);
-      const { data } = await axios.get(buildUrl(ENDPOINTS.ORGANIZER_TICKETS), authHeaders());
+      const { data } = await api.get(ENDPOINTS.ORGANIZER_TICKETS);
       setTickets(data.tickets);
     } catch (err) {
       console.error('Tickets error:', err);
@@ -115,7 +111,7 @@ function OrganizerDashboard() {
         ? { title: messageModal.title, message: messageModal.message }
         : { eventId: messageModal.eventId, title: messageModal.title, message: messageModal.message };
 
-      await axios.post(buildUrl(endpoint), payload, authHeaders());
+      await api.post(endpoint, payload);
       alert('Message sent successfully!');
       setMessageModal({ ...messageModal, isOpen: false, title: '', message: '' });
     } catch (err) {
@@ -127,7 +123,7 @@ function OrganizerDashboard() {
   const handleDeleteEvent = async (eventId) => {
     if (!window.confirm('Are you sure you want to delete this event?')) return;
     try {
-      await axios.delete(buildUrl(`${ENDPOINTS.EVENTS}/${eventId}`), authHeaders());
+      await api.delete(`${ENDPOINTS.EVENTS}/${eventId}`);
       fetchEvents();
     } catch (err) {
       console.error('Delete error:', err);

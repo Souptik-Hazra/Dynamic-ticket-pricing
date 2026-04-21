@@ -6,6 +6,7 @@ import compression from 'compression';
 import connectDB, { requireDB, registerProcessHandlers, tuneExpressServer } from '../shared/db.js';
 import { errorHandler, notFound } from '../shared/errorHandler.js';
 import jwtMiddleware from '../shared/jwtMiddleware.js';
+import { requestLogger } from '../shared/logger.js';
 import crypto from 'crypto';
 import axios from 'axios';
 import Event from '../shared/models/Event.js';
@@ -39,6 +40,7 @@ app.use(cors({
   credentials: true,
 }));
 app.use(express.json({ limit: '10mb' }));
+app.use(requestLogger('OrganizerService'));
 
 // ── Health ──────────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) =>
@@ -66,10 +68,22 @@ const getDynamicPriceFallback = (category, event) => {
   return Math.round(basePrice * Math.min(multiplier, maxMult));
 };
 
+// ── Circuit Breaker State ────────────────────────────────────────────────
+let mlConsecutiveFailures = 0;
+let mlCircuitOpenUntil    = 0;
+const ML_CIRCUIT_THRESHOLD = 3;
+const ML_CIRCUIT_COOLDOWN  = 30000; // 30 seconds
+
 /**
  * predictMLPrice — extract features and call ML service
  */
 async function predictMLPrice(category, event) {
+  // 1. Check Circuit Breaker
+  if (Date.now() < mlCircuitOpenUntil) {
+    console.warn(`[Network Expert] ⚡ Circuit Open: ML Service unreachable. Using fallback for event ${event._id}`);
+    return getDynamicPriceFallback(category, event);
+  }
+
   try {
     const now = new Date();
     const start = new Date(event.startDate);
@@ -149,9 +163,18 @@ async function predictMLPrice(category, event) {
       category.lastCalculatedPrice = Math.round(finalPrice);
     }
 
+    // Reset circuit on success
+    mlConsecutiveFailures = 0;
     return isNaN(finalPrice) ? getDynamicPriceFallback(category, event) : Math.round(finalPrice);
   } catch (err) {
-    console.error(`[OrganizerService] ML Prediction failed for event ${event._id}:`, err.message);
+    mlConsecutiveFailures++;
+    console.error(`[Network Expert] ML Prediction failed (${mlConsecutiveFailures}/${ML_CIRCUIT_THRESHOLD}):`, err.message);
+    
+    if (mlConsecutiveFailures >= ML_CIRCUIT_THRESHOLD) {
+      mlCircuitOpenUntil = Date.now() + ML_CIRCUIT_COOLDOWN;
+      console.error(`[Network Expert] 🚨 ML Circuit OPENED for ${ML_CIRCUIT_COOLDOWN/1000}s due to consecutive failures.`);
+    }
+
     return getDynamicPriceFallback(category, event);
   }
 }
@@ -279,56 +302,69 @@ app.post('/api/organizers/message-admin', jwtMiddleware, requireDB, async (req, 
 
 app.get('/api/events', async (req, res, next) => {
   try {
-    const cacheKey = CACHE_KEYS.EVENT_LIST(JSON.stringify(req.query));
-    const cached   = await cacheGet(cacheKey);
-    if (cached) return res.json(cached);
+    const bypassCache = req.query.nocache === 'true';
+    const cacheKey    = CACHE_KEYS.EVENT_LIST(JSON.stringify(req.query));
+    
+    if (!bypassCache) {
+      const cached = await cacheGet(cacheKey);
+      if (cached) return res.json(cached);
+    } else {
+      console.log(`[OrganizerService] ⚡ Bypassing cache for events list (Direct DB hit)`);
+    }
 
     const filter = {};
     if (req.query.category) filter.category = req.query.category;
     if (req.query.status)   filter.status   = req.query.status;
     const events = await Event.find(filter).sort({ startDate: 1 });
 
-    cacheSet(cacheKey, events, 60);
+    if (!bypassCache) cacheSet(cacheKey, events, 60);
     res.json(events);
   } catch (err) { next(err); }
 });
 
 app.get('/api/events/:id', async (req, res, next) => {
   try {
-    const cacheKey = CACHE_KEYS.EVENT_DETAIL(req.params.id);
-    const cached   = await cacheGet(cacheKey);
-    if (cached) return res.json(cached);
+    const bypassCache = req.query.nocache === 'true';
+    const cacheKey    = CACHE_KEYS.EVENT_DETAIL(req.params.id);
+    
+    if (!bypassCache) {
+      const cached = await cacheGet(cacheKey);
+      if (cached) return res.json(cached);
+    }
 
     const event = await Event.findById(req.params.id);
     if (!event) return res.status(404).json({ error: 'Event not found' });
 
-    cacheSet(cacheKey, event, 30);
+    if (!bypassCache) cacheSet(cacheKey, event, 30);
     res.json(event);
   } catch (err) { next(err); }
 });
 
 const inFlightPriceRequests = new Map();
-const userInferenceHistory = new Map(); // For Anti-Price Hunting { ip: { count, firstHit } }
+// Anti-Price-Hunting: track per IP+eventId to allow parallel event loads
+// (loading an events page fires N simultaneous requests from the same IP)
+const userInferenceHistory = new Map(); // key: `${ip}:${eventId}` -> { count, firstHit }
 
 app.get('/api/events/:id/dynamic-prices', async (req, res, next) => {
   const eventId = req.params.id;
   const userIp = req.headers['x-forwarded-for'] || req.ip;
   
   try {
-    // 1. Anti-Price Hunting Guard
-    // If a user (IP) requests a fresh inference more than 5 times in 1 minute, 
-    // we force them to use the cache only for 2 minutes.
+    // 1. Anti-Price Hunting Guard (per IP+event, not per IP globally)
+    // A single page load fires N parallel requests – one per event – so we must
+    // track PER-EVENT to avoid throttling legitimate parallel loads.
     const now = Date.now();
-    let history = userInferenceHistory.get(userIp) || { count: 0, firstHit: now };
+    const huntingKey = `${userIp}:${eventId}`;
+    let history = userInferenceHistory.get(huntingKey) || { count: 0, firstHit: now };
     
     if (now - history.firstHit > 60000) {
       history = { count: 1, firstHit: now };
     } else {
       history.count++;
     }
-    userInferenceHistory.set(userIp, history);
+    userInferenceHistory.set(huntingKey, history);
 
-    const isHunting = history.count > 5;
+    const isHunting = history.count > 15; // 15 requests/min per event is enough to stop scrapers
 
     // 2. Check Redis Cache First (15-second "Price Freeze")
     const cacheKey = CACHE_KEYS.EVENT_PRICES(eventId);

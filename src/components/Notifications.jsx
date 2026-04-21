@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
-import { buildUrl, ENDPOINTS } from '../config/api';
+import api from '../api/client';
+import { ENDPOINTS } from '../config/api';
 import './Notifications.css';
 
 const typeIcons = {
@@ -19,18 +19,13 @@ function Notifications() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const authHeader = () => {
-    const token = localStorage.getItem('token');
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  };
+  // fetchNotifications handles tokens automatically via the api client
 
   const fetchNotifications = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      const { data } = await axios.get(buildUrl(ENDPOINTS.NOTIFICATIONS), {
-        headers: authHeader(),
-      });
+      const { data } = await api.get(ENDPOINTS.NOTIFICATIONS);
       setNotifications(data.notifications || []);
       setUnreadCount(data.unreadCount || 0);
     } catch (err) {
@@ -47,7 +42,7 @@ function Notifications() {
   // Mark one notification as read
   const markRead = async (id) => {
     try {
-      await axios.put(buildUrl(ENDPOINTS.NOTIFICATION_READ(id)), {}, { headers: authHeader() });
+      await api.put(ENDPOINTS.NOTIFICATION_READ(id), {});
       setNotifications((prev) =>
         prev.map((n) => (n._id === id ? { ...n, read: true } : n))
       );
@@ -60,7 +55,7 @@ function Notifications() {
   // Mark all as read
   const markAllRead = async () => {
     try {
-      await axios.put(buildUrl(ENDPOINTS.NOTIFICATIONS_READ_ALL), {}, { headers: authHeader() });
+      await api.put(ENDPOINTS.NOTIFICATIONS_READ_ALL, {});
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
       setUnreadCount(0);
     } catch {
@@ -72,7 +67,7 @@ function Notifications() {
   const deleteNotification = async (id, e) => {
     e.stopPropagation();
     try {
-      await axios.delete(buildUrl(ENDPOINTS.NOTIFICATION_DELETE(id)), { headers: authHeader() });
+      await api.delete(ENDPOINTS.NOTIFICATION_DELETE(id));
       setNotifications((prev) => prev.filter((n) => n._id !== id));
       setUnreadCount((c) => {
         const wasUnread = notifications.find((n) => n._id === id && !n.read);

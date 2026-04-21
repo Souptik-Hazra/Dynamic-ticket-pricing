@@ -8,6 +8,8 @@ import sharp from 'sharp';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { registerProcessHandlers, tuneExpressServer } from '../shared/db.js';
+import { errorHandler, notFound } from '../shared/errorHandler.js';
+import { requestLogger } from '../shared/logger.js';
 
 dotenv.config();
 
@@ -20,6 +22,7 @@ app.use(cors({
   credentials: true,
 }));
 app.use(express.json({ limit: '10mb' }));
+app.use(requestLogger('QRService'));
 
 /**
  * QR Generation Logic with positioning support

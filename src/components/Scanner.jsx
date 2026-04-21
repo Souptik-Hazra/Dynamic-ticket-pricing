@@ -1,8 +1,8 @@
 
 import { useEffect, useState } from 'react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
-import axios from 'axios';
-import { buildUrl, ENDPOINTS } from '../config/api';
+import api from '../api/client';
+import { ENDPOINTS } from '../config/api';
 import './Scanner.css';
 
 const Scanner = () => {
@@ -79,11 +79,9 @@ const Scanner = () => {
       setError(null);
       setScanResult(null);
 
-      const authToken = localStorage.getItem('token');
-      const response = await axios.post(
-        buildUrl(ENDPOINTS.SCANNER_VERIFY), 
-        { token },
-        { headers: { Authorization: `Bearer ${authToken}` } }
+      const response = await api.post(
+        ENDPOINTS.SCANNER_VERIFY, 
+        { token }
       );
 
       setScanResult(response.data);

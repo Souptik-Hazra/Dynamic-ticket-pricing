@@ -9,7 +9,8 @@ import { errorHandler, notFound } from '../shared/errorHandler.js';
 import jwtMiddleware from '../shared/jwtMiddleware.js';
 import Ticket from '../shared/models/Ticket.js';
 import Event from '../shared/models/Event.js';
-import { notify, wsNotifyUser, sendEmailTemplate, revertPurchase, creditUserWallet } from '../shared/interservice.js';
+import { cacheDelPattern, CACHE_KEYS, notify, wsNotifyUser } from '../shared/interservice.js';
+import { requestLogger } from '../shared/logger.js';
 
 dotenv.config();
 
@@ -21,6 +22,7 @@ app.use(cors({
   credentials: true,
 }));
 app.use(express.json());
+app.use(requestLogger('PaymentService'));
 
 // ── Health ──────────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) =>

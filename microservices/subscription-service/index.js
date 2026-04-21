@@ -6,6 +6,7 @@ import compression from 'compression';
 import connectDB, { requireDB, registerProcessHandlers, tuneExpressServer } from '../shared/db.js';
 import { errorHandler, notFound } from '../shared/errorHandler.js';
 import jwtMiddleware from '../shared/jwtMiddleware.js';
+import { requestLogger } from '../shared/logger.js';
 import Subscription, { SUBSCRIPTION_PLANS, getPlanDuration } from '../shared/models/Subscription.js';
 import User from '../shared/models/User.js';
 import { notify, wsNotifyUser, sendEmailTemplate } from '../shared/interservice.js';
@@ -20,6 +21,7 @@ app.use(cors({
   credentials: true,
 }));
 app.use(express.json());
+app.use(requestLogger('SubscriptionService'));
 
 connectDB('SubscriptionService');
 

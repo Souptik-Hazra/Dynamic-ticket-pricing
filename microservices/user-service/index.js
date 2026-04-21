@@ -7,6 +7,7 @@ import connectDB, { requireDB, registerProcessHandlers, tuneExpressServer } from
 import { errorHandler, notFound } from '../shared/errorHandler.js';
 import jwtMiddleware from '../shared/jwtMiddleware.js';
 import User from '../shared/models/User.js';
+import { requestLogger } from '../shared/logger.js';
 
 dotenv.config();
 
@@ -18,6 +19,7 @@ app.use(cors({
   credentials: true,
 }));
 app.use(express.json());
+app.use(requestLogger('UserService'));
 
 // ── Health ──────────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) =>

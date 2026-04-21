@@ -1,4 +1,6 @@
 import express from 'express';
+import { tuneExpressServer, registerProcessHandlers } from '../shared/db.js';
+import { requestLogger } from '../shared/logger.js';
 import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
 import dotenv from 'dotenv';
@@ -15,6 +17,7 @@ app.use(cors({
   credentials: true,
 }));
 app.use(express.json());
+app.use(requestLogger('WebSocketService'));
 
 // ── Health ──────────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) =>

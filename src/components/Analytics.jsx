@@ -1,7 +1,6 @@
-
 import { useState, useEffect } from 'react';
-import axios from 'axios';
-import { buildUrl, ENDPOINTS } from '../config/api';
+import api from '../api/client';
+import { ENDPOINTS } from '../config/api';
 import TrendChart from './TrendChart';
 import './Analytics.css';
 
@@ -18,10 +17,7 @@ function Analytics() {
     try {
       setLoading(true);
       setError(null);
-      const token = localStorage.getItem('token');
-      const response = await axios.get(buildUrl(ENDPOINTS.ANALYTICS_DASHBOARD), {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
+      const response = await api.get(ENDPOINTS.ANALYTICS_DASHBOARD);
       setData(response.data);
     } catch (err) {
       console.error('Error fetching analytics dashboard:', err);
@@ -33,9 +29,9 @@ function Analytics() {
 
   if (loading) {
     return (
-      <div className="analytics-loading-container bg-white dark:bg-gray-900 min-h-screen flex items-center justify-center">
+      <div className="analytics-loading-container bg-obsidian min-h-screen">
         <div className="loading-spinner"></div>
-        <p className="ml-4 text-gray-500">Processing Business Intelligence...</p>
+        <p className="text-glow">Syncing Neural BI Engine...</p>
       </div>
     );
   }
@@ -43,21 +39,21 @@ function Analytics() {
   if (error || !data) {
     const isAccessDenied = error === 403;
     return (
-      <div className="analytics-error-container min-h-screen flex items-center justify-center">
-        <div className={`error-card p-8 rounded-xl text-center ${isAccessDenied ? 'bg-red-50 border border-red-200' : 'bg-orange-50 border border-orange-200'}`}>
-          <h2 className={`font-bold mb-2 ${isAccessDenied ? 'text-red-600' : 'text-orange-600'}`}>
-            {isAccessDenied ? 'Access Denied' : 'Service Temporarily Offline'}
+      <div className="analytics-error-container bg-obsidian min-h-screen">
+        <div className="error-card glass-panel">
+          <h2 className={isAccessDenied ? 'text-red-400' : 'text-cyan-400'}>
+            {isAccessDenied ? 'Restricted Access' : 'Engine Link Failure'}
           </h2>
-          <p className={isAccessDenied ? 'text-red-500' : 'text-orange-500'}>
+          <p>
             {isAccessDenied 
-              ? 'Analytics are reserved for Administrators and Organizers.' 
-              : 'We encountered an error reaching the BI Engine. Please verify that the Analytics Service is running.'}
+              ? 'Unauthorized personnel detected. Admin or Organizer credentials required for BI access.' 
+              : 'Failed to establish encrypted link with Analytics Microservice. Ensure service is operational on port 4011.'}
           </p>
           <button 
             onClick={fetchDashboardData}
-            className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
+            className="btn-premium mt-6"
           >
-            Retry Connection
+            Reconnect Terminal
           </button>
         </div>
       </div>
@@ -67,62 +63,62 @@ function Analytics() {
   const { summary, trends, categories, venues } = data;
 
   // Helper to calculate percentage for leaderboard bars
-  const getMaxRevenue = (arr) => Math.max(...arr.map(i => i.revenue), 1);
+  const getMaxRevenue = (arr) => Math.max(...arr.map(i => i.revenue || 0), 1);
 
   return (
-    <div className="analytics-container min-h-screen pb-12">
+    <div className="analytics-container">
       <div className="analytics-header">
-        <h2>Business Intelligence Dashboard</h2>
-        <p>Real-time performance metrics and market trends</p>
+        <h2>Neural BI Analytics</h2>
+        <p>Market intelligence and event performance metrics</p>
       </div>
 
       <div className="analytics-grid">
         <div className="analytics-card">
-          <div className="card-icon">🎭</div>
+          <div className="card-icon">⚡</div>
           <div className="card-content">
-            <h3>Active Events</h3>
+            <h3>Live Operations</h3>
             <p className="stat-value">{summary.totalEvents}</p>
           </div>
         </div>
         <div className="analytics-card">
-          <div className="card-icon">💰</div>
+          <div className="card-icon">💎</div>
           <div className="card-content">
-            <h3>Gross Revenue</h3>
+            <h3>Aggregate Revenue</h3>
             <p className="stat-value">₹{summary.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
           </div>
         </div>
         <div className="analytics-card">
-          <div className="card-icon">📈</div>
+          <div className="card-icon">🎯</div>
           <div className="card-content">
-            <h3>Avg. Occupancy</h3>
+            <h3>Yield Efficiency</h3>
             <p className="stat-value">{(summary.avgOccupancy * 100).toFixed(1)}%</p>
           </div>
         </div>
         <div className="analytics-card">
-          <div className="card-icon">🏢</div>
+          <div className="card-icon">🌐</div>
           <div className="card-content">
-            <h3>Venue Reach</h3>
-            <p className="stat-value">{venues.length} Locations</p>
+            <h3>Global Footprint</h3>
+            <p className="stat-value">{venues.length} Sectors</p>
           </div>
         </div>
       </div>
 
-      <div className="dashboard-main-content mt-8">
+      <div className="dashboard-main-content">
         <TrendChart data={trends} />
 
-        <div className="bi-grid-row mt-8">
+        <div className="bi-grid-row">
           {/* Category Distribution Leaderboard */}
           <div className="bi-widget">
             <div className="bi-widget-header">
-              <h3><span>🧩</span> Revenue by Category</h3>
-              <span className="badge">Market Share</span>
+              <h3><span>📊</span> Category Saturation</h3>
+              <span className="badge">Revenue Split</span>
             </div>
             <div className="leaderboard-container">
               {categories.map((cat, idx) => (
                 <div key={idx} className="leaderboard-item">
                   <div className="leaderboard-label">
                     <span className="leaderboard-name">
-                      {cat.name} <span className="sub">({cat.count} Events)</span>
+                      {cat.name} <span className="sub">[{cat.count} Events]</span>
                     </span>
                     <span className="leaderboard-val">₹{cat.revenue.toLocaleString()}</span>
                   </div>
@@ -140,15 +136,15 @@ function Analytics() {
           {/* Top Venues Leaderboard */}
           <div className="bi-widget">
             <div className="bi-widget-header">
-              <h3><span>📍</span> High Performance Venues</h3>
-              <span className="badge">Yield Efficiency</span>
+              <h3><span>🏙️</span> Sector Performance</h3>
+              <span className="badge">Yield Index</span>
             </div>
             <div className="leaderboard-container">
               {venues.map((venue, idx) => (
                 <div key={idx} className="leaderboard-item">
                   <div className="leaderboard-label">
                     <span className="leaderboard-name">
-                      {venue.name} <span className="sub">({venue.count} Events)</span>
+                      {venue.name} <span className="sub">[{venue.count} Nodes]</span>
                     </span>
                     <span className="leaderboard-val">₹{venue.revenue.toLocaleString()}</span>
                   </div>
@@ -169,9 +165,5 @@ function Analytics() {
 }
 
 export default function AnalyticsWrapper(props) {
-  return (
-    <>
-      <Analytics {...props} />
-    </>
-  );
+  return <Analytics {...props} />;
 }

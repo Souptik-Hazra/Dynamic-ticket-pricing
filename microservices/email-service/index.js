@@ -5,6 +5,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import { errorHandler, notFound } from '../shared/errorHandler.js';
+import { requestLogger } from '../shared/logger.js';
 import { registerProcessHandlers, tuneExpressServer } from '../shared/db.js';
 
 dotenv.config();
@@ -17,6 +18,7 @@ app.use(cors({
   credentials: true,
 }));
 app.use(express.json());
+app.use(requestLogger('EmailService'));
 
 // ── SMTP transporter ──────────────────────────────────────────────────────
 let smtpReady  = false;

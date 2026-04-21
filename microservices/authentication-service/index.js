@@ -8,6 +8,7 @@ import compression from 'compression';
 import connectDB, { requireDB, registerProcessHandlers, tuneExpressServer } from '../shared/db.js';
 import { errorHandler, notFound } from '../shared/errorHandler.js';
 import User from '../shared/models/User.js';
+import { requestLogger } from '../shared/logger.js';
 
 dotenv.config();
 
@@ -19,6 +20,7 @@ app.use(cors({
   credentials: true,
 }));
 app.use(express.json());
+app.use(requestLogger('AuthService'));
 
 connectDB('AuthService');
 

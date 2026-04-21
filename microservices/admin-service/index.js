@@ -6,6 +6,7 @@ import compression from 'compression';
 import connectDB, { requireDB, registerProcessHandlers, tuneExpressServer } from '../shared/db.js';
 import { errorHandler, notFound } from '../shared/errorHandler.js';
 import jwtMiddleware from '../shared/jwtMiddleware.js';
+import { requestLogger } from '../shared/logger.js';
 import Event from '../shared/models/Event.js';
 import Ticket from '../shared/models/Ticket.js';
 import User from '../shared/models/User.js';
@@ -22,6 +23,7 @@ app.use(cors({
   credentials: true,
 }));
 app.use(express.json({ limit: '10mb' }));
+app.use(requestLogger('AdminService'));
 
 connectDB('AdminService');
 

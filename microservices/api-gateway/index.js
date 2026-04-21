@@ -7,6 +7,7 @@ import { createProxyMiddleware } from 'http-proxy-middleware';
 import compression from 'compression';
 import http from 'http';
 import { tuneExpressServer } from '../shared/db.js';
+import { requestLogger } from '../shared/logger.js';
 dotenv.config();
 
 const app = express();
@@ -42,7 +43,7 @@ const globalLimiter = rateLimit({
 // 2. Hardened Pricing Limiter — prevents price scraping & "hunting"
 const pricingLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, 
-  max: 30, // Strict: 30 requests per IP per 15 minutes
+  max: 300, // accommodate polling for multiple events
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Price lookup limit exceeded. Please wait 15 minutes.' },
@@ -51,6 +52,9 @@ const pricingLimiter = rateLimit({
 
 app.use('/api', globalLimiter);
 app.use('/api/events/:id/dynamic-prices', pricingLimiter);
+
+// ── Network Expert: Heavy Logging Middleware ────────────────────────────────
+app.use(requestLogger('APIGateway'));
 
 // ── Service registry ───────────────────────────────────────────────────────
 const SERVICES = {
@@ -166,6 +170,9 @@ app.get('/api/health-all', async (_req, res) => {
 
 const PORT = process.env.PORT_API_GATEWAY || 3001;
 const server = app.listen(PORT, '0.0.0.0', () => console.log(`API Gateway running on port ${PORT} (Network Exposed)`));
+
+// Raise listener limit: each of the 15+ proxy middlewares adds a 'close' listener
+server.setMaxListeners(30);
 
 // Apply OS/Network tuning to the server instance
 tuneExpressServer(server);

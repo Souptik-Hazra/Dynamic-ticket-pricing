@@ -7,6 +7,7 @@ import compression from 'compression';
 import connectDB, { requireDB, registerProcessHandlers, tuneExpressServer } from '../shared/db.js';
 import { errorHandler, notFound } from '../shared/errorHandler.js';
 import jwtMiddleware from '../shared/jwtMiddleware.js';
+import { requestLogger } from '../shared/logger.js';
 
 dotenv.config();
 
@@ -18,6 +19,7 @@ app.use(cors({
   credentials: true,
 }));
 app.use(express.json());
+app.use(requestLogger('NotificationService'));
 
 // ── Health ──────────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) =>

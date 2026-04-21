@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
-import { API_URL } from '../config/api';
+import api from '../api/client';
 import './AutoPriceUpdater.css';
 
 function AutoPriceUpdater({ eventId, onPriceUpdate, compact = false }) {
@@ -10,7 +9,7 @@ function AutoPriceUpdater({ eventId, onPriceUpdate, compact = false }) {
     if (!eventId) return;
     
     try {
-      const response = await axios.get(`${API_URL}/events/${eventId}/dynamic-prices`);
+      const response = await api.get(`/events/${eventId}/dynamic-prices`);
       if (response.data) {
         setPriceInfo(response.data);
         if (onPriceUpdate) {
