@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { persistLog } from './logger.js';
 
 const SHARED_DB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/dynamic-ticket-pricing';
 
@@ -64,13 +65,31 @@ export const gracefulShutdown = (server, signal = 'SIGNAL') => {
  * Call once per service (pass the HTTP server from app.listen()).
  */
 export const registerProcessHandlers = (server, serviceName = 'Service') => {
-  process.on('uncaughtException', (err) => {
+  process.on('uncaughtException', async (err) => {
     console.error(`[${serviceName}] UNCAUGHT EXCEPTION:`, err.message, err.stack);
+    
+    // Attempt to log the crash before exiting
+    await persistLog({
+      service: serviceName,
+      level: 'CRITICAL',
+      message: `CRASH: ${err.message}`,
+      stack: err.stack,
+      traceId: 'SYSTEM_FATAL'
+    });
+    
     gracefulShutdown(server, 'uncaughtException');
   });
 
-  process.on('unhandledRejection', (reason) => {
+  process.on('unhandledRejection', async (reason) => {
     console.error(`[${serviceName}] UNHANDLED REJECTION:`, reason);
+    
+    await persistLog({
+      service: serviceName,
+      level: 'CRITICAL',
+      message: `CRASH (Unhandled Promise): ${reason}`,
+      traceId: 'SYSTEM_FATAL'
+    });
+    
     gracefulShutdown(server, 'unhandledRejection');
   });
 

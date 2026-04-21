@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { persistLog, traceStorage } from './logger.js';
 
 // ── Mongoose error codes ───────────────────────────────────────────────────
 const MONGO_DUPLICATE_KEY = 11000;
@@ -59,7 +60,25 @@ export const errorHandler = (err, req, res, _next) => {
   }
 
   // ── Unknown / server error ────────────────────────────────────────────
-  console.error(`[${new Date().toISOString()}] Unhandled error:`, err.message, '\n', err.stack);
+  const traceId = traceStorage.getStore()?.traceId || 'unknown';
+  
+  console.error(`[${new Date().toISOString()}] Unhandled error [${traceId}]:`, err.message, '\n', err.stack);
+  
+  // Persist severe errors to DB
+  persistLog({
+    service: req.serviceName || 'UnknownService',
+    level: 'CRITICAL',
+    message: err.message,
+    stack: err.stack,
+    traceId,
+    context: {
+        method: req.method,
+        url: req.originalUrl,
+        statusCode: 500,
+        ip: req.ip
+    }
+  });
+
   res.status(500).json({ error: 'An unexpected error occurred. Please try again later.' });
 };
 

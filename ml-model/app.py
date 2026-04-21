@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+import requests
 import joblib
 import numpy as np
 import os
@@ -72,9 +73,35 @@ def handle_exception(e):
     from werkzeug.exceptions import HTTPException
     if isinstance(e, HTTPException):
         return e
+        
     trace_id = request.headers.get('X-Request-ID', 'no-trace')
-    print(f"[ML-MODEL] ERROR [{trace_id}] {str(e)}")
-    return jsonify({"error": "Internal Error", "message": str(e)}), 500
+    message = str(e)
+    stack = ""
+    try:
+        import traceback
+        stack = traceback.format_exc()
+    except: pass
+
+    print(f"[ML-MODEL] ERROR [{trace_id}] {message}")
+
+    # Forward to Centralized Log API (Self-healing: won't crash if Analytics is down)
+    try:
+        requests.post("http://localhost:4011/api/analytics/system-logs", json={
+            "service": "MLModel",
+            "level": "ERROR",
+            "message": f"ML-Runtime: {message}",
+            "stack": stack,
+            "traceId": trace_id,
+            "context": {
+                "method": request.method,
+                "url": request.path,
+                "statusCode": 500
+            }
+        }, timeout=1)
+    except:
+        pass
+
+    return jsonify({"error": "Internal Error", "message": message}), 500
 
 @app.after_request
 def log_response_info(response):

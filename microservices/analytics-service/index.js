@@ -9,6 +9,7 @@ import jwtMiddleware from '../shared/jwtMiddleware.js';
 import { requestLogger } from '../shared/logger.js';
 import Event from '../shared/models/Event.js';
 import Ticket from '../shared/models/Ticket.js';
+import SystemLog from '../shared/models/SystemLog.js';
 import { cacheGet, cacheSet } from '../shared/interservice.js';
 
 dotenv.config();
@@ -103,6 +104,77 @@ app.get('/api/analytics/dashboard', jwtMiddleware, requireDB, async (req, res, n
     // Cache for 5 minutes
     await cacheSet(cacheKey, result, 300);
     res.json(result);
+  } catch (err) { next(err); }
+});
+
+/**
+ * GET /api/analytics/system-logs
+ * Retrieve the latest 100 system errors and warnings. (OPEN ACCESS)
+ */
+app.get('/api/analytics/system-logs', async (req, res, next) => {
+  try {
+    const logs = await SystemLog.find()
+      .sort({ timestamp: -1 })
+      .limit(100);
+    res.json(logs);
+  } catch (err) { next(err); }
+});
+
+/**
+ * POST /api/analytics/system-logs
+ * Allow external services (like ML Model) to report errors.
+ */
+app.post('/api/analytics/system-logs', async (req, res, next) => {
+  try {
+    const { service, level, message, stack, traceId, context } = req.body;
+    const log = await SystemLog.create({
+      service: service || 'ExternalService',
+      level: level || 'ERROR',
+      message: message || 'Inbound external log',
+      stack,
+      traceId: traceId || 'EXT_LOGGER',
+      context,
+      timestamp: new Date()
+    });
+    res.status(201).json(log);
+  } catch (err) { next(err); }
+});
+
+/**
+ * GET /api/analytics/system-health
+ * Aggregate errors by service and count they hourly for the graph. (OPEN ACCESS)
+ */
+app.get('/api/analytics/system-health', async (req, res, next) => {
+  try {
+    const twentyFourHoursAgo = new Date();
+    twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
+
+    const [serviceDistribution, errorTimeline] = await Promise.all([
+      // Error count per service
+      SystemLog.aggregate([
+        { $match: { timestamp: { $gte: twentyFourHoursAgo } } },
+        { $group: { _id: '$service', count: { $sum: 1 } } },
+        { $sort: { count: -1 } }
+      ]),
+      // Error count per hour (for the graph)
+      SystemLog.aggregate([
+        { $match: { timestamp: { $gte: twentyFourHoursAgo } } },
+        {
+          $group: {
+            _id: {
+              $dateToString: { format: "%Y-%m-%d %H:00", date: "$timestamp" }
+            },
+            count: { $sum: 1 }
+          }
+        },
+        { $sort: { _id: 1 } }
+      ])
+    ]);
+
+    res.json({
+      serviceDistribution: serviceDistribution.map(s => ({ name: s._id, value: s.count })),
+      errorTimeline: errorTimeline.map(t => ({ time: t._id.split(' ')[1], errors: t.count }))
+    });
   } catch (err) { next(err); }
 });
 

@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Pricing | Real-Time Telemetry</title>
+    <!-- Chart.js 4.x + Time Adapter -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <style>
+        :root {
+            --bg-deep: #050914;
+            --bg-card: #0a1128;
+            --accent: #ff4b2b;
+            --accent-cyan: #00f2fe;
+            --text-primary: #ffffff;
+            --text-muted: #94a3b8;
+            --border: rgba(255, 255, 255, 0.08);
+        }
+
+        body {
+            background-color: var(--bg-deep);
+            color: var(--text-primary);
+            font-family: 'Inter', -apple-system, sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        header {
+            padding: 1rem 2rem;
+            background: rgba(10, 17, 40, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        h1 {
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+            font-weight: 900;
+            margin: 0;
+            color: var(--accent-cyan);
+            text-transform: uppercase;
+        }
+
+        .status-pill {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(16, 185, 129, 0.1);
+            color: #10b981;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .pulse {
+            width: 8px;
+            height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+            animation: pulse-ring 1.5s infinite;
+        }
+
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+            100% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+
+        .card h2 {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 0;
+            margin-bottom: 1.5rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .table-container {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: left;
+            padding: 12px;
+            color: var(--text-muted);
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            background: var(--bg-card);
+        }
+
+        td {
+            padding: 14px 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            font-size: 0.85rem;
+        }
+
+        .badge {
+            font-size: 0.7rem;
+            font-weight: 800;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .badge-error { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239,68,68,0.2); }
+        .badge-warn { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+
+        .service-tag { color: var(--accent-cyan); font-weight: 700; }
+        .timestamp { color: var(--text-muted); font-size: 0.75rem; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>System Health Telemetry</h1>
+        <div class="status-pill">
+            <div class="pulse"></div>
+            LIVE MONITORING
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="grid">
+            <!-- Main Time-Series line chart -->
+            <div class="card">
+                <h2>📈 Incident Frequency (With Respect to Time)</h2>
+                <div style="height: 350px;">
+                    <canvas id="timeChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Distribution chart -->
+            <div class="card">
+                <h2>📦 Microservice Incidents</h2>
+                <div style="height: 350px;">
+                    <canvas id="distChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>📄 Recent Incident Feed</h2>
+            <div class="table-container">
+                <table id="logs-table">
+                    <thead>
+                        <tr>
+                            <th>Level</th>
+                            <th>Service</th>
+                            <th>Description</th>
+                            <th>Trace ID</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "http://localhost:3001/api/analytics";
+        let timeChart, distChart;
+
+        async function refreshData() {
+            try {
+                const [healthData, logData] = await Promise.all([
+                    fetch(`${API_URL}/system-health`).then(r => r.json()),
+                    fetch(`${API_URL}/system-logs`).then(r => r.json())
+                ]);
+
+                updateCharts(healthData);
+                updateTable(logData);
+            } catch (err) {
+                console.error("Link Failure:", err);
+            }
+        }
+
+        function updateCharts(data) {
+            // 1. Line Graph WRT Time
+            const canvas = document.getElementById('timeChart');
+            const formattedTimeline = data.errorTimeline.map(t => ({
+                x: new Date(`${new Date().toISOString().split('T')[0]}T${t.time}:00`),
+                y: t.errors
+            }));
+
+            if (!timeChart) {
+                timeChart = new Chart(canvas, {
+                    type: 'line',
+                    data: {
+                        datasets: [{
+                            label: 'Incidents',
+                            data: formattedTimeline,
+                            borderColor: '#00f2fe',
+                            backgroundColor: 'rgba(0, 242, 254, 0.1)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 6,
+                            pointHoverRadius: 10,
+                            pointBackgroundColor: '#00f2fe'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                type: 'time',
+                                time: { unit: 'hour', displayFormats: { hour: 'HH:mm' } },
+                                grid: { display: false },
+                                ticks: { color: '#94a3b8' }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: 'rgba(255,255,255,0.05)' },
+                                ticks: { color: '#94a3b8', stepSize: 1 }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: '#0a1128',
+                                titleColor: '#00f2fe',
+                                bodyColor: '#ffffff',
+                                borderColor: 'rgba(255,255,255,0.1)',
+                                borderWidth: 1
+                            }
+                        }
+                    }
+                });
+            } else {
+                timeChart.data.datasets[0].data = formattedTimeline;
+                timeChart.update('none');
+            }
+
+            // 2. Distribution Chart
+            const canvasDist = document.getElementById('distChart');
+            if (!distChart) {
+                distChart = new Chart(canvasDist, {
+                    type: 'doughnut',
+                    data: {
+                        labels: data.serviceDistribution.map(s => s.name),
+                        datasets: [{
+                            data: data.serviceDistribution.map(s => s.value),
+                            backgroundColor: ['#ff4b2b', '#ff9068', '#00f2fe', '#4facfe', '#8b5cf3'],
+                            borderWidth: 0,
+                            hoverOffset: 20
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '75%',
+                        plugins: {
+                            legend: { position: 'bottom', labels: { color: '#94a3b8', usePointStyle: true, padding: 20 } }
+                        }
+                    }
+                });
+            } else {
+                distChart.data.labels = data.serviceDistribution.map(s => s.name);
+                distChart.data.datasets[0].data = data.serviceDistribution.map(s => s.value);
+                distChart.update();
+            }
+        }
+
+        function updateTable(logs) {
+            const tbody = document.querySelector('#logs-table tbody');
+            tbody.innerHTML = logs.length ? "" : "<tr><td colspan='5' style='text-align:center; padding: 40px;'>✨ NO INCIDENTS DETECTED</td></tr>";
+
+            logs.forEach(log => {
+                const tr = document.createElement('tr');
+                const badgeClass = log.level === 'ERROR' || log.level === 'CRITICAL' ? 'badge-error' : 'badge-warn';
+                tr.innerHTML = `
+                    <td><span class="badge ${badgeClass}">${log.level}</span></td>
+                    <td><span class="service-tag">${log.service}</span></td>
+                    <td><b>${log.message}</b></td>
+                    <td><code>${log.traceId}</code></td>
+                    <td class="timestamp">${new Date(log.timestamp).toLocaleTimeString()}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Run
+        refreshData();
+        setInterval(refreshData, 5000);
+    </script>
+</body>
+</html>
