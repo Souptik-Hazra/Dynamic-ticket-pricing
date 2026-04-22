@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { ENDPOINTS } from '../config/api';
+import VenueLayoutDesigner from './VenueLayoutDesigner';
 import './AdminEventForm.css';
 
 function AdminEventForm({ event, onClose }) {
@@ -24,8 +25,15 @@ function AdminEventForm({ event, onClose }) {
   });
   
   const [ticketCategories, setTicketCategories] = useState([
-    { name: '', price: '', maxPrice: '', seats: '', availableSeats: undefined }
+    { name: '', price: '', maxPrice: '', seats: '', availableSeats: undefined, color: '' }
   ]);
+  const [venueLayoutType, setVenueLayoutType] = useState('none');
+  const [stagePosition, setStagePosition] = useState('bottom');
+  const [venueMetrics, setVenueMetrics] = useState({
+    exitsCount: 4,
+    aisleWidth: 'standard',
+    securitySpeed: 'normal'
+  });
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -76,6 +84,13 @@ function AdminEventForm({ event, onClose }) {
         artistTier: event.artistTier || 3,
         isHoliday: event.isHoliday || false
       });
+
+      // Load venue layout settings
+      setVenueLayoutType(event.venueLayoutType || 'none');
+      setStagePosition(event.stagePosition || 'bottom');
+      if (event.venueMetrics) {
+        setVenueMetrics(event.venueMetrics);
+      }
       
       // Set ticket categories if they exist
       if (event.ticketCategories && event.ticketCategories.length > 0) {
@@ -84,7 +99,9 @@ function AdminEventForm({ event, onClose }) {
           price: cat.price,
           maxPrice: cat.maxPrice || cat.price * 2,
           seats: cat.seats,
-          availableSeats: cat.availableSeats // Preserve available seats
+          availableSeats: cat.availableSeats, // Preserve available seats
+          bookedSeats: cat.bookedSeats || [], // Preserve exact ticket ids
+          color: cat.color || '',
         })));
       } else if (event.basePrice || event.capacity) {
         // Handle old events without ticketCategories - create a default one
@@ -147,7 +164,19 @@ function AdminEventForm({ event, onClose }) {
   };
   
   const addTicketCategory = () => {
-    setTicketCategories([...ticketCategories, { name: '', price: '', maxPrice: '', seats: '', availableSeats: undefined }]);
+    setTicketCategories([...ticketCategories, { name: '', price: '', maxPrice: '', seats: '', availableSeats: undefined, color: '', bookedSeats: [] }]);
+  };
+
+  const handleCategoryColorChange = (index, color) => {
+    const newCategories = [...ticketCategories];
+    newCategories[index].color = color;
+    setTicketCategories(newCategories);
+  };
+
+  const handleCategoryBlockedSeatsChange = (index, newBlockedSeats) => {
+    const newCategories = [...ticketCategories];
+    newCategories[index].blockedSeats = newBlockedSeats;
+    setTicketCategories(newCategories);
   };
   
   const removeTicketCategory = (index) => {
@@ -186,12 +215,17 @@ function AdminEventForm({ event, onClose }) {
         venueTier: parseInt(formData.venueTier),
         artistTier: parseInt(formData.artistTier),
         isHoliday: formData.isHoliday === true || formData.isHoliday === 'true',
+        venueLayoutType,
+        stagePosition,
+        venueMetrics,
         ticketCategories: validCategories.map(cat => ({
           name: cat.name,
           price: parseFloat(cat.price),
           maxPrice: cat.maxPrice ? parseFloat(cat.maxPrice) : parseFloat(cat.price) * 2,
           seats: parseInt(cat.seats),
-          availableSeats: cat.availableSeats !== undefined ? parseInt(cat.availableSeats) : parseInt(cat.seats)
+          availableSeats: cat.availableSeats !== undefined ? parseInt(cat.availableSeats) : parseInt(cat.seats),
+          bookedSeats: cat.bookedSeats || [],
+          color: cat.color || '',
         }))
       };
 
@@ -422,6 +456,19 @@ function AdminEventForm({ event, onClose }) {
               </div>
             ))}
           </div>
+
+          {/* Venue Layout Designer */}
+          <VenueLayoutDesigner
+            layoutType={venueLayoutType}
+            setLayoutType={setVenueLayoutType}
+            stagePosition={stagePosition}
+            setStagePosition={setStagePosition}
+            categories={ticketCategories}
+            onCategoryColorChange={handleCategoryColorChange}
+            onCategoryBlockedSeatsChange={handleCategoryBlockedSeatsChange}
+            venueMetrics={venueMetrics}
+            setVenueMetrics={setVenueMetrics}
+          />
 
           <div className="form-group">
             <label htmlFor="eventPopularity">

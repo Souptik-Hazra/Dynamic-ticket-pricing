@@ -233,6 +233,17 @@
   cursor: not-allowed;
 }
 
+/* Venue Map Section */
+.venue-map-section {
+  margin-bottom: 2rem;
+}
+
+.venue-map-section h3 {
+  font-size: 1.3rem !important;
+  margin-bottom: 1rem !important;
+  color: #a0c4ff;
+}
+
 /* Ticket Categories Styles */
 .ticket-categories {
   margin-bottom: 2rem;

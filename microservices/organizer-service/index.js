@@ -495,9 +495,9 @@ app.post('/api/tickets/revert', requireDB, async (req, res, next) => {
 
 // POST /api/tickets — buy a ticket with Distributed Lock protection
 app.post('/api/tickets', jwtMiddleware, requireDB, async (req, res, next) => {
-  const { eventId, categoryName: catName, quantity: qty, customerName, customerEmail, pricePerTicket, username_real } = req.body;
+  const { eventId, categoryName: catName, quantity: qty, customerName, customerEmail, pricePerTicket, username_real, selectedSeats } = req.body;
   console.log('[OrganizerService] Purchase request payload:', {
-    eventId, categoryName: catName, quantity: qty, customerName, customerEmail, pricePerTicket, honeypot: !!username_real
+    eventId, categoryName: catName, quantity: qty, customerName, customerEmail, pricePerTicket, honeypot: !!username_real, selectedSeats
   });
   
   // 🛡️ API EXPERT: Idempotency Protection
@@ -574,11 +574,30 @@ app.post('/api/tickets', jwtMiddleware, requireDB, async (req, res, next) => {
 
     let updatedEvent;
     if (category) {
-      updatedEvent = await Event.findOneAndUpdate(
-        { _id: eventId, 'ticketCategories.name': catName?.toLowerCase(), 'ticketCategories.availableSeats': { $gte: qty } },
-        { $inc: { 'ticketCategories.$.availableSeats': -qty, ticketsSold: qty, totalRevenue: amount } },
-        { new: true, ...(s ? { session: s } : {}) }
-      );
+      if (selectedSeats && selectedSeats.length > 0) {
+        // Atomic specific seat reservation
+        updatedEvent = await Event.findOneAndUpdate(
+          {
+            _id: eventId,
+            'ticketCategories.name': catName?.toLowerCase(),
+            'ticketCategories.availableSeats': { $gte: qty },
+            'ticketCategories.bookedSeats': { $nin: selectedSeats }, // Ensures seats are not booked by other buyers
+            'ticketCategories.blockedSeats': { $nin: selectedSeats } // Ensures seats are not restricted by organizers
+          },
+          {
+            $inc: { 'ticketCategories.$.availableSeats': -qty, ticketsSold: qty, totalRevenue: amount },
+            $push: { 'ticketCategories.$.bookedSeats': { $each: selectedSeats } }
+          },
+          { new: true, ...(s ? { session: s } : {}) }
+        );
+      } else {
+        // Standard bulk reservation
+        updatedEvent = await Event.findOneAndUpdate(
+          { _id: eventId, 'ticketCategories.name': catName?.toLowerCase(), 'ticketCategories.availableSeats': { $gte: qty } },
+          { $inc: { 'ticketCategories.$.availableSeats': -qty, ticketsSold: qty, totalRevenue: amount } },
+          { new: true, ...(s ? { session: s } : {}) }
+        );
+      }
     } else {
       updatedEvent = await Event.findOneAndUpdate(
         { _id: eventId, availableTickets: { $gte: qty } },
@@ -587,7 +606,7 @@ app.post('/api/tickets', jwtMiddleware, requireDB, async (req, res, next) => {
       );
     }
 
-    if (!updatedEvent) throw new Error('Tickets sold out during processing');
+    if (!updatedEvent) throw new Error(selectedSeats?.length > 0 ? 'Selected seats are no longer available' : 'Tickets sold out during processing');
 
     await (s ? updatedEvent.save({ session: s }) : updatedEvent.save());
 
@@ -614,7 +633,8 @@ app.post('/api/tickets', jwtMiddleware, requireDB, async (req, res, next) => {
         eventId,
         userId: req.user.id,
         categoryName: catName || 'standard',
-        customerName: qty > 1 ? `${customerName} (Ticket ${i + 1})` : customerName,
+        seatNumber: (selectedSeats && selectedSeats[i]) ? selectedSeats[i] : undefined,
+        customerName: qty > 1 ? `${customerName} (` + ((selectedSeats && selectedSeats[i]) ? `Seat ${selectedSeats[i]}` : `Ticket ${i + 1}`) + `)` : customerName,
         customerEmail,
         pricePerTicket: finalPricePerTicket,
         quantity: 1,

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { ENDPOINTS } from '../config/api';
+import VenueMap from './VenueMap';
+import SeatGrid from './SeatGrid';
 import './TicketPurchase.css';
 
 function TicketPurchase({ event, onBack, onSuccess }) {
@@ -20,6 +22,9 @@ function TicketPurchase({ event, onBack, onSuccess }) {
   const [paymentMethod, setPaymentMethod]     = useState('card');
   const [userWallet, setUserWallet]           = useState({ balance: 0 });
   const [walletLoading, setWalletLoading]     = useState(false);
+  const [selectedSeats, setSelectedSeats]     = useState([]);
+
+  const isSeatSelectionMode = event.venueLayoutType && event.venueLayoutType !== 'none' && selectedCategory;
 
   // Fetch dynamic prices for all categories
   useEffect(() => {
@@ -90,10 +95,22 @@ function TicketPurchase({ event, onBack, onSuccess }) {
 
   const handleCategorySelect = (category) => {
     setSelectedCategory(category);
+    setSelectedSeats([]); // reset seats on category change
     // Reset quantity if it exceeds available seats
     if (formData.quantity > category.availableSeats) {
       setFormData(prev => ({ ...prev, quantity: Math.min(prev.quantity, category.availableSeats) }));
     }
+  };
+
+  const handleToggleSeat = (seatId) => {
+    setSelectedSeats(prev => {
+      if (prev.includes(seatId)) return prev.filter(s => s !== seatId);
+      if (prev.length >= 15) {
+        alert('You can select a maximum of 15 seats per purchase.');
+        return prev;
+      }
+      return [...prev, seatId];
+    });
   };
 
   const getPrice = () => {
@@ -118,8 +135,12 @@ function TicketPurchase({ event, onBack, onSuccess }) {
     return event.availableTickets || (event.capacity - event.ticketsSold) || 0;
   };
 
+  const getPurchaseQuantity = () => {
+    return isSeatSelectionMode ? selectedSeats.length : parseInt(formData.quantity);
+  };
+
   const calculateTotal = () => {
-    return getPrice() * formData.quantity;
+    return getPrice() * getPurchaseQuantity();
   };
 
   const handleSubmit = async (e) => {
@@ -132,12 +153,19 @@ function TicketPurchase({ event, onBack, onSuccess }) {
       return;
     }
 
+    const currentQty = getPurchaseQuantity();
+
+    if (isSeatSelectionMode && currentQty === 0) {
+      alert('Please select at least one seat from the map.');
+      return;
+    }
+
     const available = getAvailableTickets();
-    if (formData.quantity > 15) {
+    if (currentQty > 15) {
       alert('You can purchase a maximum of 15 tickets per event.');
       return;
     }
-    if (formData.quantity > available) {
+    if (currentQty > available) {
       alert(`Only ${available} tickets available!`);
       return;
     }
@@ -152,7 +180,8 @@ function TicketPurchase({ event, onBack, onSuccess }) {
           categoryId: selectedCategory?._id,
           categoryName: selectedCategory?.name,
           ...formData,
-          quantity: parseInt(formData.quantity),
+          quantity: currentQty,
+          selectedSeats: isSeatSelectionMode ? selectedSeats : [],
           pricePerTicket: getPrice()
         }
       );
@@ -237,6 +266,33 @@ function TicketPurchase({ event, onBack, onSuccess }) {
         </div>
 
         <div className="purchase-form-section">
+          {/* Venue Map (if event has a layout) */}
+          {event.venueLayoutType && event.venueLayoutType !== 'none' && hasCategories && (
+            <div className="venue-map-section">
+              <h3>🗺️ Venue Map — Click a section</h3>
+              <VenueMap
+                layoutType={event.venueLayoutType}
+                stagePosition={event.stagePosition || 'bottom'}
+                categories={event.ticketCategories}
+                selectedCategory={selectedCategory}
+                onSelectCategory={handleCategorySelect}
+                dynamicPrices={dynamicPrices}
+                showPrices={true}
+                interactive={true}
+              />
+              
+              {/* Individual Seat Grid Overlay */}
+              {isSeatSelectionMode && (
+                <SeatGrid
+                  category={selectedCategory}
+                  selectedSeats={selectedSeats}
+                  onToggleSeat={handleToggleSeat}
+                  interactive={true}
+                />
+              )}
+            </div>
+          )}
+
           {/* Ticket Categories Section */}
           {hasCategories && (
             <div className="ticket-categories">
@@ -352,19 +408,28 @@ function TicketPurchase({ event, onBack, onSuccess }) {
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="quantity">Number of Tickets * <small>(max 15 per purchase)</small></label>
-              <input
-                type="number"
-                id="quantity"
-                name="quantity"
-                value={formData.quantity}
-                onChange={handleChange}
-                min="1"
-                max={Math.min(15, getAvailableTickets())}
-                required
-              />
-            </div>
+            {isSeatSelectionMode ? (
+               <div className="form-group">
+                 <label>Selected Seats: {selectedSeats.length > 0 ? selectedSeats.join(', ') : 'None'}</label>
+                 <div style={{ color: '#667eea', fontWeight: '600' }}>
+                   {selectedSeats.length} ticket(s) total
+                 </div>
+               </div>
+            ) : (
+                <div className="form-group">
+                  <label htmlFor="quantity">Number of Tickets * <small>(max 15 per purchase)</small></label>
+                  <input
+                    type="number"
+                    id="quantity"
+                    name="quantity"
+                    value={formData.quantity}
+                    onChange={handleChange}
+                    min="1"
+                    max={Math.min(15, getAvailableTickets())}
+                    required
+                  />
+                </div>
+            )}
 
             <div className="payment-method-section">
               <h3>💳 Select Payment Method</h3>

@@ -6,6 +6,7 @@ const ticketSchema = new mongoose.Schema(
     userId:       { type: mongoose.Schema.Types.ObjectId, ref: 'User',  required: true, index: true },
     categoryId:   { type: mongoose.Schema.Types.ObjectId },
     categoryName: { type: String, default: 'standard', lowercase: true, trim: true },
+    seatNumber:   { type: String }, // e.g. "A1", "C12"
 
     // Buyer details (snapshot — not a live reference)
     customerName:  { type: String, required: true, trim: true },

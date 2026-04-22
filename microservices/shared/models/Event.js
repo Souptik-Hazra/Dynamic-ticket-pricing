@@ -9,6 +9,9 @@ const ticketCategorySchema = new mongoose.Schema(
     lastCalculatedPrice: { type: Number },  // for smoothing/safety walls
     seats:          { type: Number, required: true, min: 1 },
     availableSeats: { type: Number },       // set to `seats` on creation
+    bookedSeats:    [{ type: String }],     // Tracks granular seat IDs (e.g. ['A1', 'A2'])
+    blockedSeats:   [{ type: String }],     // Tracks organizer-restricted seats
+    color:          { type: String, default: '' }, // hex color for venue map section
   },
   { _id: true }
 );
@@ -51,6 +54,23 @@ const eventSchema = new mongoose.Schema(
     venueTier:       { type: Number, enum: [1, 2, 3], default: 2 },
     artistTier:      { type: Number, min: 0, max: 5, default: 0 },
     isHoliday:       { type: Boolean, default: false },
+
+    // ── Venue Layout ──
+    venueLayoutType: {
+      type: String,
+      enum: ['none', 'stadium', 'theater', 'arena', 'rectangle', 'festival'],
+      default: 'none',
+    },
+    stagePosition: {
+      type: String,
+      enum: ['top', 'bottom', 'left', 'right', 'center'],
+      default: 'bottom',
+    },
+    venueMetrics: {
+      exitsCount: { type: Number, default: 4 },
+      aisleWidth: { type: String, enum: ['narrow', 'standard', 'wide'], default: 'standard' },
+      securitySpeed: { type: String, enum: ['slow', 'normal', 'fast'], default: 'normal' }
+    },
 
     organizerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
   },
