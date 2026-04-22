@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api/client';
 import { ENDPOINTS } from '../config/api';
-import './Notifications.css';
 
 const typeIcons = {
   ticket_purchase: '🎫',
@@ -90,69 +89,79 @@ function Notifications() {
   };
 
   return (
-    <div className="notifications-page">
+    <div className="cyber-container animate-fade-up" style={{ padding: '4rem 0' }}>
       {/* Header */}
-      <div className="notif-header">
-        <div className="notif-title-row">
-          <h2>🔔 Notifications</h2>
+      <header className="flex-between" style={{ marginBottom: '3rem' }}>
+        <div className="flex-center" style={{ gap: '1.5rem' }}>
+          <h1 className="title-main text-gradient" style={{ margin: 0 }}>NOTIFICATIONS</h1>
           {unreadCount > 0 && (
-            <span className="unread-badge">{unreadCount} unread</span>
+            <span className="cyber-badge badge-warning" style={{ fontSize: '0.8rem' }}>{unreadCount} UNREAD PULSES</span>
           )}
         </div>
-        <div className="notif-actions">
-          <button
-            className="notif-action-btn"
-            onClick={fetchNotifications}
-            disabled={loading}
-            title="Refresh"
-          >
-            🔄 Refresh
+        <div className="flex-center" style={{ gap: '1rem' }}>
+          <button className="cyber-btn btn-outline" onClick={fetchNotifications} disabled={loading}>
+            🔄 RE-SYNC
           </button>
           {unreadCount > 0 && (
-            <button className="notif-action-btn mark-all" onClick={markAllRead}>
-              ✅ Mark all read
+            <button className="cyber-btn btn-primary" onClick={markAllRead}>
+              ✅ CLEAR ALL
             </button>
           )}
         </div>
-      </div>
+      </header>
 
       {/* Content */}
       {loading ? (
-        <div className="notif-loading">
-          <div className="spinner" />
-          <p>Loading notifications...</p>
+        <div className="flex-center" style={{ minHeight: '300px' }}>
+          <div className="text-glow">INITIALIZING DATA STREAM...</div>
         </div>
       ) : error ? (
-        <div className="notif-error">❌ {error}</div>
+        <div className="cyber-badge badge-danger" style={{ padding: '2rem', width: '100%' }}>
+          ERR: {error}
+        </div>
       ) : notifications.length === 0 ? (
-        <div className="notif-empty">
-          <div className="notif-empty-icon">🔔</div>
-          <h3>No notifications yet</h3>
-          <p>We'll notify you about ticket purchases, price changes, and more.</p>
+        <div className="flex-center" style={{ minHeight: '400px', border: '1px dashed var(--border-dim)', borderRadius: '20px' }}>
+          <div className="flex-column" style={{ alignItems: 'center', gap: '1rem' }}>
+            <span style={{ fontSize: '3rem' }}>📡</span>
+            <h3 className="text-main">Neural Link Quiet</h3>
+            <p className="text-dim">No incoming transmissions detected in this sector.</p>
+          </div>
         </div>
       ) : (
-        <div className="notif-list">
+        <div className="flex-column" style={{ gap: '1rem' }}>
           {notifications.map((n) => (
             <div
               key={n._id}
-              className={`notif-item ${!n.read ? 'unread' : ''} ${n.type === 'message' ? 'is-message' : ''}`}
+              className={`cyber-card flex-between ${!n.read ? 'text-glow' : ''}`}
+              style={{ 
+                padding: '1.2rem 2rem', 
+                background: !n.read ? 'rgba(79, 172, 254, 0.05)' : 'rgba(10, 17, 40, 0.6)',
+                borderLeft: n.type === 'message' ? '4px solid var(--accent-cyan)' : '1px solid var(--border-dim)',
+                cursor: !n.read ? 'pointer' : 'default'
+              }}
               onClick={() => !n.read && markRead(n._id)}
-              title={n.read ? '' : 'Click to mark as read'}
             >
-              <div className="notif-icon">
-                {typeIcons[n.type] || '🔔'}
+              <div className="flex-center" style={{ gap: '1.5rem', justifyContent: 'flex-start' }}>
+                <div style={{ fontSize: '1.5rem', filter: n.read ? 'grayscale(1)' : 'none' }}>
+                  {typeIcons[n.type] || '🔔'}
+                </div>
+                <div className="flex-column">
+                  <div className="text-main" style={{ fontWeight: '800', fontSize: '1rem', color: !n.read ? 'var(--accent-cyan)' : 'var(--text-main)' }}>
+                    {n.title?.toUpperCase()}
+                  </div>
+                  <div className="text-muted" style={{ fontSize: '0.9rem' }}>{n.message}</div>
+                  <div className="text-dim" style={{ fontSize: '0.7rem', marginTop: '0.3rem', fontWeight: '700' }}>
+                    TIME_STAMP: {formatTime(n.createdAt)?.toUpperCase()}
+                  </div>
+                </div>
               </div>
-              <div className="notif-body">
-                <div className="notif-item-title">{n.title}</div>
-                <div className="notif-item-message">{n.message}</div>
-                <div className="notif-time">{formatTime(n.createdAt)}</div>
-              </div>
-              <div className="notif-controls">
-                {!n.read && <span className="unread-dot" />}
+
+              <div className="flex-center" style={{ gap: '1.5rem' }}>
+                {!n.read && <div style={{ width: '8px', height: '8px', background: 'var(--accent-cyan)', borderRadius: '50%', boxShadow: '0 0 10px var(--accent-cyan)' }} />}
                 <button
-                  className="notif-delete-btn"
+                  className="cyber-btn btn-outline"
+                  style={{ padding: '0.4rem', borderRadius: '50%', width: '32px', height: '32px', borderColor: 'var(--danger)', color: 'var(--danger)' }}
                   onClick={(e) => deleteNotification(n._id, e)}
-                  title="Delete"
                 >
                   ×
                 </button>
@@ -161,12 +170,6 @@ function Notifications() {
           ))}
         </div>
       )}
-      <style>{`
-        .notif-item.is-message { background: rgba(52, 152, 219, 0.05); border-left: 4px solid #3498db; }
-        .notif-item.is-message.unread { background: rgba(52, 152, 219, 0.1); }
-        .notif-item.is-message .notif-icon { color: #3498db; }
-        .is-message .notif-item-title { color: #3498db; font-weight: bold; }
-      `}</style>
     </div>
   );
 }

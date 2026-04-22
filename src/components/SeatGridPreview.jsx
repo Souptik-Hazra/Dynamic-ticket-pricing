@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import './SeatGridPreview.css';
 
 const DEFAULT_COLORS = [
   '#FFD700', '#E040FB', '#00E5FF', '#76FF03', '#FF6D00', 
@@ -20,7 +19,6 @@ function SeatGridPreview({
   const setActiveCategory = setActiveCategoryProp || setLocalActiveCategory;
   const [isDragging, setIsDragging] = useState(false);
 
-  // 1. Calculate Grid Dimensions based on total declared capacity
   const totalSeats = useMemo(() => {
     return categories.reduce((sum, cat) => sum + (parseInt(cat.seats) || 0), 0);
   }, [categories]);
@@ -36,19 +34,13 @@ function SeatGridPreview({
     if (totalSeats === 0) return [];
     const layoutConfig = [];
     const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-
     let currentSeat = 1;
     for (let r = 0; r < rowsCount; r++) {
       const rowLabel = r < 26 ? alphabet[r] : `${alphabet[Math.floor(r/26)-1]}${alphabet[r%26]}`;
       const rowSeats = [];
-      
       for (let c = 1; c <= cols; c++) {
         if (currentSeat > totalSeats) break;
-        rowSeats.push({
-          id: `${rowLabel}${c}`,
-          row: rowLabel,
-          col: c
-        });
+        rowSeats.push({ id: `${rowLabel}${c}`, row: rowLabel, col: c });
         currentSeat++;
       }
       layoutConfig.push({ id: rowLabel, seats: rowSeats });
@@ -56,167 +48,121 @@ function SeatGridPreview({
     return layoutConfig;
   }, [totalSeats, rowsCount, cols]);
 
-  // Transform seatMap array to a quick lookup map O(1)
   const seatLookup = useMemo(() => {
     const map = {};
-    seatMap.forEach(s => {
-      map[s.seatId] = s.categoryName;
-    });
+    seatMap.forEach(s => { map[s.seatId] = s.categoryName; });
     return map;
   }, [seatMap]);
 
-  // Validation Checkers
-  const categoryCounts = useMemo(() => {
-    const counts = {};
-    seatMap.forEach(s => {
-      counts[s.categoryName] = (counts[s.categoryName] || 0) + 1;
-    });
-    return counts;
-  }, [seatMap]);
-
   const getCategoryColor = (catName) => {
-    if (!catName) return '#eee';
+    if (!catName) return 'rgba(255,255,255,0.05)';
     const index = categories.findIndex(c => c.name === catName);
-    if (index === -1) return '#eee';
+    if (index === -1) return 'rgba(255,255,255,0.05)';
     return categories[index].color || DEFAULT_COLORS[index % DEFAULT_COLORS.length];
   };
 
   const handleSeatInteract = useCallback((seatId) => {
     if (!activeCategory) return;
-    
-    // Toggle logic: if already assigned to THIS category, remove it. Else assign it.
     let newSeatMap = [...seatMap];
     const existingIdx = newSeatMap.findIndex(s => s.seatId === seatId);
-    
     if (existingIdx >= 0) {
-      if (newSeatMap[existingIdx].categoryName === activeCategory) {
-        newSeatMap.splice(existingIdx, 1); // remove
-      } else {
-        newSeatMap[existingIdx].categoryName = activeCategory; // overwrite
-      }
+      if (newSeatMap[existingIdx].categoryName === activeCategory) newSeatMap.splice(existingIdx, 1);
+      else newSeatMap[existingIdx].categoryName = activeCategory;
     } else {
       newSeatMap.push({ seatId, categoryName: activeCategory });
     }
     onSeatMapChange(newSeatMap);
   }, [activeCategory, seatMap, onSeatMapChange]);
 
-  const handleMouseDown = (seatId) => {
-    setIsDragging(true);
-    handleSeatInteract(seatId);
-  };
-
-  const handleMouseEnter = (seatId) => {
-    if (isDragging) {
-      handleSeatInteract(seatId);
-    }
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
-
-  if (totalSeats === 0) {
-    return (
-      <div className="seat-grid-preview-container">
-        <div className="sgp-empty">
-          Define Ticket Categories and Seat amounts on the left to generate the Live Blueprint.
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="seat-grid-preview-container" onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
-      <div className="sgp-header">
-        <h3>🎨 Live Seat Map Blueprint</h3>
-        
-        {/* Paint Palette */}
-        <div className="sgp-paint-palette">
-          {categories.map((cat, i) => {
-            if (!cat.name) return null;
-            const targetColor = cat.color || DEFAULT_COLORS[i % DEFAULT_COLORS.length];
-            const currentCount = categoryCounts[cat.name] || 0;
-            const targetCount = parseInt(cat.seats) || 0;
-            const isOver = currentCount > targetCount;
-            
-            return (
-              <div 
-                key={i} 
-                className={`sgp-cat-btn ${activeCategory === cat.name ? 'active' : ''}`}
-                onClick={() => setActiveCategory(cat.name)}
-                style={{ borderColor: activeCategory === cat.name ? targetColor : 'transparent' }}
-              >
-                <div className="sgp-cat-color" style={{ background: targetColor }}></div>
-                {cat.name.toUpperCase()} 
-                <span style={{ color: isOver ? '#d32f2f' : '#666', fontSize: '11px', marginLeft: '4px' }}>
-                  ({currentCount}/{targetCount})
-                </span>
-              </div>
-            );
-          })}
-          <div 
-            className={`sgp-cat-btn ${activeCategory === 'erase' ? 'active' : ''}`}
-            onClick={() => setActiveCategory('erase')}
-          >
-            🧹 Eraser
-          </div>
+    <div className="cyber-card" style={{ padding: '2rem', border: '1px solid var(--border-dim)' }}>
+      <div className="flex-between" style={{ marginBottom: '2rem' }}>
+        <div>
+          <h4 className="cyber-label" style={{ fontSize: '0.85rem' }}>MAP DESIGNER - SEATING ASSIGNMENT</h4>
+          <p className="text-dim" style={{ fontSize: '0.7rem' }}>Select a tier below and click seats to assign them spatial coordinates.</p>
         </div>
-
-        {/* Validation Matrix */}
-        <div className="sgp-validation">
-          {categories.map((cat, i) => {
-            if (!cat.name) return null;
-            const currentCount = categoryCounts[cat.name] || 0;
-            const targetCount = parseInt(cat.seats) || 0;
-            const remaining = targetCount - currentCount;
-            const isMatch = currentCount === targetCount;
-            const isOver = currentCount > targetCount;
-
-            let message = null;
-            if (isMatch) {
-              message = <span>✅ Perfect allocation</span>;
-            } else if (isOver) {
-              const overBy = currentCount - targetCount;
-              message = <span>❌ Overallocated by {overBy} seats</span>;
-            } else if (remaining <= 5) {
-              message = <span>⚠️ Almost there — only {remaining} seats left</span>;
-            } else {
-              message = <span>⚠️ Needs {remaining} more seats</span>;
-            }
-
-            return (
-              <div key={i} className={`sgp-val-item ${isMatch ? 'valid' : isOver ? 'invalid' : ''}`}>
-                <span>{cat.name.toUpperCase()}</span>
-                {message}
-              </div>
-            );
-          })}
+        <div className="flex-center" style={{ gap: '1rem' }}>
+          <span className="text-dim" style={{ fontSize: '0.75rem' }}>Total Capacity: <span className="text-main">{totalSeats}</span></span>
+          <span className="text-dim" style={{ fontSize: '0.75rem' }}>Assigned: <span className="text-glow" style={{ color: 'var(--accent-cyan)' }}>{seatMap.length}</span></span>
         </div>
       </div>
 
-      <div className="sgp-grid-wrapper">
-        <div className="sgp-grid">
-          {layout.map(row => (
-            <div key={row.id} className="sgp-row">
-              <div className="sgp-row-label">{row.id}</div>
-              {row.seats.map(seat => {
-                const assignedCat = seatLookup[seat.id];
-                const color = getCategoryColor(assignedCat);
-                const isDanger = isSafetyMode && assignedCat && safetyScores[assignedCat] >= 70;
-                
-                return (
-                  <div 
-                    key={seat.id}
-                    className={`sgp-seat ${isDanger ? 'danger' : ''}`}
-                    onMouseDown={(e) => { e.preventDefault(); handleMouseDown(seat.id); }}
-                    onMouseEnter={() => handleMouseEnter(seat.id)}
-                    title={`Seat ${seat.id}${assignedCat ? ` - ${assignedCat}` : ''}${isDanger ? ' (High Risk Bottleneck)' : ''}`}
-                  >
-                    <div className="sgp-seat-inner" style={{ background: color }}></div>
-                    {seat.col}
-                  </div>
-                );
-              })}
+      <div className="flex-center" style={{ gap: '0.8rem', flexWrap: 'wrap', marginBottom: '2.5rem', background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-dim)' }}>
+        {categories.map((cat, i) => {
+          const isActive = activeCategory === cat.name;
+          return (
+            <button
+              key={cat.name}
+              className={`cyber-btn ${isActive ? 'btn-primary' : 'btn-outline'}`}
+              style={{ fontSize: '0.7rem', padding: '0.4rem 1rem' }}
+              onClick={() => setActiveCategory(isActive ? null : cat.name)}
+            >
+              <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: cat.color || DEFAULT_COLORS[i % DEFAULT_COLORS.length], marginRight: '8px', display: 'inline-block' }} />
+              {cat.name.toUpperCase()}
+            </button>
+          );
+        })}
+      </div>
+
+      <div style={{ overflowX: 'auto', paddingBottom: '1rem' }}>
+        <div className="flex-column flex-center" style={{ minWidth: '400px', gap: '6px' }}>
+          <div style={{ 
+            width: '60%', height: '24px', 
+            background: 'rgba(255,255,255,0.02)', 
+            border: '1px dashed var(--border-dim)', 
+            borderTop: 'none', 
+            borderRadius: '0 0 12px 12px', 
+            marginBottom: '2rem',
+            color: 'var(--text-dim)',
+            fontSize: '0.6rem',
+            fontWeight: '900',
+            letterSpacing: '4px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>FOCUS POINT / STAGE</div>
+
+          {layout.map((row) => (
+            <div key={row.id} className="flex-center" style={{ gap: '10px' }}>
+              <div className="text-dim" style={{ fontSize: '0.7rem', width: '20px', textAlign: 'center' }}>{row.id}</div>
+              <div 
+                className="flex-center" 
+                style={{ gap: '3px' }}
+                onMouseDown={() => setIsDragging(true)}
+                onMouseUp={() => setIsDragging(false)}
+                onMouseLeave={() => setIsDragging(false)}
+              >
+                {row.seats.map(seat => {
+                  const assignedCat = seatLookup[seat.id];
+                  const color = getCategoryColor(assignedCat);
+                  const isAssignedToActive = assignedCat === activeCategory;
+                  
+                  return (
+                    <div
+                      key={seat.id}
+                      style={{
+                        width: '20px', height: '20px',
+                        borderRadius: '3px',
+                        background: assignedCat ? color : 'rgba(255,255,255,0.03)',
+                        border: isAssignedToActive ? '1px solid white' : '1px solid rgba(255,255,255,0.1)',
+                        cursor: activeCategory ? 'pointer' : 'default',
+                        transition: 'all 0.15s ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '0.55rem',
+                        color: assignedCat ? '#000' : 'rgba(255,255,255,0.2)',
+                        fontWeight: '800',
+                        boxShadow: isAssignedToActive ? `0 0 8px ${color}` : 'none'
+                      }}
+                      onClick={() => handleSeatInteract(seat.id)}
+                      onMouseEnter={() => { if (isDragging) handleSeatInteract(seat.id); }}
+                    >
+                      {seat.col}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           ))}
         </div>

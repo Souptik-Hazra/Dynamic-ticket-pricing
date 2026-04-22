@@ -103,19 +103,40 @@ app.post('/api/payments', jwtMiddleware, requireDB, async (req, res, next) => {
 
       // Increment revenue in event document
       await Event.findByIdAndUpdate(eventId, {
-        $inc: { totalRevenue: payment.amount }
+        $inc: { 
+          totalRevenue: payment.amount,
+          commissionCollected: Math.round(payment.amount * 0.20)
+        }
       });
 
       // Synchronize derived metrics
       const event = await Event.findById(eventId);
       if (event) await event.save(); 
 
-      // DIRECT REVENUE: Credit the Organizer's wallet immediately
+      // ── Real-time Revenue Distribution ──
+      // Split revenue: 20% Platform Commission, 80% Organizer Net
       if (organizerId && payment.amount > 0) {
+        const commissionAmount = Math.round(payment.amount * 0.20);
+        const organizerNet     = payment.amount - commissionAmount;
+
+        // 1. Credit Admin (Commission)
+        // Note: In this architecture, we fetch the admin via the shared User model
+        const User = mongoose.models.User || mongoose.model('User'); 
+        const admin = await User.findOne({ role: 'admin' });
+        
+        if (admin) {
+          creditUserWallet(
+            admin._id,
+            commissionAmount,
+            `Commission (20%) from sale: ${ticket.bookingReference} (Event: ${event?.name || 'N/A'})`
+          );
+        }
+
+        // 2. Credit Organizer (Net Revenue)
         creditUserWallet(
           organizerId, 
-          payment.amount, 
-          `Revenue from ticket purchase: ${ticket.bookingReference} (Event: ${event?.name || 'N/A'})`
+          organizerNet, 
+          `Net Revenue (80%) from sale: ${ticket.bookingReference} (Event: ${event?.name || 'N/A'})`
         );
       }
     } catch (updateErr) {

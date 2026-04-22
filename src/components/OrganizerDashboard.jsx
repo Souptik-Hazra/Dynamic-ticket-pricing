@@ -3,10 +3,8 @@ import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import AdminEventForm from './AdminEventForm';
 import EventMapModal from './EventMapModal';
-import Footer from './Footer';
 import { ENDPOINTS } from '../config/api';
 import { useWebSocket } from '../hooks/useWebSocket';
-import './AdminDashboard.css'; // Reusing admin styles for consistency
 
 function OrganizerDashboard() {
   const { user } = useAuth();
@@ -42,8 +40,12 @@ function OrganizerDashboard() {
   // Real-time: refresh stats when a ticket is sold or attendance updates
   useEffect(() => {
     if (!lastEvent) return;
-    if (lastEvent.type === 'ticket_sold' && view === 'stats') {
-      fetchStats();
+    if (lastEvent.type === 'ticket_sold') {
+      if (view === 'stats') fetchStats();
+      fetchOrganizerWallet();
+    }
+    if (lastEvent.type === 'notification') {
+      fetchOrganizerWallet();
     }
     if (lastEvent.type === 'attendance_update') {
       // Update the events list in-place for live progress feedback
@@ -176,86 +178,80 @@ function OrganizerDashboard() {
     new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
   return (
-    <div className="admin-dashboard organizer-dashboard">
-      <header className="admin-header">
-        <div className="admin-header-content">
-          <h1>🎭 Organizer Dashboard</h1>
-          <div className="admin-user-info">
-             <span className={`ws-indicator ${connected ? 'ws-on' : 'ws-off'}`}
+    <div className="cyber-container animate-fade-up" style={{ padding: '2rem 0' }}>
+      <header className="flex-between" style={{ marginBottom: '3rem' }}>
+        <div>
+          <h1 className="title-main text-gradient" style={{ margin: 0 }}>🎭 Organizer Hub</h1>
+          <p className="text-muted">Event Intelligence & Management</p>
+        </div>
+        <div className="flex-center" style={{ gap: '1.5rem' }}>
+           <span className={`cyber-badge ${connected ? 'badge-success' : 'badge-danger'}`}
                 title={connected ? 'Live updates connected' : 'Offline'}>
-              {connected ? '🟢 Live' : '⚫ Offline'}
+              {connected ? '● Live WebSocket' : '● Offline'}
             </span>
-            <div className="org-wallet-badge" style={{ marginLeft: 'auto', background: 'rgba(255,255,255,0.1)', padding: '5px 12px', borderRadius: '20px', fontSize: '0.9rem', fontWeight: 'bold' }}>
-              💰 My Wallet: ₹{organizerWallet.balance.toFixed(2)}
+            <div className="glass-panel" style={{ padding: '0.8rem 1.5rem', borderRadius: '12px' }}>
+              <span className="cyber-label" style={{ fontSize: '0.7rem', display: 'block' }}>Net Revenue</span>
+              <span className="text-glow" style={{ fontSize: '1.2rem', fontWeight: '900', color: 'var(--success)' }}>
+                ₹{organizerWallet.balance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              </span>
             </div>
             <button 
-              className="msg-admin-btn" 
+              className="cyber-btn btn-primary" 
               onClick={() => setMessageModal({ isOpen: true, type: 'admin', title: '', message: '' })}
-              style={{ marginLeft: '10px', background: '#3498db', border: 'none', color: '#fff', padding: '6px 12px', borderRadius: '20px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}
+              style={{ padding: '0.6rem 1rem', fontSize: '0.75rem' }}
             >
               📧 Message Admin
             </button>
-          </div>
         </div>
       </header>
 
-      <nav className="admin-nav">
-        <button className={view === 'stats'   ? 'active' : ''} onClick={() => setView('stats')}>📊 Statistics</button>
-        <button className={view === 'events'  ? 'active' : ''} onClick={() => setView('events')}>🎭 My Events</button>
-        <button className={view === 'tickets' ? 'active' : ''} onClick={() => setView('tickets')}>🎟️ Sales History</button>
-      </nav>
+      <div className="cyber-grid" style={{ gridTemplateColumns: '220px 1fr', gap: '2rem' }}>
+        {/* Navigation Sidebar */}
+        <nav className="cyber-sidebar">
+          {[
+            { id: 'stats', label: '📊 Metrics Overview' },
+            { id: 'events', label: '🎭 My Events' },
+            { id: 'tickets', label: '🎟️ Sales Registry' }
+          ].map(nav => (
+            <button 
+              key={nav.id}
+              className={`cyber-btn ${view === nav.id ? 'active' : ''}`}
+              onClick={() => setView(nav.id)}
+            >
+              {nav.label}
+            </button>
+          ))}
+        </nav>
 
-      <main className="admin-content">
-        {loading && <div className="loading">Loading...</div>}
+        <main>
+          {loading && (
+            <div className="flex-center" style={{ padding: '3rem' }}>
+              <div className="text-glow animate-pulse">Synchronizing ledger...</div>
+            </div>
+          )}
 
         {/* ── Stats ─────────────────────────────────────────────────────── */}
         {view === 'stats' && stats && (
-          <div className="stats-view">
-            <h2 className="view-title">Dashboard Overview</h2>
-            <div className="stats-grid">
-              <div className="stat-card">
-                <div className="stat-icon stats-blue">🎭</div>
-                <div className="stat-info">
-                  <h3>My Events</h3>
-                  <p className="stat-value">{stats.totalEvents}</p>
-                </div>
+          <div className="animate-fade-up">
+            <h2 className="title-sub">Neural Performance Metrics</h2>
+            <div className="cyber-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+              <div className="cyber-card cyber-stat-card flex-center" style={{ borderLeftColor: 'var(--accent-cyan)' }}>
+                <span className="cyber-label">Active Events</span>
+                <p className="text-glow" style={{ fontSize: '1.8rem', fontWeight: '900' }}>{stats.totalEvents}</p>
               </div>
-              <div className="stat-card">
-                <div className="stat-icon stats-indigo">🎟️</div>
-                <div className="stat-info">
-                  <h3>Total Tickets Sold</h3>
-                  <p className="stat-value">{stats.totalTickets}</p>
-                </div>
+              <div className="cyber-card cyber-stat-card flex-center" style={{ borderLeftColor: 'var(--accent-indigo)' }}>
+                <span className="cyber-label">Total Tickets Sold</span>
+                <p className="text-glow" style={{ fontSize: '1.8rem', fontWeight: '900' }}>{stats.totalTickets}</p>
               </div>
-              <div className="stat-card" style={{ border: '2px solid #2ecc71' }}>
-                <div className="stat-icon stats-green">💰</div>
-                <div className="stat-info">
-                  <h3>My Available Balance</h3>
-                  <p className="stat-value" style={{ color: '#2ecc71' }}>₹{organizerWallet.balance.toFixed(2)}</p>
-                </div>
+              <div className="cyber-card cyber-stat-card flex-center" style={{ borderLeftColor: 'var(--success)' }}>
+                <span className="cyber-label">Gross Revenue</span>
+                <p className="text-gradient" style={{ fontSize: '1.6rem', fontWeight: '900' }}>₹{stats.totalRevenue.toLocaleString()}</p>
               </div>
-              <div className="stat-card">
-                <div className="stat-icon stats-green">💰</div>
-                <div className="stat-info">
-                  <h3>Total Revenue</h3>
-                  <p className="stat-value">₹{stats.totalRevenue.toFixed(2)}</p>
-                </div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-icon stats-purple">📈</div>
-                <div className="stat-info">
-                  <h3>Avg. Conversion</h3>
-                  <p className="stat-value">{stats.totalEvents > 0 ? (stats.totalTickets / stats.totalEvents).toFixed(1) : '0'}</p>
-                </div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-icon stats-orange">🛂</div>
-                <div className="stat-info">
-                  <h3>Total Attendance</h3>
-                  <p className="stat-value">
-                    {events.reduce((sum, ev) => sum + (ev.scannedCount || 0), 0)}
-                  </p>
-                </div>
+              <div className="cyber-card cyber-stat-card flex-center" style={{ borderLeftColor: 'var(--accent-pink)' }}>
+                <span className="cyber-label">Avg. Conversion</span>
+                <p className="text-glow" style={{ fontSize: '1.8rem', fontWeight: '900' }}>
+                  {stats.totalEvents > 0 ? (stats.totalTickets / stats.totalEvents).toFixed(1) : '0'}
+                </p>
               </div>
             </div>
           </div>
@@ -263,25 +259,23 @@ function OrganizerDashboard() {
 
         {/* ── Events ────────────────────────────────────────────────────── */}
         {view === 'events' && (
-          <div className="events-view">
-            <div className="view-header-row">
-              <h2 className="view-title">My Event Listings</h2>
-              <div className="header-actions">
-                <div className="search-box-container">
-                  <span className="search-icon">🔍</span>
+          <div className="animate-fade-up">
+            <div className="flex-between" style={{ marginBottom: '2rem' }}>
+              <h2 className="title-sub" style={{ margin: 0 }}>My Event Listings</h2>
+              <div className="flex-center" style={{ gap: '1.5rem' }}>
+                <div className="cyber-form-group" style={{ margin: 0, flexDirection: 'row', alignItems: 'center', background: 'rgba(255,255,255,0.05)', borderRadius: 'var(--radius-sm)', padding: '0.2rem 1rem' }}>
+                  <span className="text-dim">🔍</span>
                   <input 
                     type="text" 
-                    placeholder="Search by event name or venue..." 
-                    className="admin-search-input"
+                    placeholder="Filter events..." 
+                    className="cyber-input"
+                    style={{ background: 'transparent', border: 'none', width: '200px' }}
                     value={eventSearch}
                     onChange={(e) => setEventSearch(e.target.value)}
                   />
-                  {eventSearch && (
-                    <button className="clear-search" onClick={() => setEventSearch('')}>✕</button>
-                  )}
                 </div>
-                <button className="create-event-btn" onClick={() => { setEditingEvent(null); setShowEventForm(true); }}>
-                  ➕ Create New Event
+                <button className="cyber-btn btn-primary" onClick={() => { setEditingEvent(null); setShowEventForm(true); }}>
+                  ➕ NEW EVENT
                 </button>
               </div>
             </div>
@@ -291,17 +285,8 @@ function OrganizerDashboard() {
             )}
 
             {!showEventForm && (
-              <div className="events-list">
-                {events.filter(ev => 
-                  ev.name.toLowerCase().includes(eventSearch.toLowerCase()) || 
-                  ev.venue.toLowerCase().includes(eventSearch.toLowerCase())
-                ).length === 0 ? (
-                  <div className="no-data">
-                    <p>{eventSearch ? 'No events match your search.' : "You haven't created any events yet."}</p>
-                    {!eventSearch && <button className="link-btn" onClick={() => setShowEventForm(true)}>Host your first event</button>}
-                  </div>
-                ) : (
-                  <table className="admin-table events-table high-contrast-table">
+              <div className="cyber-table-container">
+                <table className="cyber-table">
                     <thead>
                       <tr>
                         <th>Event Details</th>
@@ -322,81 +307,84 @@ function OrganizerDashboard() {
                         )
                         .map((event) => (
                         <tr key={event._id}>
-                          <td className="event-info-cell">
-                            <div className="event-name-bold">{event.name}</div>
-                            <div className="event-venue-sub">📍 {event.venue}</div>
-                          </td>
-                          <td className="date-cell">
-                            <div className="date-main">{new Date(event.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
-                            <div className="date-sub">{new Date(event.startDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
-                          </td>
-                          <td className="sold-cell">
-                            <div className="sold-count">
-                              <span className="count-pill">{event.ticketsSold}</span> / {event.capacity}
-                            </div>
-                            <div className="sold-progress-bg">
-                              <div className="sold-progress-fill" style={{ width: `${(event.ticketsSold / event.capacity) * 100}%` }}></div>
-                            </div>
-                            <div className="entry-progress-mini">
-                              Checked-in: <b>{event.scannedCount || 0}</b> / {event.ticketsSold}
-                            </div>
-                          </td>
-                          <td className="base-revenue-cell">
-                            <div className="amount-dim">₹{(event.baseRevenue || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
-                          </td>
-                          <td className="revenue-cell">
-                            <div className="amount-bold">₹{(event.totalRevenue || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+                          <td>
+                            <div className="text-main" style={{ fontWeight: '800' }}>{event.name}</div>
+                            <div className="text-dim" style={{ fontSize: '0.8rem' }}>📍 {event.venue}</div>
                           </td>
                           <td>
-                            <div className={`profit-amount ${(event.profitAmount || 0) > 0 ? 'positive' : 'neutral'}`}>
-                              +₹{event.profitAmount?.toFixed(2) || '0.00'}
-                            </div>
-                            <div className="profit-percent">
-                              ({event.profitPercentage?.toFixed(1) || '0.0'}%)
+                            <div className="flex-column" style={{ gap: '0.2rem' }}>
+                              <div className="text-main" style={{ fontSize: '0.85rem' }}>
+                                <span className="cyber-label" style={{ fontSize: '0.6rem', marginRight: '4px' }}>START</span>
+                                {new Date(event.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                              </div>
+                              {event.endDate && (
+                                <div className="text-dim" style={{ fontSize: '0.75rem' }}>
+                                  <span className="cyber-label" style={{ fontSize: '0.6rem', marginRight: '4px' }}>END</span>
+                                  {new Date(event.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                </div>
+                              )}
                             </div>
                           </td>
                           <td>
-                            <span className={`status-pill ${event.status}`}>{event.status.toUpperCase()}</span>
+                            <div className="flex-column">
+                              <span style={{ fontWeight: '800' }}>{event.ticketsSold} <span className="text-dim" style={{ fontWeight: '400' }}>/ {event.capacity}</span></span>
+                              <div style={{ width: '60px', height: '4px', background: 'var(--bg-deep)', borderRadius: '2px', marginTop: '4px' }}>
+                                <div style={{ width: `${(event.ticketsSold / event.capacity) * 100}%`, height: '100%', background: 'var(--accent-indigo)' }}></div>
+                              </div>
+                              <div className="text-dim" style={{ fontSize: '0.7rem', marginTop: '4px' }}>
+                                Checked-in: <b>{event.scannedCount || 0}</b>
+                              </div>
+                            </div>
                           </td>
                           <td>
-                            <div className="action-buttons">
-                              <button className="view-map-btn" onClick={() => openMapForEvent(event)} title="View Map">🗺️</button>
-                              <button className="msg-btn" onClick={() => setMessageModal({ isOpen: true, type: 'attendees', eventId: event._id, eventName: event.name, title: '', message: '' })} title="Message Attendees" style={{ background: '#9b59b6', border: 'none', borderRadius: '4px', padding: '5px', cursor: 'pointer' }}>💬</button>
-                              <button className="edit-btn" onClick={() => { setEditingEvent(event); setShowEventForm(true); }} title="Edit">✏️</button>
-                              <button className="delete-btn" onClick={() => handleDeleteEvent(event._id)} title="Delete">🗑️</button>
+                            <div className="text-dim" style={{ fontSize: '0.75rem' }}>Base: ₹{(event.baseRevenue || 0).toLocaleString()}</div>
+                          </td>
+                          <td>
+                            <div className="text-main" style={{ fontWeight: '800', color: 'var(--success)' }}>₹{(event.totalRevenue || 0).toLocaleString()}</div>
+                          </td>
+                          <td>
+                            <div style={{ color: 'var(--accent-cyan)', fontWeight: '800' }}>+₹{event.profitAmount?.toFixed(0)}</div>
+                            <div className="text-dim" style={{ fontSize: '0.75rem' }}>({event.profitPercentage?.toFixed(1)}%)</div>
+                          </td>
+                          <td>
+                            <span className={`cyber-badge badge-${event.status}`}>{event.status.toUpperCase()}</span>
+                          </td>
+                          <td>
+                            <div className="flex-center" style={{ gap: '0.5rem' }}>
+                              <button className="cyber-btn btn-outline" style={{ padding: '0.4rem' }} onClick={() => openMapForEvent(event)} title="Map">🗺️</button>
+                              <button className="cyber-btn btn-outline" style={{ padding: '0.4rem', background: 'rgba(155, 89, 182, 0.2)' }} onClick={() => setMessageModal({ isOpen: true, type: 'attendees', eventId: event._id, eventName: event.name, title: '', message: '' })} title="Message">💬</button>
+                              <button className="cyber-btn btn-outline" style={{ padding: '0.4rem' }} onClick={() => { setEditingEvent(event); setShowEventForm(true); }} title="Edit">✏️</button>
+                              <button className="cyber-btn btn-danger" style={{ padding: '0.4rem' }} onClick={() => handleDeleteEvent(event._id)} title="Delete">🗑️</button>
                             </div>
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
-                )}
-                {showMapModal && <EventMapModal event={mapEvent} onClose={() => setShowMapModal(false)} />}
-              </div>
-            )}
-          </div>
-        )}
+                </div>
+              )}
+              {showMapModal && <EventMapModal event={mapEvent} onClose={() => setShowMapModal(false)} />}
+            </div>
+          )}
 
         {/* ── Tickets ───────────────────────────────────────────────────── */}
         {view === 'tickets' && (
-          <div className="tickets-view">
-            <div className="view-header-row">
-              <h2 className="view-title">🎟️ Sales Transaction History</h2>
-              <div className="header-actions">
-                <div className="search-box-container">
-                  <span className="search-icon">🔍</span>
+          <div className="animate-fade-up">
+            <div className="flex-between" style={{ marginBottom: '2rem' }}>
+              <h2 className="title-sub" style={{ margin: 0 }}>🎟️ Sales Transaction History</h2>
+              <div className="flex-center" style={{ gap: '1rem' }}>
+                <div className="glass-panel" style={{ padding: '0.2rem 1rem', display: 'flex', alignItems: 'center' }}>
+                  <span style={{ marginRight: '0.5rem' }}>🔍</span>
                   <input 
                     type="text" 
-                    placeholder="Search by customer name, email or ref..." 
-                    className="admin-search-input"
+                    placeholder="Search transactions..." 
+                    className="cyber-input"
+                    style={{ border: 'none', background: 'transparent' }}
                     value={ticketSearch}
                     onChange={(e) => setTicketSearch(e.target.value)}
                   />
-                  {ticketSearch && (
-                    <button className="clear-search" onClick={() => setTicketSearch('')}>✕</button>
-                  )}
                 </div>
-                <button className="refresh-btn" onClick={fetchTickets}>🔄 Refresh</button>
+                <button className="cyber-btn btn-outline" onClick={fetchTickets}>🔄 Sync</button>
               </div>
             </div>
 
@@ -405,12 +393,12 @@ function OrganizerDashboard() {
               t.customerEmail?.toLowerCase().includes(ticketSearch.toLowerCase()) ||
               t.bookingReference?.toLowerCase().includes(ticketSearch.toLowerCase())
             ).length === 0 ? (
-              <div className="no-data">
-                <p>{ticketSearch ? 'No transactions match your search.' : 'No tickets sold for your events yet.'}</p>
+              <div className="flex-center" style={{ padding: '5rem', border: '1px dashed var(--border-dim)', borderRadius: '20px' }}>
+                <p className="text-dim">{ticketSearch ? 'No transactions match your query.' : 'No sales recorded yet.'}</p>
               </div>
             ) : (
-              <div className="tickets-table-container">
-                <table className="admin-table tickets-table high-contrast-table">
+              <div className="cyber-table-container">
+                <table className="cyber-table">
                   <thead>
                     <tr>
                       <th>Booking Ref</th>
@@ -431,40 +419,26 @@ function OrganizerDashboard() {
                       )
                       .map((t) => (
                       <tr key={t._id}>
-                        <td className="booking-ref-cell">
-                          <code>{t.bookingReference}</code>
-                        </td>
-                        <td className="customer-cell">
-                          <div className="user-avatar-info">
-                            <div className="user-initials-circle" style={{ backgroundColor: getAvatarColor(t.customerName) }}>
+                        <td><code>{t.bookingReference}</code></td>
+                        <td>
+                          <div className="flex-center" style={{ justifyContent: 'flex-start', gap: '0.8rem' }}>
+                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: getAvatarColor(t.customerName), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: '800', color: 'white' }}>
                               {getInitials(t.customerName)}
                             </div>
-                            <div className="user-details-text">
-                              <div className="user-main-name">{t.customerName}</div>
-                              <div className="user-sub-email">{t.customerEmail}</div>
+                            <div className="flex-column">
+                              <span className="text-main" style={{ fontWeight: '700', fontSize: '0.85rem' }}>{t.customerName}</span>
+                              <span className="text-dim" style={{ fontSize: '0.7rem' }}>{t.customerEmail}</span>
                             </div>
                           </div>
                         </td>
-                        <td className="event-cat-cell">
-                          <div className="event-name-link">{t.eventId?.name || 'Unknown Event'}</div>
-                          <span className={`cat-pill ${t.categoryName || 'standard'}`}>
-                            {t.categoryName?.toUpperCase() || 'STANDARD'}
-                          </span>
-                        </td>
-                        <td className="qty-cell">
-                          <span className="qty-count">×{t.quantity}</span>
-                        </td>
-                        <td className="amount-cell">
-                          <div className="amount-highlight">₹{t.totalAmount?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
-                        </td>
                         <td>
-                          <span className={`status-pill ${t.status || 'confirmed'}`}>
-                            {(t.status || 'confirmed').toUpperCase()}
-                          </span>
+                          <div className="text-main" style={{ fontSize: '0.85rem' }}>{t.eventId?.name || 'Unknown Event'}</div>
+                          <span className="cyber-badge badge-info" style={{ fontSize: '0.6rem', padding: '0.2rem 0.5rem' }}>{t.categoryName?.toUpperCase()}</span>
                         </td>
-                        <td className="date-cell-small">
-                          {fmtDate(t.purchaseDate)}
-                        </td>
+                        <td><span className="text-main" style={{ fontWeight: '800' }}>×{t.quantity}</span></td>
+                        <td><span style={{ color: 'var(--success)', fontWeight: '800' }}>₹{t.totalAmount?.toLocaleString()}</span></td>
+                        <td><span className={`cyber-badge badge-${t.status || 'success'}`}>{(t.status || 'confirmed').toUpperCase()}</span></td>
+                        <td><span className="text-dim" style={{ fontSize: '0.75rem' }}>{fmtDate(t.purchaseDate)}</span></td>
                       </tr>
                     ))}
                   </tbody>
@@ -473,58 +447,51 @@ function OrganizerDashboard() {
             )}
           </div>
         )}
-      </main>
+        </main>
+      </div>
 
       {messageModal.isOpen && (
-        <div className="modal-overlay">
-          <div className="org-msg-modal">
-            <h3>{messageModal.type === 'admin' ? '📧 Contact Platform Admin' : `💬 Message Attendees: ${messageModal.eventName}`}</h3>
-            <form onSubmit={handleSendMessage}>
-              <div className="form-group">
-                <label>Subject</label>
-                <input 
-                  type="text" 
-                  value={messageModal.title} 
-                  onChange={(e) => setMessageModal({ ...messageModal, title: e.target.value })}
-                  placeholder={messageModal.type === 'admin' ? 'Issue description...' : 'Important Update...'}
-                />
-              </div>
-              <div className="form-group">
-                <label>Message</label>
-                <textarea 
-                  rows="5"
-                  value={messageModal.message} 
-                  onChange={(e) => setMessageModal({ ...messageModal, message: e.target.value })}
-                  placeholder="Type your message here..."
-                ></textarea>
-              </div>
-              <div className="modal-actions">
-                <button type="button" className="cancel-btn" onClick={() => setMessageModal({ ...messageModal, isOpen: false })}>Cancel</button>
-                <button type="submit" className="send-btn" disabled={loading}>{loading ? 'Sending...' : 'Send Message'}</button>
-              </div>
-            </form>
+        <div className="cyber-overlay animate-fade-up">
+          <div className="cyber-modal animate-fade-up" style={{ maxWidth: '500px' }}>
+            <header className="modal-header">
+              <h3 style={{ margin: 0 }}>{messageModal.type === 'admin' ? '📧 Contact Platform Admin' : `💬 Message Attendees`}</h3>
+              <button className="cyber-btn btn-outline" style={{ padding: '0.4rem', borderRadius: '50%' }} onClick={() => setMessageModal({ ...messageModal, isOpen: false })}>&times;</button>
+            </header>
+            <div className="modal-content">
+              <form onSubmit={handleSendMessage} className="flex-column" style={{ gap: '1.5rem' }}>
+                <div className="cyber-form-group">
+                  <label className="cyber-label">Subject</label>
+                  <input 
+                    className="cyber-input"
+                    type="text" 
+                    value={messageModal.title} 
+                    onChange={(e) => setMessageModal({ ...messageModal, title: e.target.value })}
+                    placeholder={messageModal.type === 'admin' ? 'Issue description...' : 'Important Update...'}
+                    required
+                  />
+                </div>
+                <div className="cyber-form-group">
+                  <label className="cyber-label">Message</label>
+                  <textarea 
+                    className="cyber-input"
+                    rows="5"
+                    value={messageModal.message} 
+                    onChange={(e) => setMessageModal({ ...messageModal, message: e.target.value })}
+                    placeholder="Type your message here..."
+                    required
+                  ></textarea>
+                </div>
+                <div className="flex-center" style={{ gap: '1rem', marginTop: '1rem' }}>
+                  <button type="button" className="cyber-btn btn-outline" style={{ flex: 1 }} onClick={() => setMessageModal({ ...messageModal, isOpen: false })}>Cancel</button>
+                  <button type="submit" className="cyber-btn btn-primary" style={{ flex: 2 }} disabled={loading}>{loading ? 'Sending...' : 'Send Message'}</button>
+                </div>
+              </form>
+            </div>
           </div>
-          <style>{`
-            .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 2000; }
-            .org-msg-modal { background: #1a1a1a; padding: 25px; border-radius: 12px; width: 100%; max-width: 500px; border: 1px solid #333; }
-            .org-msg-modal h3 { margin-bottom: 20px; color: #fff; font-size: 1.2rem; }
-            .org-msg-modal .form-group { margin-bottom: 15px; }
-            .org-msg-modal label { display: block; margin-bottom: 5px; color: #aaa; font-size: 0.9rem; }
-            .org-msg-modal input, .org-msg-modal textarea { width: 100%; padding: 10px; background: #222; border: 1px solid #444; color: #fff; border-radius: 4px; }
-            .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
-            .cancel-btn { background: #444; color: #fff; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; }
-            .send-btn { background: #9b59b6; color: #fff; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-          `}</style>
         </div>
       )}
     </div>
   );
 }
 
-export default function OrganizerDashboardWrapper(props) {
-  return (
-    <>
-      <OrganizerDashboard {...props} />
-    </>
-  );
-}
+export default OrganizerDashboard;

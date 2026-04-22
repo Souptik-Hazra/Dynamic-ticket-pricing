@@ -64,6 +64,7 @@ app.get('/api/admin/stats', auth, async (req, res, next) => {
     ]);
 
     const { totalRevenue = 0, totalTickets = 0 } = ticketAgg[0] || {};
+    const totalProfit = Math.round(totalRevenue * 0.20);
 
     res.json({
       stats: {
@@ -71,6 +72,7 @@ app.get('/api/admin/stats', auth, async (req, res, next) => {
         totalUsers,
         totalTickets,
         totalRevenue,
+        totalProfit,
         recentTickets: recentTickets.map((t) => ({
           _id:          t._id,
           customerName: t.customerName,
@@ -267,31 +269,36 @@ app.post('/api/admin/events/:id/complete', auth, async (req, res, next) => {
     const admin = await User.findOne({ role: 'admin' });
     if (!admin) return res.status(500).json({ error: 'No system admin found' });
 
-    // 2. Calculate Commission (20% - Standardized)
+    // 2. Calculate Commission (Target: 20%)
     const revenue = event.totalRevenue || 0;
-    const commissionAmount = Math.round(revenue * 0.20);
+    const targetCommission = Math.round(revenue * 0.20);
+    const alreadyCollected = event.commissionCollected || 0;
+    const remainingCommission = Math.max(0, targetCommission - alreadyCollected);
 
-    // 3. Process Wallet Transfers (Only if organizer exists and amount > 0)
-    if (commissionAmount > 0 && event.organizerId) {
-      debitUserWallet(event.organizerId, commissionAmount, `Commission payout (20%) for event: ${event.name}`);
-      creditUserWallet(admin._id, commissionAmount, `Commission received from ${event.organizerId} for event: ${event.name}`);
+    // 3. Process Wallet Transfers for any remaining commission
+    if (remainingCommission > 0 && event.organizerId) {
+      await debitUserWallet(event.organizerId, remainingCommission, `Final commission payout for event: ${event.name}`);
+      await creditUserWallet(admin._id, remainingCommission, `Final commission received for event: ${event.name}`);
     }
 
-    // 4. Create Commission Record (Only if organizer exists)
-    if (event.organizerId) {
-      await Commission.create({
-        eventId: event._id,
+    // 4. Record/Update Commission Entry
+    await Commission.findOneAndUpdate(
+      { eventId: event._id },
+      {
         organizerId: event.organizerId,
         adminId: admin._id,
         totalRevenue: revenue,
-        commissionAmount,
+        commissionAmount: targetCommission,
         percentage: 20,
-        status: 'paid'
-      });
-    }
+        status: 'paid',
+        payoutDate: new Date()
+      },
+      { upsert: true }
+    );
 
     // 5. Update Event Status
     event.status = 'completed';
+    event.commissionCollected = targetCommission; // Mark as fully collected
     await event.save();
 
     // 6. Invalidate Caches
@@ -300,10 +307,10 @@ app.post('/api/admin/events/:id/complete', auth, async (req, res, next) => {
 
     res.json({ 
       success: true, 
-      message: event.organizerId 
-        ? 'Event completed and commission processed' 
-        : 'Event completed (No commission processed as no organizer was assigned)',
-      commissionAmount: event.organizerId ? commissionAmount : 0,
+      message: remainingCommission > 0 
+        ? `Event completed. Remaining commission of ₹${remainingCommission} collected.`
+        : 'Event completed. All commissions were already collected in real-time.',
+      commissionAmount: targetCommission,
       revenue
     });
   } catch (err) { next(err); }

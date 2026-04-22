@@ -1,32 +1,13 @@
 import React from 'react';
-import './TrendChart.css';
 
 const TrendChart = ({ data = [], title = "Sales Volume & Revenue" }) => {
   // Ensure we have at least one day or handle empty state
   if (!data || data.length === 0) {
     return (
-      <div className="trend-chart-container empty-state-chart">
-        <div className="empty-chart-visual">
-          <svg width="100%" height="160" viewBox="0 0 400 160" preserveAspectRatio="none">
-             <defs>
-               <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                 <stop offset="0%" stopColor="rgba(79, 172, 254, 0.1)" />
-                 <stop offset="50%" stopColor="rgba(79, 172, 254, 0.4)" />
-                 <stop offset="100%" stopColor="rgba(79, 172, 254, 0.1)" />
-               </linearGradient>
-             </defs>
-             <path d="M0,120 C50,110 100,130 150,100 S250,80 300,110 S350,90 400,100" 
-                   fill="none" stroke="url(#lineGrad)" strokeWidth="3" strokeDasharray="10 5" />
-             <rect x="40" y="90" width="16" height="30" rx="4" fill="rgba(255,255,255,0.03)" />
-             <rect x="100" y="60" width="16" height="60" rx="4" fill="rgba(255,255,255,0.04)" />
-             <rect x="160" y="100" width="16" height="20" rx="4" fill="rgba(255,255,255,0.02)" />
-             <rect x="220" y="40" width="16" height="80" rx="4" fill="rgba(111,111,111,0.05)" />
-          </svg>
-        </div>
-        <div className="empty-chart-text">
-          <h3>{title}</h3>
-          <p>No transactions detected in the specified timeframe. Start selling tickets to see real-time performance analytics.</p>
-        </div>
+      <div className="cyber-card flex-center flex-column" style={{ padding: '4rem', textAlign: 'center', minHeight: '300px' }}>
+        <div className="text-glow animate-pulse" style={{ fontSize: '3rem', marginBottom: '1.5rem' }}>📉</div>
+        <h3 className="text-main">{title}</h3>
+        <p className="text-dim" style={{ maxWidth: '400px' }}>No transactional data streams detected in the specified timeframe.</p>
       </div>
     );
   }
@@ -44,48 +25,51 @@ const TrendChart = ({ data = [], title = "Sales Volume & Revenue" }) => {
   };
 
   return (
-    <div className="trend-chart-container">
-      <div className="chart-header">
-        <h3>{title}</h3>
-        <div className="chart-legend">
-          <div className="legend-item">
-            <span className="legend-indicator indicator-revenue"></span>
-            Revenue (₹)
+    <div className="cyber-card" style={{ padding: '2rem' }}>
+      <div className="flex-between" style={{ marginBottom: '2.5rem', borderBottom: '1px solid var(--border-dim)', paddingBottom: '1rem' }}>
+        <h3 className="cyber-label" style={{ color: 'var(--text-main)', fontSize: '1.1rem' }}>{title}</h3>
+        <div className="flex-center" style={{ gap: '1.5rem' }}>
+          <div className="flex-center" style={{ gap: '0.5rem' }}>
+            <span style={{ width: '12px', height: '4px', background: 'var(--accent-cyan)', borderRadius: '2px' }}></span>
+            <span className="text-dim" style={{ fontSize: '0.75rem' }}>Revenue (₹)</span>
           </div>
-          <div className="legend-item">
-            <span className="legend-indicator indicator-count"></span>
-            Quantity
+          <div className="flex-center" style={{ gap: '0.5rem' }}>
+            <span style={{ width: '12px', height: '4px', background: 'var(--accent-pink)', borderRadius: '2px' }}></span>
+            <span className="text-dim" style={{ fontSize: '0.75rem' }}>Quantity</span>
           </div>
         </div>
       </div>
 
-      <div className="chart-bars-wrapper">
+      <div className="flex-center" style={{ height: '280px', alignItems: 'flex-end', gap: '1rem', overflowX: 'auto', paddingBottom: '3rem' }}>
         {data.map((item, idx) => {
-          // Add a minimum 3% height so very small values remain visible
-          const revenueHeight = Math.max((item.revenue / maxRevenue) * 100, 3);
-          const countHeight = Math.max((item.count / maxCount) * 100, 3);
+          const revenueHeight = Math.max((item.revenue / maxRevenue) * 100, 4);
+          const countHeight = Math.max((item.count / maxCount) * 100, 4);
 
           return (
-            <div key={idx} className="chart-column">
+            <div key={idx} className="flex-center" style={{ flex: 1, minWidth: '40px', height: '100%', alignItems: 'flex-end', gap: '4px', position: 'relative' }}>
               <div 
-                className="bar-revenue" 
-                style={{ height: `${revenueHeight}%` }}
+                style={{ 
+                  width: '12px', 
+                  height: `${revenueHeight}%`, 
+                  background: 'linear-gradient(180deg, var(--accent-cyan), var(--accent-blue))',
+                  borderRadius: '4px 4px 0 0',
+                  boxShadow: '0 4px 15px rgba(79, 172, 254, 0.2)',
+                  transition: 'height 0.8s ease-out'
+                }} 
               ></div>
               <div 
-                className="bar-count" 
-                style={{ height: `${countHeight}%` }}
+                style={{ 
+                  width: '12px', 
+                  height: `${countHeight}%`, 
+                  background: 'linear-gradient(180deg, var(--accent-pink), #f5576c)',
+                  borderRadius: '4px 4px 0 0',
+                  boxShadow: '0 4px 15px rgba(240, 147, 251, 0.2)',
+                  transition: 'height 0.8s ease-out'
+                }} 
               ></div>
               
-              <div className="x-axis-label">{formatDate(item.date)}</div>
-
-              <div className="chart-tooltip">
-                <strong>{new Date(item.date).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</strong>
-                <div style={{ color: 'var(--bi-accent-cyan)', marginBottom: '4px' }}>
-                  Revenue: ₹{item.revenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                </div>
-                <div style={{ color: 'var(--bi-accent-pink)' }}>
-                  Sales: {item.count} tickets sold
-                </div>
+              <div className="text-dim" style={{ position: 'absolute', bottom: '-25px', fontSize: '0.65rem', whiteSpace: 'nowrap', transform: 'rotate(-45deg)' }}>
+                {formatDate(item.date)}
               </div>
             </div>
           );

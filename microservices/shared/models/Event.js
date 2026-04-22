@@ -48,6 +48,7 @@ const eventSchema = new mongoose.Schema(
     baseRevenue:      { type: Number, default: 0 }, // basePrice * ticketsSold (min expected revenue)
     profitAmount:     { type: Number, default: 0 }, // totalRevenue - baseRevenue
     profitPercentage: { type: Number, default: 0 }, // (profitAmount / baseRevenue) * 100
+    commissionCollected: { type: Number, default: 0 }, // Track commission already split at purchase
 
     // ── ML / Dynamic-pricing inputs ──
     eventPopularity: { type: Number, min: 0, max: 1, default: 0.5 },

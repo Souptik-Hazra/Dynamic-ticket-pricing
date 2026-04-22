@@ -4,7 +4,6 @@ import { useAuth } from '../context/AuthContext';
 import { ENDPOINTS } from '../config/api';
 import VenueMap from './VenueMap';
 import SeatGrid from './SeatGrid';
-import './TicketPurchase.css';
 
 function TicketPurchase({ event, onBack, onSuccess }) {
   const { user, isAuthenticated } = useAuth();
@@ -243,458 +242,239 @@ function TicketPurchase({ event, onBack, onSuccess }) {
   };
 
   return (
-    <div className="ticket-purchase-container bg-white dark:bg-gray-900 text-gray-900 dark:text-white min-h-screen">
-      <button className="back-button" onClick={onBack}>
+    <div className="cyber-container animate-fade-up" style={{ padding: '2rem 0' }}>
+      <button className="cyber-btn btn-outline" onClick={onBack} style={{ marginBottom: '2rem' }}>
         ← Back to Events
       </button>
 
-      <div className="purchase-content">
-        <div className="event-summary">
-          <img src={event.image || '/default-event.png'} alt={event.name} onError={e => { e.target.src = '/default-event.png'; }} />
-          <h2>{event.name}</h2>
-          <p className="venue">📍 {event.venue}</p>
-          <p className="date">
-            📅 {event.startDate && event.endDate
-              ? `${new Date(event.startDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} to ${new Date(event.endDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`
-              : event.startDate
-                ? new Date(event.startDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-                : event.endDate
-                  ? new Date(event.endDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-                  : 'Date not set'}
-          </p>
-          <p className="category-tag">🎭 {event.category}</p>
+      <div className="cyber-grid" style={{ gridTemplateColumns: '1fr 1.5fr', gap: '3rem', alignItems: 'start' }}>
+        {/* Left Column: Event Details */}
+        <div className="cyber-card flex-column" style={{ padding: '0', overflow: 'hidden' }}>
+          <div style={{ height: '300px', backgroundImage: `url(${event.image || '/default-event.png'})`, backgroundSize: 'cover', backgroundPosition: 'center' }}></div>
+          <div style={{ padding: '2rem' }}>
+            <h2 className="title-main text-gradient" style={{ fontSize: '2rem', marginBottom: '1rem' }}>{event.name}</h2>
+            <div className="flex-column" style={{ gap: '1rem' }}>
+              <p className="text-main" style={{ fontSize: '1.1rem' }}>📍 {event.venue}</p>
+              <p className="text-muted">
+                📅 {event.startDate && event.endDate
+                  ? `${new Date(event.startDate).toLocaleDateString()} - ${new Date(event.endDate).toLocaleDateString()}`
+                  : event.startDate
+                    ? new Date(event.startDate).toLocaleDateString()
+                    : 'Date not set'}
+              </p>
+              <div className="cyber-badge badge-info" style={{ width: 'fit-content' }}>🎭 {event.category}</div>
+            </div>
+
+            <div className="glass-panel" style={{ marginTop: '2rem', padding: '1.5rem' }}>
+              <h4 className="cyber-label" style={{ marginBottom: '1rem' }}>📋 Order Summary</h4>
+              <div className="flex-column" style={{ gap: '0.8rem' }}>
+                {selectedCategory && (
+                  <div className="flex-between">
+                    <span className="text-muted">Type:</span>
+                    <span className="text-main" style={{ fontWeight: '700' }}>{selectedCategory.name.toUpperCase()}</span>
+                  </div>
+                )}
+                <div className="flex-between">
+                  <span className="text-muted">Price:</span>
+                  <span className="text-main">₹{getPrice().toFixed(2)}</span>
+                </div>
+                <div className="flex-between">
+                  <span className="text-muted">Quantity:</span>
+                  <span className="text-main">× {getPurchaseQuantity()}</span>
+                </div>
+                <div style={{ height: '1px', background: 'var(--border-dim)', margin: '0.5rem 0' }}></div>
+                <div className="flex-between">
+                  <span className="text-glow" style={{ fontSize: '1.1rem', fontWeight: '800' }}>Total:</span>
+                  <span className="text-glow" style={{ fontSize: '1.4rem', fontWeight: '900', color: 'var(--accent-cyan)' }}>
+                    ₹{calculateTotal().toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="purchase-form-section">
-          {/* Venue Map (if event has a layout) */}
-          {event.venueLayoutType && event.venueLayoutType !== 'none' && hasCategories && (
-            <div className="venue-map-section">
-              <h3>🗺️ Venue Map — Click a section</h3>
-              <VenueMap
-                layoutType={event.venueLayoutType}
-                stagePosition={event.stagePosition || 'bottom'}
-                categories={event.ticketCategories}
-                selectedCategory={selectedCategory}
-                onSelectCategory={handleCategorySelect}
-                dynamicPrices={dynamicPrices}
-                showPrices={true}
-                interactive={true}
-              />
-              
-            </div>
-          )}
+        {/* Right Column: Interactive Selection & Form */}
+        <div className="flex-column" style={{ gap: '2rem' }}>
+          
+          {/* Venue & Seat Selection */}
+          <div className="cyber-card">
+            <h3 className="title-sub" style={{ fontSize: '1.4rem' }}>🗺️ Select Your Experience</h3>
+            
+            {event.venueLayoutType && event.venueLayoutType !== 'none' && hasCategories && (
+              <div style={{ marginBottom: '2rem' }}>
+                <VenueMap
+                  layoutType={event.venueLayoutType}
+                  stagePosition={event.stagePosition || 'bottom'}
+                  categories={event.ticketCategories}
+                  selectedCategory={selectedCategory}
+                  onSelectCategory={handleCategorySelect}
+                  dynamicPrices={dynamicPrices}
+                  showPrices={true}
+                  interactive={true}
+                />
+              </div>
+            )}
 
-          {/* Independent Seat Grid Overlay (Always available if a category is selected) */}
-          {isSeatSelectionMode && (
-            <div className="venue-map-section" style={{ borderTop: 'none', paddingTop: 0 }}>
-              <SeatGrid
-                category={selectedCategory}
-                selectedSeats={selectedSeats}
-                onToggleSeat={handleToggleSeat}
-                interactive={true}
-                seatMap={event.seatMap}
-                totalCapacity={event.capacity}
-              />
-            </div>
-          )}
+            {isSeatSelectionMode && (
+              <div style={{ borderTop: '1px solid var(--border-dim)', paddingTop: '2rem' }}>
+                <SeatGrid
+                  category={selectedCategory}
+                  selectedSeats={selectedSeats}
+                  onToggleSeat={handleToggleSeat}
+                  interactive={true}
+                  seatMap={event.seatMap}
+                  totalCapacity={event.capacity}
+                />
+              </div>
+            )}
+          </div>
 
-          {/* Ticket Categories Section */}
+          {/* Categories Grid */}
           {hasCategories && (
-            <div className="ticket-categories">
-              <h3>🎟️ Select Ticket Type</h3>
-              <div className="categories-grid">
-                {event.ticketCategories.map((category) => {
-                  const getCategoryDisplay = (name) => {
-                    const lower = name?.toLowerCase();
-                    if (lower === 'vip') return '👑 VIP';
-                    if (lower === 'premium') return '⭐ Premium';
-                    if (lower === 'balcony') return '🎭 Balcony';
-                    if (lower === 'gold') return '🥇 Gold';
-                    if (lower === 'silver') return '🥈 Silver';
-                    if (lower === 'platinum') return '💎 Platinum';
-                    if (lower === 'standard') return '🎫 Standard';
-                    // Capitalize first letter for any other category
-                    return `🎫 ${name?.charAt(0).toUpperCase() + name?.slice(1) || 'Standard'}`;
-                  };
-                  
-                  return (
+            <div className="cyber-card">
+              <h3 className="cyber-label" style={{ marginBottom: '1.5rem' }}>Select Tier</h3>
+              <div className="cyber-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
+                {event.ticketCategories.map((category) => (
                   <div
                     key={category._id || category.name}
-                    className={`category-card ${selectedCategory?.name === category.name ? 'selected' : ''} ${category.availableSeats === 0 ? 'sold-out' : ''}`}
+                    className={`cyber-card flex-column flex-center ${selectedCategory?.name === category.name ? 'selected' : ''}`}
+                    style={{ 
+                      padding: '1.5rem', 
+                      cursor: 'pointer',
+                      background: selectedCategory?.name === category.name ? 'rgba(102, 126, 234, 0.1)' : 'rgba(255, 255, 255, 0.02)',
+                      borderColor: selectedCategory?.name === category.name ? 'var(--accent-indigo)' : 'var(--border-dim)',
+                      opacity: category.availableSeats === 0 ? 0.5 : 1
+                    }}
                     onClick={() => category.availableSeats > 0 && handleCategorySelect(category)}
                   >
-                    <div className="category-header">
-                      <span className="category-name">
-                        {getCategoryDisplay(category.name)}
+                    <span className="text-main" style={{ fontWeight: '800', marginBottom: '0.5rem' }}>{category.name.toUpperCase()}</span>
+                    <div className="flex-column flex-center">
+                      <span className="text-glow" style={{ fontSize: '1.5rem', fontWeight: '900', color: 'var(--accent-cyan)' }}>
+                        ₹{(dynamicPrices[category.name] || category.price).toFixed(0)}
                       </span>
-                      {selectedCategory?.name === category.name && (
-                        <span className="selected-badge">✓</span>
+                      {dynamicPrices[category.name] && dynamicPrices[category.name] !== category.price && (
+                        <span className="text-dim" style={{ textDecoration: 'line-through', fontSize: '0.8rem' }}>₹{category.price}</span>
                       )}
                     </div>
-                    <div className="category-price">
-                      {priceLoading ? (
-                        <span className="price-loading">Loading...</span>
-                      ) : (
-                        <>
-                          <span className="dynamic-price">₹{(dynamicPrices[category.name] || category.price).toFixed(0)}</span>
-                          {dynamicPrices[category.name] && dynamicPrices[category.name] !== category.price && (
-                            <span className="base-price-strike">₹{category.price}</span>
-                          )}
-                        </>
-                      )}
-                    </div>
-                    <div className="category-seats">
-                      {category.availableSeats > 0 ? (
-                        <span className="available">{category.availableSeats} seats left</span>
-                      ) : (
-                        <span className="sold-out-text">Sold Out</span>
-                      )}
-                    </div>
-                    <div className="category-total">
-                      Total: {category.seats} seats
-                    </div>
+                    <span className={`cyber-badge ${category.availableSeats > 0 ? 'badge-success' : 'badge-danger'}`} style={{ marginTop: '1rem', fontSize: '0.65rem' }}>
+                      {category.availableSeats > 0 ? `${category.availableSeats} LEFT` : 'SOLD OUT'}
+                    </span>
                   </div>
-                  );
-                })}
+                ))}
               </div>
             </div>
           )}
 
-          {/* Single Price Display (if no categories) */}
-          {!hasCategories && (
-            <div className="single-price-display">
-              <h3>🎟️ Ticket Price</h3>
-              <div className="price-box">
-                <span className="price-amount">₹{getPrice().toFixed(2)}</span>
-                <span className="available-text">{getAvailableTickets()} tickets available</span>
+          {/* Checkout Form */}
+          <div className="cyber-card">
+            <h3 className="title-sub" style={{ fontSize: '1.4rem' }}>💳 Finalize Booking</h3>
+            <form onSubmit={handleSubmit} className="flex-column" style={{ gap: '1.5rem' }}>
+              <div className="cyber-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                <div className="cyber-form-group">
+                  <label className="cyber-label">Name</label>
+                  <input className="cyber-input" type="text" value={formData.customerName} readOnly />
+                </div>
+                <div className="cyber-form-group">
+                  <label className="cyber-label">Email</label>
+                  <input className="cyber-input" type="email" value={formData.customerEmail} readOnly />
+                </div>
               </div>
-            </div>
-          )}
 
-          <h3>📝 Your Details</h3>
-          
-          <form onSubmit={handleSubmit} className="purchase-form">
-            {/* 🍯 Anti-Bot Honeypot: Invisible to humans, filled by common scripts */}
-            <input 
-              type="text" 
-              name="username_real" 
-              value={formData.username_real} 
-              onChange={handleChange} 
-              style={{ display: 'none' }} 
-              tabIndex="-1" 
-              autoComplete="off" 
-            />
-
-            <div className="form-group">
-              <label htmlFor="customerName">Full Name *</label>
-              <input
-                type="text"
-                id="customerName"
-                name="customerName"
-                value={formData.customerName}
-                onChange={handleChange}
-                placeholder="John Doe"
-                required
-                readOnly={true}
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="customerEmail">Email Address *</label>
-              <input
-                type="email"
-                id="customerEmail"
-                name="customerEmail"
-                value={formData.customerEmail}
-                onChange={handleChange}
-                placeholder="john@example.com"
-                required
-                readOnly={true}
-              />
-            </div>
-
-            {isSeatSelectionMode ? (
-               <div className="form-group">
-                 <label>Selected Seats: {selectedSeats.length > 0 ? selectedSeats.join(', ') : 'None'}</label>
-                 <div style={{ color: '#667eea', fontWeight: '600' }}>
-                   {selectedSeats.length} ticket(s) total
-                 </div>
-               </div>
-            ) : (
-                <div className="form-group">
-                  <label htmlFor="quantity">Number of Tickets * <small>(max 15 per purchase)</small></label>
+              {!isSeatSelectionMode && (
+                <div className="cyber-form-group">
+                  <label className="cyber-label">Quantity</label>
                   <input
+                    className="cyber-input"
                     type="number"
-                    id="quantity"
                     name="quantity"
                     value={formData.quantity}
                     onChange={handleChange}
                     min="1"
                     max={Math.min(15, getAvailableTickets())}
-                    required
                   />
                 </div>
-            )}
+              )}
 
-            <div className="payment-method-section">
-              <h3>💳 Select Payment Method</h3>
-              <div className="payment-methods-grid">
-                {[
-                  { id: 'card', label: 'Credit/Debit Card', icon: '💳' },
-                  { id: 'upi', label: 'UPI / PhonePe', icon: '📱' },
-                  { id: 'netbanking', label: 'Net Banking', icon: '🏦' },
-                  { id: 'wallet', label: 'Wallet Balance', icon: '💰' }
-                ].map((method) => (
-                  <div 
-                    key={method.id} 
-                    className={`method-card ${paymentMethod === method.id ? 'selected' : ''}`}
-                    onClick={() => setPaymentMethod(method.id)}
-                  >
-                    <span className="method-icon">{method.icon}</span>
-                    <span className="method-label">{method.label}</span>
-                  </div>
-                ))}
+              <div className="flex-column" style={{ gap: '1rem' }}>
+                <label className="cyber-label">Payment Method</label>
+                <div className="flex-center" style={{ gap: '1rem', flexWrap: 'wrap', justifyContent: 'flex-start' }}>
+                  {[
+                    { id: 'card', icon: '💳' },
+                    { id: 'upi', icon: '📱' },
+                    { id: 'wallet', icon: '💰' }
+                  ].map((method) => (
+                    <button
+                      key={method.id}
+                      type="button"
+                      className={`cyber-btn ${paymentMethod === method.id ? 'btn-primary' : 'btn-outline'}`}
+                      style={{ padding: '0.8rem 1.2rem' }}
+                      onClick={() => setPaymentMethod(method.id)}
+                    >
+                      {method.icon} {method.id.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            <div className="order-summary">
-              <h4>📋 Order Summary</h4>
-              {selectedCategory && (
-                <div className="summary-row">
-                  <span>Ticket Type:</span>
-                  <span className="category-label">{selectedCategory.name.toUpperCase()}</span>
+              {paymentMethod === 'wallet' && isAuthenticated && (
+                <div className="glass-panel flex-between" style={{ padding: '1rem', borderLeft: `4px solid ${userWallet.balance < calculateTotal() ? 'var(--danger)' : 'var(--success)'}` }}>
+                  <span className="text-main">Wallet Balance: ₹{userWallet.balance.toFixed(2)}</span>
+                  {userWallet.balance < calculateTotal() && <span className="cyber-badge badge-danger">Insufficient Funds</span>}
                 </div>
               )}
-              <div className="summary-row">
-                <span>Price per ticket:</span>
-                <span>₹{getPrice().toFixed(2)}</span>
-              </div>
-              <div className="summary-row">
-                <span>Quantity:</span>
-                <span>× {formData.quantity}</span>
-              </div>
-              <div className="summary-row total">
-                <span>Total Amount:</span>
-                <span>₹{calculateTotal().toFixed(2)}</span>
-              </div>
-            </div>
 
-            {!isAuthenticated && (
-              <div className="login-warning">
-                ⚠️ Please login to purchase tickets
-              </div>
-            )}
-
-            <button 
-              type="submit" 
-              className="purchase-button"
-              disabled={loading || getAvailableTickets() === 0 || !isAuthenticated}
-            >
-              {loading ? 'Processing...' : 
-               !isAuthenticated ? 'Login to Purchase' :
-               getAvailableTickets() === 0 ? 'Sold Out' :
-               `Purchase for ₹${calculateTotal().toFixed(2)}`}
-            </button>
-          </form>
+              <button 
+                type="submit" 
+                className="cyber-btn btn-glow" 
+                style={{ padding: '1.5rem', fontSize: '1.2rem' }}
+                disabled={loading || getAvailableTickets() === 0 || !isAuthenticated || (paymentMethod === 'wallet' && userWallet.balance < calculateTotal())}
+              >
+                {loading ? 'PROCESSING...' : 
+                 !isAuthenticated ? 'LOGIN TO PURCHASE' :
+                 getAvailableTickets() === 0 ? 'SOLD OUT' :
+                 `CONFIRM & PAY ₹${calculateTotal().toFixed(2)}`}
+              </button>
+            </form>
+          </div>
         </div>
-
-        {paymentMethod === 'wallet' && isAuthenticated && (
-            <div className={`wallet-status-box ${userWallet.balance < getPrice() * formData.quantity ? 'low-balance' : 'sufficient-balance'}`} 
-                 style={{ 
-                     marginTop: '15px', 
-                     padding: '12px', 
-                     borderRadius: '8px', 
-                     background: userWallet.balance < getPrice() * formData.quantity ? 'rgba(231, 76, 60, 0.1)' : 'rgba(46, 204, 113, 0.1)',
-                     border: `1px solid ${userWallet.balance < getPrice() * formData.quantity ? '#e74c3c' : '#2ecc71'}`,
-                     display: 'flex',
-                     justifyContent: 'space-between',
-                     alignItems: 'center'
-                 }}>
-                <span style={{ fontWeight: '600' }}>💰 Your Wallet Balance: ₹{userWallet.balance.toFixed(2)}</span>
-                {userWallet.balance < getPrice() * formData.quantity && (
-                    <span style={{ color: '#e74c3c', fontWeight: 'bold' }}>⚠️ Insufficient Funds</span>
-                )}
-            </div>
-        )}
       </div>
 
-      {/* Purchased Ticket Modal */}
+      {/* Ticket Modal Overlay */}
       {purchasedTicket && (
-        <div className="purchase-print-overlay" onClick={handleClosePurchasedTicket}>
-          <div className="purchase-print-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="purchase-print-content" id="printable-purchase-ticket">
-              {/* Header */}
-              <div className="pp-header">
-                <div className="pp-brand">
-                  <span className="pp-brand-icon">🎫</span>
-                  <span className="pp-brand-name">FanFeverTickets</span>
-                </div>
-                <div className="pp-badge">E-TICKET</div>
-              </div>
+        <div className="flex-center" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 1000, padding: '2rem' }}>
+          <div className="cyber-card animate-fade-up" style={{ maxWidth: '600px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div id="printable-purchase-ticket" style={{ padding: '1rem' }}>
+               <h2 className="text-gradient title-main" style={{ fontSize: '2rem', textAlign: 'center' }}>Ticket Confirmed!</h2>
+               <div className="cyber-badge badge-success flex-center" style={{ margin: '0 auto 2rem', width: 'fit-content' }}>✅ PAYMENT SUCCESSFUL</div>
+               
+               <div className="cyber-card" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
+                 <p className="text-main" style={{ fontWeight: '800', fontSize: '1.2rem' }}>{purchasedTicket.eventName}</p>
+                 <p className="text-dim">📍 {purchasedTicket.eventVenue}</p>
+                 <p className="text-muted">📅 {new Date(purchasedTicket.eventStartDate).toLocaleString()}</p>
+                 <div style={{ height: '1px', background: 'var(--border-dim)', margin: '1rem 0' }}></div>
+                 <div className="flex-between">
+                   <span className="cyber-label">Booking Ref</span>
+                   <span className="text-main" style={{ fontWeight: '900', color: 'var(--accent-cyan)' }}>{purchasedTicket.bookingReference}</span>
+                 </div>
+               </div>
 
-              {/* Success Banner */}
-              <div className="pp-success-banner">
-                <span className="pp-success-icon">✅</span>
-                <span>Payment Successful!</span>
-              </div>
-
-              {/* Event Image */}
-              {purchasedTicket.eventImage && (
-                <div className="pp-event-image">
-                  <img
-                    src={purchasedTicket.eventImage || '/default-event.png'}
-                    alt={purchasedTicket.eventName}
-                    onError={(e) => (e.target.src = '/default-event.png')}
-                  />
-                </div>
-              )}
-
-              {/* Event Info */}
-              <div className="pp-event-info">
-                <h2 className="pp-event-name">{purchasedTicket.eventName}</h2>
-                <div className="pp-event-details">
-                  {purchasedTicket.eventVenue && (
-                    <div className="pp-row">
-                      <span className="pp-label">📍 Venue</span>
-                      <span className="pp-value">{purchasedTicket.eventVenue}</span>
-                    </div>
-                  )}
-                  {purchasedTicket.eventStartDate && (
-                    <div className="pp-row">
-                      <span className="pp-label">📅 Date</span>
-                      <span className="pp-value">
-                        {new Date(purchasedTicket.eventStartDate).toLocaleDateString('en-US', {
-                          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-                        })}
-                        {purchasedTicket.eventEndDate && purchasedTicket.eventEndDate !== purchasedTicket.eventStartDate &&
-                          ` — ${new Date(purchasedTicket.eventEndDate).toLocaleDateString('en-US', {
-                            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-                          })}`}
-                      </span>
-                    </div>
-                  )}
-                  {purchasedTicket.eventCategory && (
-                    <div className="pp-row">
-                      <span className="pp-label">🎭 Category</span>
-                      <span className="pp-value">
-                        {purchasedTicket.eventCategory.charAt(0).toUpperCase() + purchasedTicket.eventCategory.slice(1)}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Divider */}
-              <div className="pp-divider"></div>
-
-              {/* Ticket Details */}
-              <div className="pp-detail-grid">
-                <div className="pp-detail-box">
-                  <span className="pp-box-label">Booking Reference</span>
-                  <span className="pp-box-value pp-ref">
-                    {purchasedTicket.bookingReference || purchasedTicket._id}
-                  </span>
-                </div>
-                <div className="pp-detail-box">
-                  <span className="pp-box-label">Ticket Type</span>
-                  <span className="pp-box-value">
-                    {purchasedTicket.categoryName?.toUpperCase() || 'STANDARD'}
-                  </span>
-                </div>
-                <div className="pp-detail-box">
-                  <span className="pp-box-label">Quantity</span>
-                  <span className="pp-box-value">{purchasedTicket.quantity}</span>
-                </div>
-                <div className="pp-detail-box">
-                  <span className="pp-box-label">Price per Ticket</span>
-                  <span className="pp-box-value">
-                    ₹{purchasedTicket.price?.toFixed(2) || (purchasedTicket.totalAmount / purchasedTicket.quantity).toFixed(2)}
-                  </span>
-                </div>
-              </div>
-
-              {/* QR Code Section - Show all tickets in a scrollable/list view */}
-              <div className="pp-qr-container">
-                {purchasedTicket.tickets && purchasedTicket.tickets.map((ticket, index) => (
-                  <div key={ticket._id} className="pp-qr-item">
-                    <div className="pp-qr-label">TICKET {index + 1} OF {purchasedTicket.quantity}</div>
-                    {ticket.qrCode ? (
-                      <div className="pp-qr-wrapper">
-                        <img src={ticket.qrCode} alt={`QR Code ${index + 1}`} className="pp-qr-image" />
-                      </div>
-                    ) : (
-                      <div className="pp-qr-placeholder">
-                        <div className="pp-qr-spinner"></div>
-                        <p>Generating Branded QR...</p>
-                      </div>
-                    )}
-                    <div className="pp-qr-token">
-                      <span className="pp-qr-token-label">TOKEN</span>
-                      <span className="pp-qr-token-value">{ticket.qrToken}</span>
-                      <button
-                        className="pp-qr-token-copy"
-                        onClick={() => {
-                          navigator.clipboard.writeText(ticket.qrToken);
-                          const btn = document.getElementById(`copy-btn-${ticket._id}`);
-                          if (btn) { btn.textContent = '✓ Copied'; setTimeout(() => { btn.textContent = 'Copy'; }, 2000); }
-                        }}
-                        id={`copy-btn-${ticket._id}`}
-                      >Copy</button>
-                    </div>
-                  </div>
-                ))}
-                <p className="pp-qr-hint">Each person must scan their own unique QR code at the entrance</p>
-              </div>
-
-              {/* Total */}
-              <div className="pp-total-section">
-                <div className="pp-total-row">
-                  <span>Total Amount Paid</span>
-                  <span className="pp-total-amount">₹{purchasedTicket.totalAmount?.toFixed(2)}</span>
-                </div>
-              </div>
-
-              {/* Divider */}
-              <div className="pp-divider"></div>
-
-              {/* Customer Info */}
-              <div className="pp-customer-info">
-                <div className="pp-row">
-                  <span className="pp-label">👤 Name</span>
-                  <span className="pp-value">{purchasedTicket.customerName || user?.name}</span>
-                </div>
-                <div className="pp-row">
-                  <span className="pp-label">📧 Email</span>
-                  <span className="pp-value">{purchasedTicket.customerEmail || user?.email}</span>
-                </div>
-                <div className="pp-row">
-                  <span className="pp-label">📅 Purchased</span>
-                  <span className="pp-value">
-                    {new Date(purchasedTicket.purchaseDate || Date.now()).toLocaleString('en-US', {
-                      year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
-                    })}
-                  </span>
-                </div>
-                <div className="pp-row">
-                  <span className="pp-label">✅ Status</span>
-                  <span className="pp-value pp-confirmed">CONFIRMED</span>
-                </div>
-              </div>
-
-              {/* Footer */}
-              <div className="pp-footer">
-                <p>This is a computer-generated ticket. No signature required.</p>
-                <p>Transaction ID: {purchasedTicket._id}</p>
-              </div>
+               <div className="flex-column" style={{ gap: '1rem' }}>
+                 {purchasedTicket.tickets?.map((t, i) => (
+                   <div key={t._id} className="glass-panel flex-between" style={{ padding: '1rem' }}>
+                     <div>
+                       <span className="cyber-label" style={{ fontSize: '0.6rem' }}>TICKET {i + 1}</span>
+                       <p className="text-main" style={{ fontWeight: '700' }}>{purchasedTicket.categoryName?.toUpperCase()}</p>
+                     </div>
+                     {t.qrCode ? <img src={t.qrCode} alt="QR" style={{ width: '60px', height: '60px', background: 'white', padding: '4px', borderRadius: '4px' }} /> : <span className="text-dim">Generating...</span>}
+                   </div>
+                 ))}
+               </div>
             </div>
 
-            <div className="pp-actions">
-              <button className="pp-print-btn" onClick={handlePrintPurchasedTicket}>
-                🖨️ Print / Save as PDF
-              </button>
-              <button className="pp-done-btn" onClick={handleClosePurchasedTicket}>
-                Done
-              </button>
+            <div className="flex-center" style={{ gap: '1rem', marginTop: '2rem' }}>
+              <button className="cyber-btn btn-primary" onClick={handlePrintPurchasedTicket}>🖨️ PRINT PDF</button>
+              <button className="cyber-btn btn-outline" onClick={handleClosePurchasedTicket}>CLOSE</button>
             </div>
           </div>
         </div>

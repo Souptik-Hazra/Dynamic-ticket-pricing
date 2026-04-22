@@ -60,9 +60,10 @@ const SERVICES = {
 // Logs errors but NEVER throws — inter-service calls must not crash the caller.
 const fireAndForget = async (fn, label) => {
   try {
-    await fn();
+    return await fn();
   } catch (err) {
     console.error(`[Inter-service] ${label} failed:`, err.message);
+    return null;
   }
 };
 

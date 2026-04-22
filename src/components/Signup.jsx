@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import './Login.css';
 
 function Signup({ onSwitchToLogin }) {
   const { signup } = useAuth();
@@ -51,110 +50,110 @@ function Signup({ onSwitchToLogin }) {
   };
 
   return (
-    <div className="auth-container">
-      <div className="auth-card">
-        <div className="auth-header">
-          <h2>🎫 Create Account</h2>
-          <p>Join Dynamic Ticket Pricing Today</p>
+    <div className="flex-center" style={{ minHeight: '80vh', padding: '2rem 0' }}>
+      <div className="cyber-card animate-fade-up" style={{ maxWidth: '500px', width: '100%', padding: '3rem' }}>
+        <div className="flex-column flex-center" style={{ marginBottom: '2.5rem', textAlign: 'center' }}>
+          <h2 className="title-main text-gradient" style={{ margin: 0, fontSize: '2.5rem' }}>🎫 New Identity</h2>
+          <p className="text-muted">Initialize your presence in the ecosystem</p>
         </div>
 
         {error && (
-          <div className="error-message">
+          <div className="cyber-badge badge-danger" style={{ width: '100%', padding: '1rem', marginBottom: '2rem', textAlign: 'center' }}>
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="auth-form">
-          <div className="form-group">
-            <label htmlFor="name">Full Name</label>
+        <form onSubmit={handleSubmit} className="flex-column" style={{ gap: '1.2rem' }}>
+          <div className="cyber-form-group">
+            <label className="cyber-label">Full Name</label>
             <input
               type="text"
-              id="name"
               name="name"
+              className="cyber-input"
               value={formData.name}
               onChange={handleChange}
-              placeholder="John Doe"
+              placeholder="e.g., Alex Reed"
               required
               disabled={loading}
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="email">Email Address</label>
+          <div className="cyber-form-group">
+            <label className="cyber-label">Email Address</label>
             <input
               type="email"
-              id="email"
               name="email"
+              className="cyber-input"
               value={formData.email}
               onChange={handleChange}
-              placeholder="your@email.com"
+              placeholder="neural@identity.io"
               required
               disabled={loading}
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="••••••••"
-              required
-              disabled={loading}
-              minLength="8"
-            />
-            <small>Must be at least 8 characters with letters and numbers</small>
+          <div className="cyber-grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="cyber-form-group">
+              <label className="cyber-label">Access Protocol</label>
+              <input
+                type="password"
+                name="password"
+                className="cyber-input"
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="••••••••"
+                required
+                disabled={loading}
+                minLength="6"
+              />
+            </div>
+            <div className="cyber-form-group">
+              <label className="cyber-label">Verify Protocol</label>
+              <input
+                type="password"
+                name="confirmPassword"
+                className="cyber-input"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                placeholder="••••••••"
+                required
+                disabled={loading}
+                minLength="6"
+              />
+            </div>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="confirmPassword">Confirm Password</label>
-            <input
-              type="password"
-              id="confirmPassword"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              placeholder="••••••••"
-              required
-              disabled={loading}
-              minLength="8"
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="role">Account Type</label>
+          <div className="cyber-form-group">
+            <label className="cyber-label">Sector Assignment (Role)</label>
             <select
-              id="role"
               name="role"
+              className="cyber-input"
               value={formData.role}
               onChange={handleChange}
               required
               disabled={loading}
-              className="role-select"
             >
-              <option value="user">🎟️ Attendee (Buy Tickets)</option>
-              <option value="organizer">🎭 Organizer (List Events)</option>
-              <option value="staff">🛡️ Entry Staff (Scan Only)</option>
+              <option value="user">🎟️ CITIZEN (Buy Tickets)</option>
+              <option value="organizer">🎭 ARCHITECT (List Events)</option>
+              <option value="staff">🛡️ ENFORCER (Scan Only)</option>
             </select>
           </div>
 
-          <button type="submit" className="auth-submit-btn" disabled={loading}>
-            {loading ? 'Creating Account...' : 'Sign Up'}
+          <button type="submit" className="cyber-btn btn-glow" style={{ width: '100%', padding: '1.2rem', marginTop: '1.5rem' }} disabled={loading}>
+            {loading ? 'INITIALIZING...' : 'CREATE IDENTITY'}
           </button>
         </form>
 
-        <div className="auth-footer">
-          <p>
-            Already have an account?{' '}
+        <div className="flex-center" style={{ marginTop: '2.5rem' }}>
+          <p className="text-muted">
+            Already registered?{' '}
             <button 
-              className="link-btn" 
+              className="cyber-btn btn-outline" 
+              style={{ border: 'none', background: 'transparent', padding: '0 5px', color: 'var(--accent-indigo)' }}
               onClick={onSwitchToLogin}
               disabled={loading}
             >
-              Sign In
+              Access System
             </button>
           </p>
         </div>

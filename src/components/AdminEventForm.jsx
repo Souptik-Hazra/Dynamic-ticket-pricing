@@ -4,7 +4,6 @@ import { useAuth } from '../context/AuthContext';
 import { ENDPOINTS } from '../config/api';
 import VenueLayoutDesigner from './VenueLayoutDesigner';
 import SeatGridPreview from './SeatGridPreview';
-import './AdminEventForm.css';
 
 function AdminEventForm({ event, onClose }) {
   const { user } = useAuth();
@@ -262,404 +261,213 @@ function AdminEventForm({ event, onClose }) {
   };
 
   return (
-    <div className="admin-event-form-overlay" onClick={(e) => {
-      if (e.target.className === 'admin-event-form-overlay') onClose(false);
+    <div className="cyber-overlay animate-fade-up" onClick={(e) => {
+      if (e.target.className.includes('cyber-overlay')) onClose(false);
     }}>
-      <div className="admin-event-form-container">
-        <div className="form-header">
-          <h2>{event ? 'Edit Event' : 'Create New Event'}</h2>
-          <button className="close-btn" onClick={() => onClose(false)}>&times;</button>
-        </div>
+      <div className="cyber-modal animate-fade-up" style={{ maxWidth: '1400px' }}>
+        <header className="modal-header">
+          <h2 className="text-gradient" style={{ fontSize: '1.5rem', fontWeight: '900', margin: 0 }}>
+            {event ? '🧬 MODIFY PRODUCTION' : '⚡ INITIALIZE NEW PRODUCTION'}
+          </h2>
+          <button className="cyber-btn btn-outline" style={{ padding: '0.5rem', borderRadius: '50%' }} onClick={() => onClose(false)}>&times;</button>
+        </header>
 
-        {error && <div className="error-message">{error}</div>}
-
-        <form onSubmit={handleSubmit} className="admin-event-split-layout">
-          {/* Left Panel: Form Details */}
-          <div className="admin-event-form-scrollable">
-            <div className="admin-event-form">
-              <div className="form-group">
-                <label htmlFor="name">Event Name *</label>
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  required
-                  disabled={loading}
-                />
-              </div>
-
-              <div className="form-group">
-            <label htmlFor="description">Description *</label>
-            <textarea
-              id="description"
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              rows="3"
-              required
-              disabled={loading}
-            />
-          </div>
-
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="venue">Venue *</label>
-              <input
-                type="text"
-                id="venue"
-                name="venue"
-                value={formData.venue}
-                onChange={handleChange}
-                required
-                disabled={loading}
-              />
+        <div className="modal-content">
+          {error && (
+            <div className="cyber-badge badge-danger" style={{ width: '100%', padding: '1rem', marginBottom: '2rem' }}>
+              {error}
             </div>
+          )}
 
-            <div className="form-group">
-              <label htmlFor="category">Category *</label>
-              <select
-                id="category"
-                name="category"
-                value={formData.category}
-                onChange={handleChange}
-                required
-                disabled={loading}
-              >
-                <option value="concert">Concert</option>
-                <option value="sports">Sports</option>
-                <option value="theater">Theater</option>
-                <option value="conference">Conference</option>
-                <option value="festival">Festival</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-          </div>
+          <form onSubmit={handleSubmit} className="cyber-grid" style={{ gridTemplateColumns: '1.2fr 1fr', gap: '3rem', alignItems: 'start' }}>
+            {/* Left Panel: Primary Protocols */}
+            <div className="flex-column" style={{ gap: '2rem' }}>
+              <section className="cyber-card" style={{ background: 'rgba(255,255,255,0.02)' }}>
+                <h3 className="cyber-label" style={{ marginBottom: '1.5rem', color: 'var(--accent-cyan)' }}>Core Protocols</h3>
+                
+                <div className="cyber-form-group">
+                  <label className="cyber-label">Event Designation</label>
+                  <input className="cyber-input" type="text" name="name" value={formData.name} onChange={handleChange} required placeholder="Production Name" />
+                </div>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="startDate">Start Date & Time *</label>
-              <input
-                type="datetime-local"
-                id="startDate"
-                name="startDate"
-                value={formData.startDate}
-                onChange={handleChange}
-                required
-                disabled={loading}
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="endDate">End Date & Time</label>
-              <input
-                type="datetime-local"
-                id="endDate"
-                name="endDate"
-                value={formData.endDate}
-                onChange={handleChange}
-                disabled={loading}
-              />
-            </div>
+                <div className="cyber-form-group">
+                  <label className="cyber-label">Mission Briefing (Description)</label>
+                  <textarea className="cyber-input" name="description" value={formData.description} onChange={handleChange} rows="3" required placeholder="Describe the experience..." />
+                </div>
 
-            <div className="form-group">
-              <label htmlFor="status">Status</label>
-              <select
-                id="status"
-                name="status"
-                value={formData.status}
-                onChange={handleChange}
-                disabled={loading}
-              >
-                <option value="upcoming">Upcoming</option>
-                <option value="ongoing">Ongoing</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-            </div>
-          </div>
-          
-          <div className="form-section">
-            <div className="section-header">
-              <h3>Ticket Categories *</h3>
-              <button 
-                type="button" 
-                className="add-category-btn" 
-                onClick={addTicketCategory}
-                disabled={loading}
-              >
-                + Add Category
-              </button>
-            </div>
-            
-            {ticketCategories.map((category, index) => (
-              <div key={index} className="ticket-category-row">
-                <div className="category-fields">
-                  <div className="form-group category-field">
-                    <label>Type</label>
-                    <input
-                      type="text"
-                      list="category-options"
-                      value={category.name}
-                      onChange={(e) => handleCategoryChange(index, 'name', e.target.value)}
-                      placeholder="e.g., VIP, Standard"
-                      disabled={loading}
-                      required
-                    />
-                    <datalist id="category-options">
-                      <option value="standard">Standard</option>
-                      <option value="vip">VIP</option>
-                      <option value="premium">Premium</option>
-                      <option value="balcony">Balcony</option>
-                      <option value="economy">Economy</option>
-                    </datalist>
+                <div className="cyber-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                  <div className="cyber-form-group">
+                    <label className="cyber-label">Deployment Sector (Venue)</label>
+                    <input className="cyber-input" type="text" name="venue" value={formData.venue} onChange={handleChange} required placeholder="The Arena" />
                   </div>
-                  
-                  <div className="form-group category-field">
-                    <label>Seats</label>
-                    <input
-                      type="number"
-                      value={category.seats}
-                      onChange={(e) => handleCategoryChange(index, 'seats', e.target.value)}
-                      min="1"
-                      placeholder="e.g., 100"
-                      disabled={loading}
-                      required
-                    />
+                  <div className="cyber-form-group">
+                    <label className="cyber-label">Class Category</label>
+                    <select className="cyber-input" name="category" value={formData.category} onChange={handleChange} required>
+                      <option value="concert">Concert</option>
+                      <option value="sports">Sports</option>
+                      <option value="theater">Theater</option>
+                      <option value="conference">Conference</option>
+                      <option value="festival">Festival</option>
+                      <option value="other">Other</option>
+                    </select>
                   </div>
-                  
-                  <div className="form-group category-field">
-                    <label>Price (₹)</label>
-                    <input
-                      type="number"
-                      value={category.price}
-                      onChange={(e) => handleCategoryChange(index, 'price', e.target.value)}
-                      min="0"
-                      step="0.01"
-                      placeholder="e.g., 50.00"
-                      disabled={loading}
-                      required
-                    />
+                </div>
+
+                <div className="cyber-grid" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
+                  <div className="cyber-form-group">
+                    <label className="cyber-label">Start Pulse</label>
+                    <input className="cyber-input" type="datetime-local" name="startDate" value={formData.startDate} onChange={handleChange} required />
                   </div>
-                  
-                  <div className="form-group category-field">
-                    <label>Max Price (₹)</label>
-                    <input
-                      type="number"
-                      value={category.maxPrice}
-                      onChange={(e) => handleCategoryChange(index, 'maxPrice', e.target.value)}
-                      min={category.price || 0}
-                      step="0.01"
-                      placeholder={category.price ? `Default: ${(parseFloat(category.price) * 2).toFixed(2)}` : 'e.g., 100.00'}
-                      disabled={loading}
-                      title="Maximum price for dynamic pricing (leave empty for 2x base)"
-                    />
+                  <div className="cyber-form-group">
+                    <label className="cyber-label">End Pulse</label>
+                    <input className="cyber-input" type="datetime-local" name="endDate" value={formData.endDate} onChange={handleChange} />
+                  </div>
+                  <div className="cyber-form-group">
+                    <label className="cyber-label">Active State</label>
+                    <select className="cyber-input" name="status" value={formData.status} onChange={handleChange}>
+                      <option value="upcoming">Upcoming</option>
+                      <option value="ongoing">Ongoing</option>
+                      <option value="completed">Completed</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
                   </div>
                 </div>
                 
-                {ticketCategories.length > 1 && (
-                  <button
-                    type="button"
-                    className="remove-category-btn"
-                    onClick={() => removeTicketCategory(index)}
-                    disabled={loading}
-                  >
-                    Remove
+                <div className="cyber-form-group" style={{ marginTop: '1.5rem' }}>
+                  <label className="cyber-label">Visual Interface (Image URL)</label>
+                  <div className="flex-center" style={{ gap: '1rem' }}>
+                    <input className="cyber-input" style={{ flex: 1 }} type="text" name="image" value={formData.image} onChange={handleChange} placeholder="https://..." />
+                    {formData.image && (
+                      <img src={formData.image} alt="Preview" style={{ width: '40px', height: '40px', borderRadius: '4px', objectFit: 'cover', border: '1px solid var(--border-dim)' }} onError={(e) => e.target.src = '/default-event.png'} />
+                    )}
+                  </div>
+                </div>
+              </section>
+
+              <section className="cyber-card" style={{ background: 'rgba(255,255,255,0.02)' }}>
+                <div className="flex-between" style={{ marginBottom: '1.5rem' }}>
+                  <h3 className="cyber-label" style={{ color: 'var(--accent-indigo)' }}>Reservation Tiers</h3>
+                  <button type="button" className="cyber-btn btn-outline" style={{ fontSize: '0.7rem', padding: '0.4rem 0.8rem' }} onClick={addTicketCategory}>
+                    ➕ ADD TIER
                   </button>
-                )}
-              </div>
-            ))}
-          </div>
+                </div>
 
-          {/* Venue Layout Designer */}
-          <VenueLayoutDesigner
-            layoutType={venueLayoutType}
-            setLayoutType={setVenueLayoutType}
-            stagePosition={stagePosition}
-            setStagePosition={setStagePosition}
-            categories={ticketCategories}
-            onCategoryColorChange={handleCategoryColorChange}
-            onCategoryBlockedSeatsChange={handleCategoryBlockedSeatsChange}
-            venueMetrics={venueMetrics}
-            setVenueMetrics={setVenueMetrics}
-            safetyScores={safetyScores}
-            setSafetyScores={setSafetyScores}
-            isSafetyMode={isSafetyMode}
-            setIsSafetyMode={setIsSafetyMode}
-            eventName={formData.name}
-            eventId={event?._id}
-            eventPopularity={formData.eventPopularity}
-            selectedCategory={ticketCategories.find(c=>c.name===activeCategory) || null}
-            onSelectCategory={(cat) => setActiveCategory(cat?.name || null)}
-            seatMap={seatMap}
-          />
+                <div className="flex-column" style={{ gap: '1rem' }}>
+                  {ticketCategories.map((category, index) => (
+                    <div key={index} className="glass-panel" style={{ padding: '1rem', position: 'relative' }}>
+                      <div className="cyber-grid" style={{ gridTemplateColumns: '1.5fr 1fr 1fr 1fr', gap: '0.8rem' }}>
+                        <div className="cyber-form-group" style={{ marginBottom: 0 }}>
+                          <input className="cyber-input" style={{ fontSize: '0.8rem' }} type="text" value={category.name} onChange={(e) => handleCategoryChange(index, 'name', e.target.value)} placeholder="Tier Name" required />
+                        </div>
+                        <div className="cyber-form-group" style={{ marginBottom: 0 }}>
+                          <input className="cyber-input" style={{ fontSize: '0.8rem' }} type="number" value={category.seats} onChange={(e) => handleCategoryChange(index, 'seats', e.target.value)} placeholder="Units" required />
+                        </div>
+                        <div className="cyber-form-group" style={{ marginBottom: 0 }}>
+                          <input className="cyber-input" style={{ fontSize: '0.8rem' }} type="number" value={category.price} onChange={(e) => handleCategoryChange(index, 'price', e.target.value)} placeholder="₹ Base" required />
+                        </div>
+                        <div className="cyber-form-group" style={{ marginBottom: 0 }}>
+                          <input className="cyber-input" style={{ fontSize: '0.8rem' }} type="number" value={category.maxPrice} onChange={(e) => handleCategoryChange(index, 'maxPrice', e.target.value)} placeholder="₹ Max" />
+                        </div>
+                      </div>
+                      {ticketCategories.length > 1 && (
+                        <button type="button" onClick={() => removeTicketCategory(index)} style={{ position: 'absolute', top: '-10px', right: '-10px', background: 'var(--danger)', border: 'none', borderRadius: '50%', width: '20px', height: '20px', color: 'white', cursor: 'pointer', fontSize: '12px' }}>&times;</button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </section>
 
-          <div className="form-group">
-            <label htmlFor="eventPopularity">
-              Event Popularity: {formData.eventPopularity}
-            </label>
-            <input
-              type="range"
-              id="eventPopularity"
-              name="eventPopularity"
-              value={formData.eventPopularity}
-              onChange={handleChange}
-              min="0"
-              max="1"
-              step="0.1"
-              disabled={loading}
-            />
-            <small>0 = Low popularity, 1 = High popularity</small>
-          </div>
-
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="venueTier">Venue Tier</label>
-              <select
-                id="venueTier"
-                name="venueTier"
-                value={formData.venueTier}
-                onChange={handleChange}
-                disabled={loading}
-              >
-                <option value={1}>Small Venue</option>
-                <option value={2}>Medium Venue</option>
-                <option value={3}>Large / Stadium</option>
-              </select>
+              <section className="cyber-card" style={{ background: 'rgba(255,255,255,0.02)' }}>
+                <h3 className="cyber-label" style={{ marginBottom: '1.5rem', color: 'var(--accent-pink)' }}>Algorithmic Parameters</h3>
+                <div className="cyber-grid" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
+                   <div className="cyber-form-group">
+                     <label className="cyber-label">Venue Tier</label>
+                     <select className="cyber-input" name="venueTier" value={formData.venueTier} onChange={handleChange}>
+                       <option value={1}>Small</option>
+                       <option value={2}>Medium</option>
+                       <option value={3}>Stadium</option>
+                     </select>
+                   </div>
+                   <div className="cyber-form-group">
+                     <label className="cyber-label">Talent Class</label>
+                     <select className="cyber-input" name="artistTier" value={formData.artistTier} onChange={handleChange}>
+                       <option value={0}>N/A</option>
+                       <option value={1}>Local</option>
+                       <option value={2}>Regional</option>
+                       <option value={3}>National</option>
+                       <option value={4}>Global</option>
+                       <option value={5}>Elite</option>
+                     </select>
+                   </div>
+                   <div className="cyber-form-group">
+                     <label className="cyber-label">Peak Cycle</label>
+                     <select className="cyber-input" name="isHoliday" value={formData.isHoliday} onChange={handleChange}>
+                       <option value={false}>Standard</option>
+                       <option value={true}>Holiday/Peak</option>
+                     </select>
+                   </div>
+                </div>
+                
+                <div className="cyber-form-group" style={{ marginTop: '1rem' }}>
+                  <label className="cyber-label">Social Resonance (Popularity): {formData.eventPopularity}</label>
+                  <input type="range" name="eventPopularity" value={formData.eventPopularity} onChange={handleChange} min="0" max="1" step="0.1" style={{ width: '100%', accentColor: 'var(--accent-cyan)' }} />
+                </div>
+              </section>
             </div>
 
-            <div className="form-group">
-              <label htmlFor="artistTier">Artist / Performer Tier</label>
-              <select
-                id="artistTier"
-                name="artistTier"
-                value={formData.artistTier}
-                onChange={handleChange}
-                disabled={loading}
-              >
-                <option value={0}>No Artist / N/A</option>
-                <option value={1}>Local</option>
-                <option value={2}>Regional</option>
-                <option value={3}>National</option>
-                <option value={4}>International</option>
-                <option value={5}>Superstar</option>
-              </select>
-            </div>
+            {/* Right Panel: Spatial Design */}
+            <div className="flex-column" style={{ gap: '2rem' }}>
+              <section className="cyber-card" style={{ padding: '1.5rem' }}>
+                 <h3 className="cyber-label" style={{ marginBottom: '1.5rem', color: 'var(--warning)' }}>Spatial Architect</h3>
+                 <VenueLayoutDesigner
+                    layoutType={venueLayoutType}
+                    setLayoutType={setVenueLayoutType}
+                    stagePosition={stagePosition}
+                    setStagePosition={setStagePosition}
+                    categories={ticketCategories}
+                    onCategoryColorChange={handleCategoryColorChange}
+                    onCategoryBlockedSeatsChange={handleCategoryBlockedSeatsChange}
+                    venueMetrics={venueMetrics}
+                    setVenueMetrics={setVenueMetrics}
+                    safetyScores={safetyScores}
+                    setSafetyScores={setSafetyScores}
+                    isSafetyMode={isSafetyMode}
+                    setIsSafetyMode={setIsSafetyMode}
+                    eventName={formData.name}
+                    eventId={event?._id}
+                    eventPopularity={formData.eventPopularity}
+                    selectedCategory={ticketCategories.find(c=>c.name===activeCategory) || null}
+                    onSelectCategory={(cat) => setActiveCategory(cat?.name || null)}
+                    seatMap={seatMap}
+                  />
+              </section>
 
-            <div className="form-group">
-              <label htmlFor="isHoliday">Holiday Event?</label>
-              <select
-                id="isHoliday"
-                name="isHoliday"
-                value={formData.isHoliday}
-                onChange={handleChange}
-                disabled={loading}
-              >
-                <option value={false}>No</option>
-                <option value={true}>Yes</option>
-              </select>
-              <small>Is this event on or near a holiday?</small>
-            </div>
-          </div>
+              <section className="cyber-card" style={{ padding: '1.5rem' }}>
+                 <h3 className="cyber-label" style={{ marginBottom: '1.5rem' }}>Neural Matrix Preview</h3>
+                 <div style={{ maxHeight: '400px', overflow: 'hidden', borderRadius: '12px' }}>
+                   <SeatGridPreview 
+                    categories={ticketCategories} 
+                    seatMap={seatMap} 
+                    onSeatMapChange={setSeatMap} 
+                    safetyScores={safetyScores}
+                    isSafetyMode={isSafetyMode}
+                    activeCategory={activeCategory}
+                    setActiveCategory={(name) => setActiveCategory(name)}
+                  />
+                 </div>
+              </section>
 
-          <div className="form-group">
-            <label>Event Image</label>
-            <div className="image-source-toggle">
-              <button
-                type="button"
-                className={`toggle-btn ${imageSource === 'url' ? 'active' : ''}`}
-                onClick={() => setImageSource('url')}
-                disabled={loading}
-              >
-                URL
-              </button>
-              <button
-                type="button"
-                className={`toggle-btn ${imageSource === 'upload' ? 'active' : ''}`}
-                onClick={() => setImageSource('upload')}
-                disabled={loading}
-              >
-                Upload
-              </button>
-            </div>
-            
-            {imageSource === 'url' ? (
-              <input
-                type="text"
-                id="image"
-                name="image"
-                value={formData.image}
-                onChange={handleChange}
-                placeholder="https://example.com/image.jpg or /local-path.png"
-                disabled={loading}
-              />
-            ) : (
-              <div className="image-upload-section">
-                <input
-                  type="file"
-                  id="imageFile"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files[0];
-                    if (file) {
-                      if (file.size > 5 * 1024 * 1024) {
-                        setError('Image size must be less than 5MB');
-                        return;
-                      }
-                      const reader = new FileReader();
-                      reader.onloadend = () => {
-                        setImagePreview(reader.result);
-                        setFormData(prev => ({ ...prev, image: reader.result }));
-                      };
-                      reader.readAsDataURL(file);
-                    }
-                  }}
-                  disabled={loading}
-                />
-                <small>Max size: 5MB. Supported: JPG, PNG, GIF</small>
-              </div>
-            )}
-            
-            {(formData.image || imagePreview) && (
-              <div className="image-preview">
-                <img 
-                  src={imagePreview || formData.image} 
-                  alt="Event preview" 
-                  onError={(e) => e.target.src = '/default-event.png'}
-                />
-              </div>
-            )}
-          </div>
-
-              <div className="form-actions">
-                <button 
-                  type="button" 
-                  className="cancel-btn" 
-                  onClick={() => onClose(false)}
-                  disabled={loading}
-                >
-                  Cancel
+              <div className="flex-center" style={{ gap: '1.5rem', marginTop: 'auto' }}>
+                <button type="button" className="cyber-btn btn-outline" style={{ flex: 1 }} onClick={() => onClose(false)}>
+                  ABORT
                 </button>
-                <button type="submit" className="submit-btn" disabled={loading}>
-                  {loading ? 'Saving...' : (event ? 'Update Event' : 'Create Event')}
+                <button type="submit" className="cyber-btn btn-primary" style={{ flex: 2 }} disabled={loading}>
+                  {loading ? 'PROCESSING...' : (event ? 'UPDATE PROTOCOLS' : 'INITIATE PRODUCTION')}
                 </button>
               </div>
             </div>
-          </div>
-
-          {/* Right Panel: Live Seat Grid Preview Toolkit */}
-          <div className="admin-event-preview-panel">
-            <SeatGridPreview 
-              categories={ticketCategories} 
-              seatMap={seatMap} 
-              onSeatMapChange={setSeatMap} 
-              safetyScores={safetyScores}
-              isSafetyMode={isSafetyMode}
-              activeCategory={activeCategory}
-              setActiveCategory={(name) => setActiveCategory(name)}
-            />
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   );

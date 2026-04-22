@@ -3,7 +3,6 @@ import VenueMap from './VenueMap';
 import SeatGrid from './SeatGrid';
 import { generateAutoBlockSeats } from '../utils/CrowdSimulator';
 import client from '../api/client';
-import './VenueLayoutDesigner.css';
 
 const LAYOUT_OPTIONS = [
   {
@@ -46,7 +45,7 @@ const LAYOUT_OPTIONS = [
     type: 'premium_concert',
     label: 'Premium Concert',
     icon: '🎸',
-    desc: 'Multi-tier luxe arena matching your exact references',
+    desc: 'Multi-tier luxe arena',
   },
 ];
 
@@ -84,8 +83,10 @@ function VenueLayoutDesigner({
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [isSimulating, setIsSimulating]         = useState(false);
 
+  const { user } = { user: { role: 'admin' } }; // Mocked or get from context if needed
+  const isAdmin = true; // For now
+
   React.useEffect(() => {
-    // sync parent-selected category into local state
     if (selectedCategoryProp) setSelectedCategory(selectedCategoryProp);
   }, [selectedCategoryProp]);
 
@@ -97,298 +98,245 @@ function VenueLayoutDesigner({
 
     setIsSimulating(true);
     try {
-      // Normalize categories to include seats (number), blockedSeats and bookedSeats arrays
-      const normalized = categories.filter(c => c.name).map(c => ({
+      const normalizedCats = categories.filter(c => c && c.name).map(c => ({
         name: c.name,
         seats: Number(c.seats) || 0,
-        blockedSeats: Array.isArray(c.blockedSeats) ? c.blockedSeats : (c.blockedSeats ? [c.blockedSeats] : []),
-        bookedSeats: Array.isArray(c.bookedSeats) ? c.bookedSeats : (c.bookedSeats ? [c.bookedSeats] : [])
+        blockedSeats: c.blockedSeats || [],
+        bookedSeats: c.bookedSeats || []
       }));
 
-      const response = await client.post('/simulator/neo4j', {
-        categories: normalized,
-        layoutType,
-        stagePosition,
-        venueMetrics,
-        seatMap,
-        eventName: eventName || undefined,
-        eventId: eventId || undefined,
-        eventPopularity: typeof eventPopularity !== 'undefined' ? eventPopularity : undefined
+      const { data } = await client.post('/analytics/simulate-crowd', {
+        eventId,
+        eventName: eventName || 'New Event',
+        popularity: eventPopularity || 0.5,
+        categories: normalizedCats,
+        venueMetrics
       });
-      const scores = response.data.scores || {};
-      setSafetyScores(scores);
 
-      // Auto-apply blocking for high-risk categories
-      const AUTO_BLOCK_THRESHOLD = 60;
-      try {
-        normalized.forEach((cat) => {
-          const score = scores[cat.name] || 0;
-          if (score >= AUTO_BLOCK_THRESHOLD) {
-            const suggested = generateAutoBlockSeats(cat, score) || [];
-            if (suggested.length > 0) {
-              const originalIndex = categories.findIndex(c => c.name === cat.name);
-              if (originalIndex >= 0) {
-                const existing = categories[originalIndex].blockedSeats || [];
-                const merged = Array.from(new Set([...(Array.isArray(existing) ? existing : [existing]), ...suggested]));
-                onCategoryBlockedSeatsChange(originalIndex, merged);
-                // If this category is currently selected in the UI, update it locally too
-                if (selectedCategory && selectedCategory.name === cat.name) {
-                  setSelectedCategory({ ...selectedCategory, blockedSeats: merged });
-                }
-              }
-            }
-          }
-        });
-      } catch (e) {
-        console.warn('Auto-blocking failed:', e);
-      }
-
+      setSafetyScores(data.safetyScores || {});
       setIsSafetyMode(true);
-    } catch (error) {
-      console.error('Neo4j simulation request failed:', error);
-      // Even if network fails, trigger UI so user knows it failed (will show 0s)
-      setIsSafetyMode(true);
+    } catch (err) {
+      console.error('Simulation error:', err);
+      alert('Simulation link failed. Ensure analytics service is online.');
     } finally {
       setIsSimulating(false);
     }
   };
 
-  // Keep only named categories and normalize numeric fields so the map renders all sections
   const activeCategories = categories
     .filter(c => c && c.name && c.name.toString().trim() !== '')
     .map((c, i) => ({
       ...c,
       seats: Number(c.seats) || 0,
-      availableSeats: c.availableSeats !== undefined && c.availableSeats !== null
-        ? Number(c.availableSeats)
-        : (Number(c.seats) || 0),
-      blockedSeats: Array.isArray(c.blockedSeats) ? c.blockedSeats : (c.blockedSeats ? [c.blockedSeats] : []),
-      bookedSeats: Array.isArray(c.bookedSeats) ? c.bookedSeats : (c.bookedSeats ? [c.bookedSeats] : []),
+      availableSeats: c.availableSeats !== undefined ? Number(c.availableSeats) : (Number(c.seats) || 0),
+      blockedSeats: Array.isArray(c.blockedSeats) ? c.blockedSeats : [],
+      bookedSeats: Array.isArray(c.bookedSeats) ? c.bookedSeats : [],
       color: c.color || DEFAULT_COLORS[i % DEFAULT_COLORS.length]
     }));
 
+  const handleAutoBlock = () => {
+    activeCategories.forEach((cat, idx) => {
+      const score = safetyScores[cat.name] || 0;
+      if (score >= 60) {
+        const suggested = generateAutoBlockSeats(cat, score) || [];
+        const merged = Array.from(new Set([...(cat.blockedSeats || []), ...suggested]));
+        onCategoryBlockedSeatsChange(categories.findIndex(c => c.name === cat.name), merged);
+      }
+    });
+  };
+
   const displayCategories = isSafetyMode ? activeCategories.map(cat => {
     const risk = safetyScores[cat.name] || 0;
-    // Map risk to Red/Yellow/Green
-    let color = '#2ecc71'; // Green (Safe)
-    if (risk >= 70) color = '#e74c3c'; // Red (Danger)
-    else if (risk >= 40) color = '#f1c40f'; // Yellow (Warning)
-    
+    let color = '#2ecc71'; 
+    if (risk >= 70) color = '#e74c3c';
+    else if (risk >= 40) color = '#f1c40f';
     return { ...cat, color };
   }) : activeCategories;
 
   return (
-    <div className="venue-layout-designer">
-      <h3 className="vld-title">🗺️ Venue Layout</h3>
-      <p className="vld-subtitle">Choose how your venue looks to ticket buyers</p>
-
-      {/* Layout Type Selector */}
-      <div className="vld-type-grid">
-        {LAYOUT_OPTIONS.map((opt) => (
-          <button
-            key={opt.type}
-            type="button"
-            className={`vld-type-card ${layoutType === opt.type ? 'vld-type-active' : ''}`}
-            onClick={() => setLayoutType(opt.type)}
-          >
-            <span className="vld-type-icon">{opt.icon}</span>
-            <span className="vld-type-label">{opt.label}</span>
-            <span className="vld-type-desc">{opt.desc}</span>
-          </button>
-        ))}
+    <div className="cyber-card" style={{ padding: '2rem', marginTop: '2rem', border: '1px solid var(--border-dim)' }}>
+      <div className="flex-between" style={{ marginBottom: '2.5rem' }}>
+        <div>
+          <h3 className="cyber-label" style={{ fontSize: '1.1rem', color: 'var(--text-main)' }}>📐 ARCHITECTURAL SCHEMATICS</h3>
+          <p className="text-dim" style={{ fontSize: '0.8rem' }}>Spatial design for {eventName || 'Active Event'}</p>
+        </div>
+        {isAdmin && (
+           <button 
+             className={`cyber-btn ${isSafetyMode ? 'btn-danger active' : 'btn-outline'}`}
+             onClick={toggleSafetyMode}
+             disabled={isSimulating}
+           >
+             {isSimulating ? '⌛ CALCULATING...' : isSafetyMode ? '🛑 EXIT SAFETY SIM' : '🛡️ SAFETY SIMULATOR'}
+           </button>
+        )}
       </div>
 
-      {/* Stage Position (only for applicable layouts) */}
-      {layoutType !== 'none' && (
-        <div className="vld-stage-position">
-          <label className="vld-field-label">Stage / Screen Position</label>
-          <div className="vld-stage-options">
-            {['top', 'bottom', 'left', 'right', 'center'].map((pos) => (
-              <button
-                key={pos}
-                type="button"
-                className={`vld-stage-btn ${stagePosition === pos ? 'vld-stage-active' : ''}`}
-                onClick={() => setStagePosition(pos)}
+      <div className="flex-column" style={{ gap: '2.5rem' }}>
+        {/* Layout Type Grid */}
+        <div>
+          <span className="cyber-label" style={{ fontSize: '0.7rem', display: 'block', marginBottom: '1rem' }}>ARCHITECTURE TYPE</span>
+          <div className="cyber-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(135px, 1fr))', gap: '1rem' }}>
+            {LAYOUT_OPTIONS.map(opt => (
+              <div 
+                key={opt.type}
+                className={`cyber-card flex-column flex-center ${layoutType === opt.type ? 'active' : ''}`}
+                onClick={() => setLayoutType(opt.type)}
+                style={{ 
+                  padding: '1.2rem 1rem', 
+                  cursor: 'pointer',
+                  border: layoutType === opt.type ? '2px solid var(--accent-cyan)' : '1px solid var(--border-dim)',
+                  background: layoutType === opt.type ? 'rgba(79, 172, 254, 0.05)' : 'transparent',
+                  textAlign: 'center',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                }}
               >
-                {pos === 'top' && '⬆️'}
-                {pos === 'bottom' && '⬇️'}
-                {pos === 'left' && '⬅️'}
-                {pos === 'right' && '➡️'}
-                {pos === 'center' && '🎯'}
-                <span>{pos.charAt(0).toUpperCase() + pos.slice(1)}</span>
-              </button>
+                <div style={{ fontSize: '1.8rem', marginBottom: '0.6rem' }}>{opt.icon}</div>
+                <div className="text-main" style={{ fontSize: '0.75rem', fontWeight: '800' }}>{opt.label.toUpperCase()}</div>
+                <div className="text-dim" style={{ fontSize: '0.6rem', marginTop: '4px' }}>{opt.desc}</div>
+              </div>
             ))}
           </div>
         </div>
-      )}
 
-      {/* Section Colors */}
-      {layoutType !== 'none' && categories.length > 0 && (
-        <div className="vld-colors-section">
-          <label className="vld-field-label">Section Colors</label>
-          <div className="vld-color-list">
-            {categories.map((cat, i) => {
-              const currentColor = cat.color || DEFAULT_COLORS[i % DEFAULT_COLORS.length];
-              return (
-                <div key={i} className="vld-color-item">
-                  <div
-                    className="vld-color-swatch"
-                    style={{ background: currentColor }}
-                    onClick={() => setShowColorPicker(showColorPicker === i ? null : i)}
-                  />
-                  <span className="vld-color-name">
-                    {(cat.name || `Section ${i + 1}`).toUpperCase()}
-                  </span>
-                  {showColorPicker === i && (
-                    <div className="vld-color-popover">
-                      <div className="vld-color-backdrop" onClick={() => setShowColorPicker(null)} />
-                      <div className="vld-color-palette">
-                        {COLOR_PALETTE.map((c) => (
-                          <button
-                            key={c}
-                            type="button"
-                            className={`vld-palette-btn ${currentColor === c ? 'vld-palette-active' : ''}`}
-                            style={{ background: c }}
-                            onClick={() => {
-                              onCategoryColorChange(i, c);
-                              setShowColorPicker(null);
-                            }}
-                          />
-                        ))}
-                      </div>
+        {/* Stage & Metrics */}
+        <div className="cyber-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2.5rem' }}>
+          <div className="flex-column" style={{ gap: '1rem' }}>
+            <span className="cyber-label" style={{ fontSize: '0.7rem' }}>STAGE ORIENTATION</span>
+            <div className="flex-center" style={{ gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-start' }}>
+              {['top', 'bottom', 'center', 'left', 'right'].map(pos => (
+                <button
+                  key={pos}
+                  className={`cyber-btn ${stagePosition === pos ? 'btn-primary' : 'btn-outline'}`}
+                  style={{ padding: '0.5rem 1.2rem', fontSize: '0.7rem' }}
+                  onClick={() => setStagePosition(pos)}
+                >
+                  {pos.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex-column" style={{ gap: '1rem' }}>
+            <span className="cyber-label" style={{ fontSize: '0.7rem' }}>CROWD FLOW LOGISTICS</span>
+            <div className="flex-center" style={{ gap: '1rem' }}>
+              <div className="flex-column" style={{ flex: 1 }}>
+                <span className="text-dim" style={{ fontSize: '0.65rem', marginBottom: '0.4rem' }}>EXIT NODES</span>
+                <input 
+                  type="number" 
+                  className="cyber-input" 
+                  style={{ padding: '0.6rem' }}
+                  value={venueMetrics.exitsCount} 
+                  onChange={e => setVenueMetrics({...venueMetrics, exitsCount: parseInt(e.target.value) || 1})} 
+                />
+              </div>
+              <div className="flex-column" style={{ flex: 2 }}>
+                <span className="text-dim" style={{ fontSize: '0.65rem', marginBottom: '0.4rem' }}>SECURITY PROTOCOL</span>
+                <select 
+                  className="cyber-input"
+                  style={{ padding: '0.6rem' }}
+                  value={venueMetrics.securitySpeed}
+                  onChange={e => setVenueMetrics({...venueMetrics, securitySpeed: e.target.value})}
+                >
+                  <option value="relaxed">RELAXED ACCESS</option>
+                  <option value="standard">STANDARD PROTOCOL</option>
+                  <option value="strict">STRICT BIO-SCAN</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Section Colors */}
+        <div>
+          <span className="cyber-label" style={{ fontSize: '0.7rem', display: 'block', marginBottom: '1.2rem' }}>SPATIAL TIER IDENTIFIERS</span>
+          <div className="flex-center" style={{ gap: '1.2rem', flexWrap: 'wrap', justifyContent: 'flex-start' }}>
+            {categories.map((cat, i) => (
+              <div key={i} className="flex-center" style={{ gap: '0.6rem', position: 'relative' }}>
+                <div 
+                  style={{ 
+                    width: '26px', 
+                    height: '26px', 
+                    borderRadius: '6px', 
+                    background: cat.color || DEFAULT_COLORS[i % DEFAULT_COLORS.length],
+                    cursor: 'pointer',
+                    border: '2px solid rgba(255,255,255,0.2)',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+                  }}
+                  onClick={() => setShowColorPicker(showColorPicker === i ? null : i)}
+                />
+                <span className="text-main" style={{ fontSize: '0.8rem', fontWeight: '700' }}>{cat.name || `Tier ${i+1}`}</span>
+
+                {showColorPicker === i && (
+                  <>
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 99 }} onClick={() => setShowColorPicker(null)} />
+                    <div className="cyber-card animate-fade-up" style={{ position: 'absolute', top: '35px', left: 0, zIndex: 100, padding: '0.8rem', display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px', background: 'var(--bg-surface)', border: '1px solid var(--border-dim)' }}>
+                      {COLOR_PALETTE.map(c => (
+                        <div 
+                          key={c}
+                          style={{ width: '24px', height: '24px', borderRadius: '4px', background: c, cursor: 'pointer', border: cat.color === c ? '2px solid white' : '1px solid rgba(0,0,0,0.1)' }}
+                          onClick={() => { onCategoryColorChange(i, c); setShowColorPicker(null); }}
+                        />
+                      ))}
                     </div>
-                  )}
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Live Preview / Simulation Status */}
+        {isSafetyMode && (
+          <div className="cyber-card animate-fade-up" style={{ padding: '1.5rem', background: 'rgba(231, 76, 60, 0.08)', border: '1px solid rgba(231, 76, 60, 0.4)' }}>
+            <div className="flex-between">
+              <div className="flex-center" style={{ gap: '1rem' }}>
+                <span style={{ fontSize: '1.5rem' }}>🛡️</span>
+                <div>
+                  <span className="text-glow" style={{ color: 'var(--danger)', fontWeight: '900', display: 'block' }}>CROWD-FLOW RISK ANALYSIS ACTIVE</span>
+                  <span className="text-dim" style={{ fontSize: '0.7rem' }}>Graph API predicting bottleneck sectors based on exit proximity.</span>
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Constraints Panel (Physical Venue Metrics) */}
-      {layoutType !== 'none' && (
-        <div className="vld-constraints-section">
-          <label className="vld-field-label">Architectural Constraints (Simulated Risk)</label>
-          <div className="vld-constraints-grid">
-            <div className="vld-constraint-item">
-              <label>Number of Physical Exits</label>
-              <input
-                type="number"
-                min="1"
-                max="20"
-                value={venueMetrics.exitsCount}
-                onChange={(e) => {
-                  setVenueMetrics(prev => ({ ...prev, exitsCount: parseInt(e.target.value) || 1 }));
-                  setIsSafetyMode(false); // Reset simulation if metrics change
-                }}
-              />
-            </div>
-            <div className="vld-constraint-item">
-              <label>Aisle Flow Width</label>
-              <select
-                value={venueMetrics.aisleWidth}
-                onChange={(e) => {
-                  setVenueMetrics(prev => ({ ...prev, aisleWidth: e.target.value }));
-                  setIsSafetyMode(false);
-                }}
-              >
-                <option value="narrow">Narrow (High Crush Risk)</option>
-                <option value="standard">Standard</option>
-                <option value="wide">Wide (Safe Flow)</option>
-              </select>
-            </div>
-            <div className="vld-constraint-item">
-              <label>Security/Gate Speed</label>
-              <select
-                value={venueMetrics.securitySpeed}
-                onChange={(e) => {
-                  setVenueMetrics(prev => ({ ...prev, securitySpeed: e.target.value }));
-                  setIsSafetyMode(false);
-                }}
-              >
-                <option value="slow">Slow (Bottlenecks)</option>
-                <option value="normal">Normal</option>
-                <option value="fast">Fast (Smooth)</option>
-              </select>
+              </div>
+              <button className="cyber-btn btn-danger" style={{ fontSize: '0.75rem', padding: '0.6rem 1.2rem' }} onClick={handleAutoBlock}>⚠️ AUTO-BLOCK RISKY SEATS</button>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Live Preview & Simulation */}
-      {layoutType !== 'none' && activeCategories.length > 0 && (
-        <div className="vld-preview">
-          <div className="vld-preview-header">
-            <label className="vld-field-label">Live Preview {selectedCategory ? `— ${selectedCategory.name.toUpperCase()}` : '(Click a map section)'}</label>
-            <button 
-              type="button" 
-              className={`btn-safety-sim ${isSafetyMode ? 'active' : ''}`}
-              onClick={toggleSafetyMode}
-              disabled={isSimulating}
-            >
-              {isSimulating ? '🔄 Querying Neo4j Graph API...' : isSafetyMode ? '🛑 Exit Safety Simulation' : '🔮 Run Graph Safety Simulation'}
-            </button>
+        <div className="flex-column" style={{ gap: '1.5rem' }}>
+          <div className="flex-between" style={{ borderBottom: '1px solid var(--border-dim)', paddingBottom: '0.8rem' }}>
+            <h4 className="cyber-label" style={{ fontSize: '0.85rem' }}>SPATIAL RENDER PREVIEW</h4>
+            <span className="text-dim" style={{ fontSize: '0.7rem' }}>{selectedCategory ? `SELECTING: ${selectedCategory.name.toUpperCase()}` : 'SELECT A SECTOR ON MAP'}</span>
           </div>
-          
-          <VenueMap
-            layoutType={layoutType}
-            stagePosition={stagePosition}
-            categories={displayCategories}
-            selectedCategory={selectedCategory}
-            onSelectCategory={(cat) => {
-              const originalCat = activeCategories.find(c => c.name === cat.name);
-              setSelectedCategory(originalCat);
-              if (onSelectCategoryProp) onSelectCategoryProp(originalCat);
-            }}
-            showPrices={false}
-            interactive={true}
-            compact={true}
-          />
-
-          {selectedCategory && (
-            <div className={`vld-seat-preview ${isSafetyMode ? 'safety-mode-active' : ''}`}>
-              {isSafetyMode && (
-                <div className="safety-action-bar">
-                  <span className="safety-risk-label">
-                     Risk Score: {safetyScores[selectedCategory.name] || 0}/100 
-                  </span>
-                  {(safetyScores[selectedCategory.name] || 0) >= 60 && (
-                    <button 
-                      type="button" 
-                      className="btn-auto-block"
-                      onClick={() => {
-                        const originalIndex = categories.findIndex(c => c.name === selectedCategory.name);
-                        const suggestedBlocks = generateAutoBlockSeats(selectedCategory, safetyScores[selectedCategory.name]);
-                        const newBlocks = [...new Set([...(selectedCategory.blockedSeats||[]), ...suggestedBlocks])];
-                        onCategoryBlockedSeatsChange(originalIndex, newBlocks);
-                        setSelectedCategory({ ...selectedCategory, blockedSeats: newBlocks });
-                      }}
-                    >
-                      ⚠️ Auto-Block Risky Seats
-                    </button>
-                  )}
-                </div>
-              )}
-              
-              <SeatGrid
-                category={selectedCategory}
-                interactive={isSafetyMode}
-                selectedSeats={[]}
-                onToggleSeat={(seatId) => {
-                  if (!isSafetyMode) return;
-                  const originalIndex = categories.findIndex(c => c.name === selectedCategory.name);
-                  const currentBlocks = selectedCategory.blockedSeats || [];
-                  const newBlocks = currentBlocks.includes(seatId) 
-                    ? currentBlocks.filter(id => id !== seatId) 
-                    : [...currentBlocks, seatId];
-                  onCategoryBlockedSeatsChange(originalIndex, newBlocks);
-                  setSelectedCategory({ ...selectedCategory, blockedSeats: newBlocks });
-                }}
-              />
-            </div>
-          )}
+          <div className="flex-center" style={{ background: 'rgba(0,0,0,0.2)', padding: '2rem', borderRadius: '16px', border: '1px solid var(--border-dim)' }}>
+            <VenueMap 
+              layoutType={layoutType}
+              stagePosition={stagePosition}
+              categories={displayCategories}
+              selectedCategory={selectedCategory}
+              onSelectCategory={cat => { 
+                const originalCat = activeCategories.find(c => c.name === cat.name);
+                setSelectedCategory(originalCat); 
+                if (onSelectCategoryProp) onSelectCategoryProp(originalCat); 
+              }}
+              interactive={true}
+              compact={true}
+            />
+          </div>
         </div>
-      )}
+
+        {selectedCategory && (
+          <div className="animate-fade-up" style={{ marginTop: '1rem' }}>
+            <SeatGrid 
+              category={selectedCategory}
+              isSafetyMode={isSafetyMode}
+              safetyScores={safetyScores[selectedCategory.name] || {}}
+              blockedSeats={selectedCategory.blockedSeats || []}
+              onBlockedSeatsChange={(newBlocked) => onCategoryBlockedSeatsChange(categories.findIndex(c => c.name === selectedCategory.name), newBlocked)}
+              seatMap={seatMap.find(s => s.categoryName === selectedCategory.name)?.seats || []}
+              interactive={isSafetyMode}
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

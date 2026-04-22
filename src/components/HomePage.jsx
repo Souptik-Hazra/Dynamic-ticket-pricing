@@ -1,10 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import api from '../api/client';
-import Footer from './Footer';
 import { API_URL } from '../config/api';
-import './HomePage.css';
-
 
 const HomePage = ({ onNavigate }) => {
   const [events, setEvents] = useState([]);
@@ -30,48 +27,53 @@ const HomePage = ({ onNavigate }) => {
   const categories = ['all', 'concert', 'sports', 'theater', 'conference', 'festival'];
 
   const filteredEvents = events.filter(event => {
-    const matchesSearch = event.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         event.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = (event.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (event.description?.toLowerCase() || '').includes(searchTerm.toLowerCase());
     const matchesCategory = categoryFilter === 'all' || event.category === categoryFilter;
     return matchesSearch && matchesCategory;
   });
 
   if (loading) {
-    return <div className="loading-spinner">Loading amazing events...</div>;
+    return (
+      <div className="flex-center" style={{ minHeight: '100vh' }}>
+        <div className="text-glow title-sub">Loading amazing events...</div>
+      </div>
+    );
   }
 
   return (
-    <div className="home-page bg-white dark:bg-gray-900 text-gray-900 dark:text-white min-h-screen">
+    <div className="home-page">
       {/* Hero Section */}
-      <section className="hero-section">
-        <div className="hero-overlay"></div>
-        <div className="hero-content">
-            <h1 className="hero-title gradient-text">Welcome to Dynamic Ticket Pricing!</h1>
-            <p className="hero-subtitle">Experience AI-powered pricing for concerts, sports, theater, and more.</p>
-            <div className="hero-search modern-search">
+      <section className="hero-section cyber-section animate-fade-up" style={{ padding: '3rem 0' }}>
+        <div className="cyber-container flex-column flex-center" style={{ textAlign: 'center' }}>
+          <div className="hero-content flex-column flex-center">
+            <h1 className="title-main text-gradient" style={{ fontSize: '3.5rem', marginBottom: '1rem' }}>The Future of Event Ticketing</h1>
+            <p className="title-sub">Experience AI-powered dynamic pricing for the most exclusive events.</p>
+
+            <div className="hero-search">
               <input
                 type="text"
                 placeholder="Search for events, artists, venues..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="search-input"
               />
-              <button className="search-button">
-                <i className="search-icon">🔍</i> Search
+              <button className="cyber-btn btn-primary">
+                🔍 SEARCH
               </button>
             </div>
+          </div>
         </div>
       </section>
 
       {/* Category Filter */}
-      <section className="category-section">
-        <div className="category-container">
-          <h2>Browse by Category</h2>
-          <div className="category-buttons">
+      <section className="category-section cyber-section">
+        <div className="cyber-container">
+          <h2 className="title-sub flex-center">Browse by Category</h2>
+          <div className="flex-center" style={{ gap: '1rem', flexWrap: 'wrap' }}>
             {categories.map(cat => (
               <button
                 key={cat}
-                className={`category-btn ${categoryFilter === cat ? 'active' : ''}`}
+                className={`cyber-btn ${categoryFilter === cat ? 'btn-primary' : 'btn-outline'}`}
                 onClick={() => setCategoryFilter(cat)}
               >
                 {cat.charAt(0).toUpperCase() + cat.slice(1)}
@@ -82,47 +84,65 @@ const HomePage = ({ onNavigate }) => {
       </section>
 
       {/* Events Grid */}
-      <section className="events-section">
-        <div className="events-container">
-          <h2>Events</h2>
+      <section className="events-section cyber-section">
+        <div className="cyber-container">
+          <h2 className="title-sub">Featured Events</h2>
           {filteredEvents.length === 0 ? (
-            <div className="no-events">
-              <p>No events found. Check back soon!</p>
+            <div className="cyber-card flex-center">
+              <p className="text-muted">No events found. Check back soon!</p>
             </div>
           ) : (
-            <div className="events-grid">
+            <div className="cyber-grid">
               {filteredEvents.map(event => (
-                <div key={event._id} className="event-card" onClick={() => onNavigate('purchase', event)}>
-                  <div className="event-image">
-                    <div className="event-badge">{event.category}</div>
-                    <div className={`event-status-badge ${event.status}`}>{event.status}</div>
-                    <div className="event-date-badge">
-                      {event.startDate && event.endDate
-                        ? `${new Date(event.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} to ${new Date(event.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
-                        : event.startDate
-                          ? new Date(event.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                          : event.endDate
-                            ? new Date(event.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                            : 'Date not set'}
+                <div key={event._id} className="cyber-card" onClick={() => onNavigate('purchase', event)} style={{ padding: 0 }}>
+                  <div className="event-image" style={{
+                    backgroundImage: `url(${event.image || '/default-event.png'})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    height: '200px',
+                    position: 'relative'
+                  }}>
+                    <div className="cyber-badge badge-info" style={{ position: 'absolute', top: '15px', left: '15px' }}>{event.category}</div>
+                    <div className={`cyber-badge badge-${event.status === 'active' ? 'success' : 'danger'}`} style={{ position: 'absolute', top: '15px', right: '15px' }}>{event.status}</div>
+
+                    <div className="glass-panel" style={{
+                      position: 'absolute',
+                      bottom: '15px',
+                      left: '15px',
+                      padding: '8px 15px',
+                      fontSize: '0.75rem',
+                      fontWeight: '800',
+                      textTransform: 'uppercase'
+                    }}>
+                      {event.startDate ? (
+                        <div className="flex-column" style={{ gap: '2px' }}>
+                          <span>{new Date(event.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                          {event.endDate && <span className="text-dim" style={{ fontSize: '0.65rem' }}>to {new Date(event.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>}
+                        </div>
+                      ) : 'TBA'}
                     </div>
                   </div>
-                  <div className="event-content">
-                    <h3 className="event-title">{event.name}</h3>
-                    <p className="event-venue">📍 {event.venue}</p>
-                    <p className="event-description">{event.description.substring(0, 100)}...</p>
-                    
+
+                  <div style={{ padding: '2rem' }}>
+                    <h3 className="text-main" style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>{event.name}</h3>
+                    <p className="text-muted" style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>📍 {event.venue}</p>
+                    <p className="text-dim" style={{ fontSize: '0.95rem', marginBottom: '1.5rem', lineBreak: 'anywhere' }}>{(event.description || '').substring(0, 100)}...</p>
+
                     <div className="event-details">
-                      <div className="event-capacity">
-                        <span className="capacity-label">Availability</span>
-                        <div className="capacity-bar">
-                          <div 
-                            className="capacity-fill" 
-                            style={{ width: `${(event.ticketsSold / event.capacity) * 100}%` }}
-                          ></div>
-                        </div>
-                        <span className="capacity-text">
-                          {event.capacity - event.ticketsSold} / {event.capacity} left
-                        </span>
+                      <div className="cyber-label" style={{ fontSize: '0.7rem', marginBottom: '0.5rem' }}>Availability</div>
+                      <div style={{ background: 'var(--bg-deep)', height: '6px', borderRadius: '3px', overflow: 'hidden', marginBottom: '0.5rem' }}>
+                        <div
+                          style={{
+                            width: `${event.capacity > 0 ? (event.ticketsSold / event.capacity) * 100 : 0}%`,
+                            height: '100%',
+                            background: 'var(--accent-cyan)',
+                            boxShadow: '0 0 10px var(--accent-cyan)'
+                          }}
+                        ></div>
+                      </div>
+                      <div className="flex-between">
+                        <span className="text-dim" style={{ fontSize: '0.8rem' }}>{event.capacity - event.ticketsSold} / {event.capacity} left</span>
+                        <span className="text-glow" style={{ fontSize: '0.85rem', fontWeight: '800', color: 'var(--accent-cyan)' }}>Tickets Available</span>
                       </div>
                     </div>
                   </div>
@@ -133,34 +153,6 @@ const HomePage = ({ onNavigate }) => {
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="features-section">
-        <div className="features-container">
-          <h2>Why Choose Us?</h2>
-          <div className="features-grid">
-            <div className="feature-card">
-              <div className="feature-icon">💰</div>
-              <h3>Dynamic Pricing</h3>
-              <p>AI-powered pricing gives you the best deals based on demand</p>
-            </div>
-            <div className="feature-card">
-              <div className="feature-icon">🔒</div>
-              <h3>Secure Booking</h3>
-              <p>Your transactions are protected with bank-level security</p>
-            </div>
-            <div className="feature-card">
-              <div className="feature-icon">⚡</div>
-              <h3>Instant Confirmation</h3>
-              <p>Get your tickets immediately after booking</p>
-            </div>
-            <div className="feature-card">
-              <div className="feature-icon">📱</div>
-              <h3>Mobile Tickets</h3>
-              <p>Access your tickets anytime, anywhere on your device</p>
-            </div>
-          </div>
-        </div>
-      </section>
     </div>
   );
 };

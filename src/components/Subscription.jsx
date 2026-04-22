@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { ENDPOINTS } from '../config/api';
-import './Subscription.css';
 const Subscription = () => {
   const { user, refreshUser } = useAuth();
   const [loading,    setLoading]    = useState(false);
@@ -67,55 +66,70 @@ const Subscription = () => {
     : null;
 
   return (
-    <div className="subscription-container">
-      <h2>Select Your Membership Plan</h2>
+    <div className="cyber-container animate-fade-up" style={{ padding: '4rem 0' }}>
+      <div className="flex-column" style={{ textAlign: 'center', marginBottom: '4rem' }}>
+        <h1 className="title-main text-gradient">Membership Protocols</h1>
+        <p className="text-muted">Elevate your access level to the platform ecosystem.</p>
+      </div>
 
       {/* Live status banner */}
       {fetchingLive ? (
-        <div className="subscription-loading">Loading your plan...</div>
+        <div className="flex-center" style={{ padding: '2rem' }}>
+          <div className="text-glow animate-pulse">Synchronizing neural link...</div>
+        </div>
       ) : (
-        <div className={`current-status ${isActive && currentPlan !== 'none' ? 'active-status' : ''}`}>
-          <span>Current Plan:</span>
-          <span className="status-badge">
-            {currentPlan === 'none' ? 'Free' : currentPlan.replace(/_/g, ' ').toUpperCase()}
-          </span>
-          {isActive && endDate && daysLeft !== null && (
-            <span className="expiry-note">
-              {daysLeft > 0
-                ? `— Expires in ${daysLeft} day${daysLeft !== 1 ? 's' : ''} (${new Date(endDate).toLocaleDateString()})`
-                : '— Expired'}
-            </span>
-          )}
+        <div className="cyber-card" style={{ marginBottom: '3rem', borderLeft: isActive && currentPlan !== 'none' ? '4px solid var(--success)' : '1px solid var(--border-dim)' }}>
+          <div className="flex-between">
+            <div className="flex-center" style={{ gap: '1rem' }}>
+              <span className="cyber-label">Current Sector Access:</span>
+              <span className={`cyber-badge ${isActive && currentPlan !== 'none' ? 'badge-success' : 'badge-info'}`}>
+                {currentPlan === 'none' ? 'Standard Access' : currentPlan.replace(/_/g, ' ').toUpperCase()}
+              </span>
+            </div>
+            {isActive && endDate && daysLeft !== null && (
+              <span className="text-dim" style={{ fontSize: '0.85rem' }}>
+                {daysLeft > 0
+                  ? `Protocol active for ${daysLeft} more cycles`
+                  : 'Protocol offline'}
+              </span>
+            )}
+          </div>
         </div>
       )}
 
       {message.text && (
-        <div className={`subscription-message ${message.isError ? 'error' : 'success'}`}>
+        <div className={`cyber-badge ${message.isError ? 'badge-danger' : 'badge-success'}`} style={{ width: '100%', padding: '1rem', marginBottom: '2rem' }}>
           {message.text}
         </div>
       )}
 
-      <div className="plans-grid">
+      <div className="cyber-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
         {subscriptionPlans.map((plan) => (
-          <div key={plan.id} className={`plan-card ${currentPlan === plan.id && isActive ? 'active-plan' : ''}`}>
-            <div className="plan-header">
-              <h3>{plan.title}</h3>
-              <div className="plan-price">{plan.price}</div>
-              <div className="plan-duration">{plan.duration}</div>
+          <div key={plan.id} className="cyber-card flex-column" style={{ gap: '1.5rem', borderTop: currentPlan === plan.id && isActive ? '4px solid var(--success)' : '1px solid var(--border-dim)' }}>
+            <div className="flex-column" style={{ textAlign: 'center', gap: '0.5rem' }}>
+              <h3 className="text-main" style={{ fontSize: '1.5rem', fontWeight: '900', margin: 0 }}>{plan.title}</h3>
+              <div className="text-gradient" style={{ fontSize: '2.5rem', fontWeight: '950' }}>{plan.price}</div>
+              <div className="cyber-label" style={{ fontSize: '0.7rem' }}>{plan.duration}</div>
             </div>
-            <ul className="plan-features">
-              {plan.features.map((feature, idx) => <li key={idx}>{feature}</li>)}
-            </ul>
+            <div className="flex-column" style={{ gap: '0.8rem', flexGrow: 1 }}>
+              {plan.features.map((feature, idx) => (
+                <div key={idx} className="flex-center" style={{ justifyContent: 'flex-start', gap: '0.8rem' }}>
+                  <span style={{ color: 'var(--success)' }}>✓</span>
+                  <span className="text-dim" style={{ fontSize: '0.9rem' }}>{feature}</span>
+                </div>
+              ))}
+            </div>
             <button
-              className="subscribe-btn"
+              className={`cyber-btn ${currentPlan === plan.id && isActive ? 'btn-outline' : 'btn-primary'}`}
+              style={{ width: '100%', marginTop: '1rem' }}
               disabled={loading || (currentPlan === plan.id && isActive)}
               onClick={() => handleSubscribe(plan.id)}
             >
               {loading
-                ? 'Processing...'
+                ? 'PROCESSING...'
                 : (currentPlan === plan.id && isActive)
-                  ? '✓ Current Plan'
-                  : 'Subscribe Now'}
+                  ? '✓ ACTIVE PROTOCOL'
+                  : 'INITIALIZE UPGRADE'}
             </button>
           </div>
         ))}

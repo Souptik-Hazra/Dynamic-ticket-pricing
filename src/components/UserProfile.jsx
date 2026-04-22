@@ -3,7 +3,6 @@ import api from "../api/client";
 import { useAuth } from "../context/AuthContext.jsx";
 import { ENDPOINTS } from "../config/api";
 import { useWebSocket } from "../hooks/useWebSocket";
-import "./UserProfile.css";
 
 const UserProfile = () => {
   const { user, updateUser } = useAuth();
@@ -51,7 +50,7 @@ const UserProfile = () => {
 
     try {
       setWalletLoading(true);
-      await api.post(ENDPOINTS.WALLET_DEPOSIT, 
+      await api.post(ENDPOINTS.WALLET_DEPOSIT,
         { amount: parseFloat(amount) }
       );
       alert(`₹${amount} added to your wallet successfully!`);
@@ -75,7 +74,7 @@ const UserProfile = () => {
 
     try {
       setWalletLoading(true);
-      await api.post(ENDPOINTS.WALLET_WITHDRAW, 
+      await api.post(ENDPOINTS.WALLET_WITHDRAW,
         { amount: parseFloat(amount) }
       );
       alert(`₹${amount} withdrawn from your wallet successfully!`);
@@ -90,8 +89,12 @@ const UserProfile = () => {
 
   // Real-time: refresh ticket list when a new ticket_sold event arrives
   useEffect(() => {
-    if (lastEvent?.type === 'ticket_sold' && activeTab === 'tickets') {
-      fetchTickets();
+    if (lastEvent?.type === 'ticket_sold') {
+      if (activeTab === 'tickets') fetchTickets();
+      fetchWallet();
+    }
+    if (lastEvent?.type === 'notification') {
+      fetchWallet();
     }
   }, [lastEvent]); // eslint-disable-line
 
@@ -112,7 +115,7 @@ const UserProfile = () => {
       setPaymentsLoading(true);
       const { data } = await api.get(ENDPOINTS.PAYMENTS);
       console.log("[UserProfile] Payments loaded:", data);
-      
+
       // Handle various response structures gracefully
       let paymentsList = [];
       if (data && Array.isArray(data.payments)) {
@@ -122,7 +125,7 @@ const UserProfile = () => {
       } else if (data && data.success && Array.isArray(data.payments)) {
         paymentsList = data.payments;
       }
-      
+
       setPayments(paymentsList);
     } catch (err) {
       console.error("Error fetching payments:", err);
@@ -197,549 +200,377 @@ const UserProfile = () => {
   };
 
   return (
-    <div className="profile-page">
-      {/* Header Card */}
-      <div className="profile-header-card">
-        <div className="profile-header-bg"></div>
-        <div className="profile-header-content">
-          <div className="profile-avatar">{getInitials(user?.name)}</div>
-          <div className="profile-header-info">
-            <h1 className="profile-display-name">{user?.name || "User"}</h1>
-            <p className="profile-email">{user?.email}</p>
-            <div className="profile-meta">
-              <span className="profile-badge">
-                {user?.role === "admin" ? "👑 Admin" : "🎫 Member"}
-              </span>
+    <div className="cyber-container animate-fade-up" style={{ padding: '2rem 0' }}>
+      {/* Header Profile Section */}
+      <header className="flex-between" style={{ marginBottom: '3rem', alignItems: 'flex-start' }}>
+        <div className="flex-center" style={{ justifyContent: 'flex-start', gap: '2rem' }}>
+          <div className="cyber-avatar">
+            {getInitials(user?.name)}
+          </div>
+          <div>
+            <h1 className="title-main text-gradient" style={{ margin: 0 }}>{user?.name || "Citizen"}</h1>
+            <p className="text-muted" style={{ marginBottom: '0.5rem' }}>{user?.email}</p>
+            <div className="flex-center" style={{ justifyContent: 'flex-start', gap: '0.8rem' }}>
+              <span className="cyber-badge badge-info">{user?.role?.toUpperCase()}</span>
               {user?.subscription?.plan && user?.subscription?.plan !== 'none' && (
-                <span className="profile-badge subscription-badge" style={{background: '#2ecc71', color: 'black', marginLeft: '10px'}}>
-                   ⭐ {user.subscription.plan.replace(/_/g, ' ').toUpperCase()}
-                </span>
+                <span className="cyber-badge badge-success">⭐ {user.subscription.plan.toUpperCase()}</span>
               )}
-              <span className="profile-member-since">
-                Member since {getMemberSince()}
-              </span>
-              <span className="profile-badge wallet-badge" style={{background: '#f1c40f', color: 'black', display: 'flex', alignItems: 'center', gap: '8px'}}>
-                💰 Wallet: ₹{wallet.balance?.toFixed(2) || '0.00'}
-                <button 
-                  className="add-funds-mini-btn" 
-                  onClick={handleDeposit} 
-                  disabled={walletLoading}
-                  style={{
-                    background: 'black',
-                    color: '#f1c40f',
-                    border: 'none',
-                    borderRadius: '4px',
-                    padding: '2px 8px',
-                    fontSize: '11px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer'
-                  }}
-                >
-                  {walletLoading ? '...' : '➕ ADD'}
-                </button>
-                <button 
-                  className="withdraw-funds-mini-btn" 
-                  onClick={handleWithdraw} 
-                  disabled={walletLoading}
-                  style={{
-                    background: 'rgba(0,0,0,0.6)',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '4px',
-                    padding: '2px 8px',
-                    fontSize: '11px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                    marginLeft: '5px'
-                  }}
-                >
-                   💸 WITHDRAW
-                </button>
-              </span>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Tab Navigation */}
-      <div className="profile-tabs">
-        <button
-          className={`profile-tab ${activeTab === "profile" ? "active" : ""}`}
-          onClick={() => setActiveTab("profile")}
-        >
-          <span className="tab-icon">👤</span> Edit Profile
-        </button>
-        <button
-          className={`profile-tab ${activeTab === "tickets" ? "active" : ""}`}
-          onClick={() => setActiveTab("tickets")}
-        >
-          <span className="tab-icon">🎟️</span> My Tickets
-        </button>
-        <button
-          className={`profile-tab ${activeTab === "payments" ? "active" : ""}`}
-          onClick={() => setActiveTab("payments")}
-        >
-          <span className="tab-icon">💳</span> Payments
-        </button>
-      </div>
-
-      {/* Profile Edit Tab */}
-      {activeTab === "profile" && (
-        <div className="profile-card">
-          <h2 className="card-title">Personal Information</h2>
-          <p className="card-subtitle">Update your account details</p>
-
-          {message.text && (
-            <div className={`profile-message ${message.type}`}>
-              {message.type === "success" ? "✅" : "❌"} {message.text}
+        <div className="cyber-card" style={{ padding: '1rem 2rem', minWidth: '250px' }}>
+          <span className="cyber-label" style={{ fontSize: '0.7rem', display: 'block', marginBottom: '0.5rem' }}>Neural Wallet Balance</span>
+          <div className="flex-between">
+            <span className="text-glow" style={{ fontSize: '1.5rem', fontWeight: '900', color: 'var(--success)' }}>
+              ₹{wallet.balance?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+            </span>
+            <div className="flex-center" style={{ gap: '0.5rem' }}>
+              <button className="cyber-btn btn-outline" style={{ padding: '0.4rem' }} onClick={handleDeposit} title="Deposit">➕</button>
+              <button className="cyber-btn btn-outline" style={{ padding: '0.4rem' }} onClick={handleWithdraw} title="Withdraw">💸</button>
             </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="profile-form">
-            <div className="form-row-profile">
-              <div className="form-group-profile">
-                <label htmlFor="name">Full Name</label>
-                <div className="input-wrapper">
-                  <span className="input-icon">👤</span>
-                  <input
-                    id="name"
-                    name="name"
-                    value={form.name}
-                    onChange={handleChange}
-                    placeholder="Your full name"
-                    required
-                    readOnly={true}
-                  />
-                </div>
-              </div>
-              <div className="form-group-profile">
-                <label htmlFor="email">Email Address</label>
-                <div className="input-wrapper">
-                  <span className="input-icon">📧</span>
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    value={form.email}
-                    onChange={handleChange}
-                    placeholder="your@email.com"
-                    required
-                    readOnly={true}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="form-row-profile">
-              <div className="form-group-profile">
-                <label htmlFor="city">City</label>
-                <div className="input-wrapper">
-                  <span className="input-icon">📍</span>
-                  <input
-                    id="city"
-                    name="city"
-                    value={form.city}
-                    onChange={handleChange}
-                    placeholder="Your city"
-                  />
-                </div>
-              </div>
-              <div className="form-group-profile">
-                <label htmlFor="birthdate">Date of Birth</label>
-                <div className="input-wrapper">
-                  <span className="input-icon">🎂</span>
-                  <input
-                    id="birthdate"
-                    name="birthdate"
-                    type="date"
-                    value={form.birthdate}
-                    onChange={handleChange}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="form-group-profile">
-              <label htmlFor="password">New Password</label>
-              <div className="input-wrapper">
-                <span className="input-icon">🔒</span>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  value={form.password}
-                  onChange={handleChange}
-                  placeholder="Leave blank to keep current password"
-                  minLength={8}
-                />
-              </div>
-              <small className="field-hint">
-                Minimum 8 characters with at least one letter and one number
-              </small>
-            </div>
-
-            <button type="submit" className="profile-save-btn" disabled={loading}>
-              {loading ? (
-                <span className="btn-loading">
-                  <span className="spinner-small"></span> Saving...
-                </span>
-              ) : (
-                "Save Changes"
-              )}
-            </button>
-            <div className="stat-badge wallet-badge" style={{marginTop: '15px', display: 'inline-block'}}>
-              <span className="icon">💰</span> Wallet: ₹{wallet.balance.toFixed(2)}
-              <button type="button" className="add-funds-btn" onClick={handleDeposit} disabled={walletLoading}>
-                {walletLoading ? '...' : '➕ Add Funds'}
-              </button>
-              <button type="button" className="add-funds-btn withdrawal-btn" onClick={handleWithdraw} disabled={walletLoading} style={{ background: '#e67e22', marginLeft: '10px' }}>
-                {walletLoading ? '...' : '💸 Withdraw'}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* Tickets Tab */}
-      {activeTab === "tickets" && (
-        <div className="profile-card">
-          <div className="tickets-header">
-            <div>
-              <h2 className="card-title">My Tickets</h2>
-              <p className="card-subtitle">Your booking history</p>
-            </div>
-            <button className="refresh-tickets-btn" onClick={fetchTickets}>
-              🔄 Refresh
-            </button>
           </div>
+        </div>
+      </header>
 
-          {ticketsLoading ? (
-            <div className="tickets-loading">
-              <div className="spinner-large"></div>
-              <p>Loading your tickets...</p>
+      {/* Tabs Navigation */}
+      <nav className="cyber-tabs">
+        {[
+          { id: 'profile', label: '👤 Profile Info' },
+          { id: 'tickets', label: '🎟️ My Bookings' },
+          { id: 'payments', label: '💳 Financial Logs' }
+        ].map(tab => (
+          <button
+            key={tab.id}
+            className={`cyber-tab ${activeTab === tab.id ? 'active' : ''}`}
+            onClick={() => setActiveTab(tab.id)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </nav>
+
+      {/* Content Area */}
+      <main>
+        {/* Profile Info */}
+        {activeTab === "profile" && (
+          <div className="cyber-card animate-fade-up" style={{ maxWidth: '800px', margin: '0 auto' }}>
+            <h2 className="title-sub">Personal Protocols</h2>
+            {message.text && (
+              <div className={`cyber-badge ${message.type === 'success' ? 'badge-success' : 'badge-danger'}`} style={{ width: '100%', padding: '1rem', marginBottom: '2rem' }}>
+                {message.text}
+              </div>
+            )}
+            <form onSubmit={handleSubmit} className="flex-column" style={{ gap: '1.5rem' }}>
+              <div className="cyber-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                <div className="cyber-form-group">
+                  <label className="cyber-label">Full Name</label>
+                  <input className="cyber-input" type="text" name="name" value={form.name} readOnly />
+                </div>
+                <div className="cyber-form-group">
+                  <label className="cyber-label">Email Address</label>
+                  <input className="cyber-input" type="email" name="email" value={form.email} readOnly />
+                </div>
+              </div>
+
+              <div className="cyber-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                <div className="cyber-form-group">
+                  <label className="cyber-label">Base City</label>
+                  <input className="cyber-input" type="text" name="city" value={form.city} onChange={handleChange} placeholder="Neural Hub" />
+                </div>
+                <div className="cyber-form-group">
+                  <label className="cyber-label">Origin Date (DOB)</label>
+                  <input className="cyber-input" type="date" name="birthdate" value={form.birthdate} onChange={handleChange} />
+                </div>
+              </div>
+
+              <div className="cyber-form-group">
+                <label className="cyber-label">New Protocol Access (Password)</label>
+                <input className="cyber-input" type="password" name="password" value={form.password} onChange={handleChange} placeholder="Leave blank to maintain current" />
+              </div>
+
+              <button type="submit" className="cyber-btn btn-primary" style={{ padding: '1.2rem', marginTop: '1rem' }} disabled={loading}>
+                {loading ? 'SYNCHRONIZING...' : 'UPDATE PROFILE'}
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* Tickets */}
+        {activeTab === "tickets" && (
+          <div className="animate-fade-up">
+            <div className="flex-between" style={{ marginBottom: '2rem' }}>
+              <h2 className="title-sub" style={{ margin: 0 }}>Secure Reservations</h2>
+              <button className="cyber-btn btn-outline" onClick={fetchTickets}>🔄 Sync</button>
             </div>
-          ) : tickets.length === 0 ? (
-            <div className="no-tickets">
-              <div className="no-tickets-icon">🎫</div>
-              <h3>No tickets yet</h3>
-              <p>Your purchased tickets will appear here</p>
-            </div>
-          ) : (
-            <div className="tickets-list">
-              {tickets.map((ticket) => (
-                <div key={ticket._id} className="ticket-card-profile">
-                  <div className="ticket-left">
-                    <div className="ticket-event-name">
-                      {ticket.eventId?.name || "Event"}
+
+            {ticketsLoading ? (
+              <div className="flex-center" style={{ padding: '5rem' }}>
+                <div className="cyber-pulse text-glow">Fetching encrypted ticket data...</div>
+              </div>
+            ) : tickets.length === 0 ? (
+              <div className="flex-center" style={{ padding: '5rem', border: '1px dashed var(--border-dim)', borderRadius: '20px' }}>
+                <p className="text-dim">No active reservations found in your sector.</p>
+              </div>
+            ) : (
+              <div className="cyber-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))' }}>
+                {tickets.map(ticket => (
+                  <div key={ticket._id} className="cyber-card flex-column" style={{ gap: '1rem' }}>
+                    <div className="flex-between">
+                      <span className="cyber-label" style={{ fontSize: '0.65rem' }}>{ticket.bookingReference}</span>
+                      <span className={`cyber-badge badge-${ticket.status || 'success'}`}>{ticket.status?.toUpperCase() || 'CONFIRMED'}</span>
                     </div>
-                    <div className="ticket-details-row">
-                      <span className="ticket-detail">
-                        🎟️ {ticket.categoryName?.toUpperCase() || "STANDARD"}
-                      </span>
-                      <span className="ticket-detail">× {ticket.quantity}</span>
-                      <span className="ticket-detail">
-                        📅{" "}
-                        {new Date(ticket.purchaseDate).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
-                      </span>
+                    <h3 className="text-main" style={{ fontSize: '1.2rem', fontWeight: '800', margin: 0 }}>{ticket.eventId?.name || "Event"}</h3>
+                    <div className="flex-column" style={{ gap: '0.5rem' }}>
+                      <div className="flex-between text-dim" style={{ fontSize: '0.85rem' }}>
+                        <span>Tier: {ticket.categoryName?.toUpperCase()}</span>
+                        <span>Qty: {ticket.quantity}</span>
+                      </div>
+                      <div className="flex-between text-main" style={{ fontWeight: '700' }}>
+                        <span>Paid: ₹{ticket.totalAmount?.toLocaleString()}</span>
+                        <span>Date: {new Date(ticket.purchaseDate).toLocaleDateString()}</span>
+                      </div>
                     </div>
-                    {ticket.bookingReference && (
-                      <div className="ticket-ref">Ref: {ticket.bookingReference}</div>
-                    )}
-                  </div>
-                  <div className="ticket-right">
-                    <div className="ticket-amount">
-                      ₹{ticket.totalAmount?.toFixed(2)}
-                    </div>
-                    <span className={`ticket-status ${ticket.status || "confirmed"}`}>
-                      {ticket.status || "confirmed"}
-                    </span>
-                    <button
-                      className="print-ticket-btn"
-                      onClick={() => handlePrintTicket(ticket)}
-                      title="Print / Save as PDF"
-                    >
-                      🖨️ Print
+                    <button className="cyber-btn btn-outline" style={{ width: '100%', marginTop: '0.5rem' }} onClick={() => handlePrintTicket(ticket)}>
+                      🖨️ VIEW DIGITAL PASS
                     </button>
                   </div>
-                </div>
-              ))}
-
-              <div className="tickets-summary-profile">
-                <div className="summary-item">
-                  <span className="summary-label">Total Bookings</span>
-                  <span className="summary-value">{tickets.length}</span>
-                </div>
-                <div className="summary-item">
-                  <span className="summary-label">Total Tickets</span>
-                  <span className="summary-value">
-                    {tickets.reduce((sum, t) => sum + (t.quantity || 0), 0)}
-                  </span>
-                </div>
-                <div className="summary-item">
-                  <span className="summary-label">Total Spent</span>
-                  <span className="summary-value">
-                    ₹{tickets.reduce((sum, t) => sum + (t.totalAmount || 0), 0).toFixed(2)}
-                  </span>
-                </div>
+                ))}
               </div>
-            </div>
-          )}
-        </div>
-      )}
-      {/* Print Ticket Modal (hidden on screen, visible on print) */}
-      {printTicket && (
-        <div className="print-overlay" onClick={() => setPrintTicket(null)}>
-          <div className="print-ticket-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="print-modal-close" onClick={() => setPrintTicket(null)}>×</button>
-            <div className="print-ticket-content" id="printable-ticket">
-              {/* Header */}
-              <div className="print-ticket-header">
-                <div className="print-ticket-brand">
-                  <span className="print-brand-icon">🎫</span>
-                  <span className="print-brand-name">FanFeverTickets</span>
+            )}
+          </div>
+        )}
+        {/* Print Ticket Modal (hidden on screen, visible on print) */}
+        {printTicket && (
+          <div className="print-overlay" onClick={() => setPrintTicket(null)}>
+            <div className="print-ticket-modal" onClick={(e) => e.stopPropagation()}>
+              <button className="print-modal-close" onClick={() => setPrintTicket(null)}>×</button>
+              <div className="print-ticket-content" id="printable-ticket">
+                {/* Header */}
+                <div className="print-ticket-header">
+                  <div className="print-ticket-brand">
+                    <span className="print-brand-icon">🎫</span>
+                    <span className="print-brand-name">FanFeverTickets</span>
+                  </div>
+                  <div className="print-ticket-title">E-TICKET</div>
                 </div>
-                <div className="print-ticket-title">E-TICKET</div>
-              </div>
 
-              {/* Event Image */}
-              <div className="print-event-image">
-                <img
-                  src={printTicket.eventId?.image || '/default-event.png'}
-                  alt={printTicket.eventId?.name}
-                  onError={(e) => (e.target.src = "/default-event.png")}
-                />
-              </div>
+                {/* Event Image */}
+                <div className="print-event-image">
+                  <img
+                    src={printTicket.eventId?.image || '/default-event.png'}
+                    alt={printTicket.eventId?.name}
+                    onError={(e) => (e.target.src = "/default-event.png")}
+                  />
+                </div>
 
-              {/* Event Info */}
-              <div className="print-event-info">
-                <h2 className="print-event-name">{printTicket.eventId?.name || "Event"}</h2>
-                <div className="print-event-details">
-                  {printTicket.eventId?.venue && (
-                    <div className="print-detail-row">
-                      <span className="print-detail-label">📍 Venue</span>
-                      <span className="print-detail-value">{printTicket.eventId.venue}</span>
-                    </div>
-                  )}
-                  {printTicket.eventId?.startDate && (
-                    <div className="print-detail-row">
-                      <span className="print-detail-label">📅 Date</span>
-                      <span className="print-detail-value">
-                        {new Date(printTicket.eventId.startDate).toLocaleDateString("en-US", {
-                          weekday: "long",
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        })}
-                        {printTicket.eventId.endDate &&
-                          printTicket.eventId.endDate !== printTicket.eventId.startDate &&
-                          ` — ${new Date(printTicket.eventId.endDate).toLocaleDateString("en-US", {
+                {/* Event Info */}
+                <div className="print-event-info">
+                  <h2 className="print-event-name">{printTicket.eventId?.name || "Event"}</h2>
+                  <div className="print-event-details">
+                    {printTicket.eventId?.venue && (
+                      <div className="print-detail-row">
+                        <span className="print-detail-label">📍 Venue</span>
+                        <span className="print-detail-value">{printTicket.eventId.venue}</span>
+                      </div>
+                    )}
+                    {printTicket.eventId?.startDate && (
+                      <div className="print-detail-row">
+                        <span className="print-detail-label">📅 Date</span>
+                        <span className="print-detail-value">
+                          {new Date(printTicket.eventId.startDate).toLocaleDateString("en-US", {
                             weekday: "long",
                             year: "numeric",
                             month: "long",
                             day: "numeric",
-                          })}`}
+                          })}
+                          {printTicket.eventId.endDate &&
+                            printTicket.eventId.endDate !== printTicket.eventId.startDate &&
+                            ` — ${new Date(printTicket.eventId.endDate).toLocaleDateString("en-US", {
+                              weekday: "long",
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            })}`}
+                        </span>
+                      </div>
+                    )}
+                    {printTicket.eventId?.category && (
+                      <div className="print-detail-row">
+                        <span className="print-detail-label">🎭 Category</span>
+                        <span className="print-detail-value">
+                          {printTicket.eventId.category.charAt(0).toUpperCase() +
+                            printTicket.eventId.category.slice(1)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Divider */}
+                <div className="print-divider"></div>
+
+                {/* Ticket Details */}
+                <div className="print-ticket-details">
+                  <div className="print-detail-grid">
+                    <div className="print-detail-box">
+                      <span className="print-box-label">Booking Reference</span>
+                      <span className="print-box-value print-ref" style={{ color: '#fff' }}>
+                        {printTicket.bookingReference || printTicket._id || "N/A"}
                       </span>
                     </div>
-                  )}
-                  {printTicket.eventId?.category && (
-                    <div className="print-detail-row">
-                      <span className="print-detail-label">🎭 Category</span>
-                      <span className="print-detail-value">
-                        {printTicket.eventId.category.charAt(0).toUpperCase() +
-                          printTicket.eventId.category.slice(1)}
+                    <div className="print-detail-box">
+                      <span className="print-box-label">Ticket Type</span>
+                      <span className="print-box-value">
+                        {printTicket.categoryName?.toUpperCase() || "STANDARD"}
                       </span>
                     </div>
+                    <div className="print-detail-box">
+                      <span className="print-box-label">Quantity</span>
+                      <span className="print-box-value">{printTicket.quantity}</span>
+                    </div>
+                    <div className="print-detail-box">
+                      <span className="print-box-label">Price per Ticket</span>
+                      <span className="print-box-value">
+                        ₹{printTicket.price?.toFixed(2) || (printTicket.totalAmount / printTicket.quantity).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* QR Code Section */}
+                  {printTicket.qrCode && (
+                    <div className="pp-qr-section" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '20px 0' }}>
+                      <img src={printTicket.qrCode} alt="Ticket QR Code" style={{ width: '150px', height: '150px', background: 'white', padding: '10px', borderRadius: '8px' }} />
+                      <p style={{ marginTop: '10px', fontSize: '0.8rem', color: '#666' }}>Scan at entrance for entry</p>
+                    </div>
                   )}
+
+                  <div className="print-total-section">
+                    <div className="print-total-row">
+                      <span>Total Amount Paid</span>
+                      <span className="print-total-amount">
+                        ₹{printTicket.totalAmount?.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Divider */}
+                <div className="print-divider"></div>
+
+                {/* Customer Info */}
+                <div className="print-customer-info">
+                  <div className="print-detail-row">
+                    <span className="print-detail-label">👤 Name</span>
+                    <span className="print-detail-value">
+                      {printTicket.customerName || user?.name || "N/A"}
+                    </span>
+                  </div>
+                  <div className="print-detail-row">
+                    <span className="print-detail-label">📧 Email</span>
+                    <span className="print-detail-value">
+                      {printTicket.customerEmail || user?.email || "N/A"}
+                    </span>
+                  </div>
+                  <div className="print-detail-row">
+                    <span className="print-detail-label">📅 Purchased</span>
+                    <span className="print-detail-value">
+                      {new Date(printTicket.purchaseDate).toLocaleString("en-US", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  </div>
+                  <div className="print-detail-row">
+                    <span className="print-detail-label">✅ Status</span>
+                    <span className="print-detail-value print-status-confirmed">
+                      {(printTicket.status || "confirmed").toUpperCase()}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="print-ticket-footer">
+                  <p>This is a computer-generated ticket. No signature required.</p>
+                  <p>Transaction ID: {printTicket._id}</p>
                 </div>
               </div>
 
-              {/* Divider */}
-              <div className="print-divider"></div>
-
-              {/* Ticket Details */}
-              <div className="print-ticket-details">
-                <div className="print-detail-grid">
-                  <div className="print-detail-box">
-                    <span className="print-box-label">Booking Reference</span>
-                    <span className="print-box-value print-ref" style={{ color: '#fff' }}>
-                      {printTicket.bookingReference || printTicket._id || "N/A"}
-                    </span>
-                  </div>
-                  <div className="print-detail-box">
-                    <span className="print-box-label">Ticket Type</span>
-                    <span className="print-box-value">
-                      {printTicket.categoryName?.toUpperCase() || "STANDARD"}
-                    </span>
-                  </div>
-                  <div className="print-detail-box">
-                    <span className="print-box-label">Quantity</span>
-                    <span className="print-box-value">{printTicket.quantity}</span>
-                  </div>
-                  <div className="print-detail-box">
-                    <span className="print-box-label">Price per Ticket</span>
-                    <span className="print-box-value">
-                      ₹{printTicket.price?.toFixed(2) || (printTicket.totalAmount / printTicket.quantity).toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-
-                {/* QR Code Section */}
-                {printTicket.qrCode && (
-                  <div className="pp-qr-section" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '20px 0' }}>
-                    <img src={printTicket.qrCode} alt="Ticket QR Code" style={{ width: '150px', height: '150px', background: 'white', padding: '10px', borderRadius: '8px' }} />
-                    <p style={{ marginTop: '10px', fontSize: '0.8rem', color: '#666' }}>Scan at entrance for entry</p>
-                  </div>
-                )}
-
-                <div className="print-total-section">
-                  <div className="print-total-row">
-                    <span>Total Amount Paid</span>
-                    <span className="print-total-amount">
-                      ₹{printTicket.totalAmount?.toFixed(2)}
-                    </span>
-                  </div>
-                </div>
+              <div className="print-modal-actions">
+                <button className="print-now-btn" onClick={() => window.print()}>
+                  🖨️ Print / Save as PDF
+                </button>
+                <button className="print-cancel-btn" onClick={() => setPrintTicket(null)}>
+                  Close
+                </button>
               </div>
-
-              {/* Divider */}
-              <div className="print-divider"></div>
-
-              {/* Customer Info */}
-              <div className="print-customer-info">
-                <div className="print-detail-row">
-                  <span className="print-detail-label">👤 Name</span>
-                  <span className="print-detail-value">
-                    {printTicket.customerName || user?.name || "N/A"}
-                  </span>
-                </div>
-                <div className="print-detail-row">
-                  <span className="print-detail-label">📧 Email</span>
-                  <span className="print-detail-value">
-                    {printTicket.customerEmail || user?.email || "N/A"}
-                  </span>
-                </div>
-                <div className="print-detail-row">
-                  <span className="print-detail-label">📅 Purchased</span>
-                  <span className="print-detail-value">
-                    {new Date(printTicket.purchaseDate).toLocaleString("en-US", {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
-                </div>
-                <div className="print-detail-row">
-                  <span className="print-detail-label">✅ Status</span>
-                  <span className="print-detail-value print-status-confirmed">
-                    {(printTicket.status || "confirmed").toUpperCase()}
-                  </span>
-                </div>
-              </div>
-
-              {/* Footer */}
-              <div className="print-ticket-footer">
-                <p>This is a computer-generated ticket. No signature required.</p>
-                <p>Transaction ID: {printTicket._id}</p>
-              </div>
-            </div>
-
-            <div className="print-modal-actions">
-              <button className="print-now-btn" onClick={() => window.print()}>
-                🖨️ Print / Save as PDF
-              </button>
-              <button className="print-cancel-btn" onClick={() => setPrintTicket(null)}>
-                Close
-              </button>
             </div>
           </div>
-        </div>
-      )}
-      {/* \u2500\u2500 Payments Tab \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */}
-      {activeTab === "payments" && (
-        <div className="profile-card">
-          <h2 className="card-title">💳 Payment History</h2>
-          <p className="card-subtitle">All your recorded payment transactions</p>
+        )}
+        {/* \u2500\u2500 Payments Tab \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */}
+        {/* Payments */}
+        {activeTab === "payments" && (
+          <div className="animate-fade-up">
+            <div className="flex-between" style={{ marginBottom: '2rem' }}>
+              <h2 className="title-sub" style={{ margin: 0 }}>Neural Transaction History</h2>
+              <button className="cyber-btn btn-outline" onClick={fetchPayments}>🔄 Refresh Logs</button>
+            </div>
 
-          {paymentsLoading ? (
-            <div className="loading-spinner">🔄 Loading payments...</div>
-          ) : payments.length === 0 ? (
-            <div className="no-tickets">
-              <span className="no-tickets-icon">💳</span>
-              <h3>No payments found</h3>
-              <p>Transactions appear here after ticket checkout.</p>
-              <button 
-                className="print-now-btn" 
-                style={{ marginTop: '1rem', background: '#3b82f6', color: 'white' }}
-                onClick={fetchPayments}
-              >
-                🔄 Refresh Payments
-              </button>
-            </div>
-          ) : (
-            <div className="payments-table-container">
-              <table className="payments-table">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Event</th>
-                    <th>Transaction</th>
-                    <th>Method</th>
-                    <th>Amount</th>
-                    <th>Status</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {payments.map((p) => (
-                    <tr key={p._id}>
-                      <td data-label="Date">
-                        {p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-IN', {
-                          day: 'numeric', month: 'short'
-                        }) : '—'}
-                      </td>
-                      <td data-label="Event" style={{ fontWeight: 600 }}>{p.eventId?.name || 'Ticket Purchase'}</td>
-                      <td data-label="Transaction">
-                        <code className="transaction-id" title={p.transactionId || p._id}>
-                          {(p.transactionId || p._id).substring(0, 10)}...
-                        </code>
-                      </td>
-                      <td data-label="Method">
-                        <span className="payment-method-badge">
-                          {p.paymentMethod === 'card' ? '💳' : '📱'} {p.paymentMethod}
-                        </span>
-                      </td>
-                      <td data-label="Amount" className="payment-amount">₹{p.amount?.toFixed(2)}</td>
-                      <td data-label="Status">
-                        <span className={`status-badge ${p.status}`}>{p.status}</span>
-                      </td>
-                      <td data-label="Action">
-                        {p.status === 'completed' && (
-                          <button
-                            className="refund-btn"
-                            disabled={refundingId === p._id}
-                            onClick={() => handleRefund(p._id)}
-                          >
-                            {refundingId === p._id ? 'Refunding...' : 'Refund'}
-                          </button>
-                        )}
-                        {p.status === 'refunded' && (
-                          <span className="refunded-text">✓ Refunded</span>
-                        )}
-                      </td>
+            {paymentsLoading ? (
+              <div className="flex-center" style={{ padding: '5rem' }}>
+                <div className="animate-pulse text-glow">Retrieving ledger entries...</div>
+              </div>
+            ) : payments.length === 0 ? (
+              <div className="flex-center" style={{ padding: '5rem', border: '1px dashed var(--border-dim)', borderRadius: '20px' }}>
+                <p className="text-dim">No transactions recorded on the ledger.</p>
+              </div>
+            ) : (
+              <div className="cyber-table-container">
+                <table className="cyber-table">
+                  <thead>
+                    <tr>
+                      <th>Timestamp</th>
+                      <th>Reference / Link</th>
+                      <th>Channel</th>
+                      <th>Magnitude</th>
+                      <th>State</th>
+                      <th>Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
+                  </thead>
+                  <tbody>
+                    {payments.map((p) => (
+                      <tr key={p._id}>
+                        <td>{new Date(p.createdAt).toLocaleDateString()}</td>
+                        <td>
+                          <div className="text-main" style={{ fontWeight: '700' }}>{p.eventId?.name || 'Platform Service'}</div>
+                          <div className="text-dim" style={{ fontSize: '0.7rem' }}>{p.transactionId || p._id}</div>
+                        </td>
+                        <td>
+                          <span className="text-dim">{p.paymentMethod?.toUpperCase()}</span>
+                        </td>
+                        <td className="text-glow" style={{ fontWeight: '800', color: 'var(--success)' }}>₹{p.amount?.toFixed(2)}</td>
+                        <td>
+                          <span className={`cyber-badge badge-${p.status}`}>{p.status.toUpperCase()}</span>
+                        </td>
+                        <td>
+                          {p.status === 'completed' && (
+                            <button className="cyber-btn btn-danger" style={{ padding: '0.4rem 0.8rem', fontSize: '0.7rem' }} onClick={() => handleRefund(p._id)} disabled={refundingId === p._id}>
+                              {refundingId === p._id ? '...' : 'REFUND'}
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+      </main>
     </div>
   );
 };

@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import VenueMap from './VenueMap';
 import SeatGrid from './SeatGrid';
-import './EventMapModal.css';
 
 export default function EventMapModal({ event, onClose }) {
   const [seatOwners, setSeatOwners] = useState({});
@@ -26,13 +25,13 @@ export default function EventMapModal({ event, onClose }) {
   if (!event) return null;
 
   return (
-    <div className="event-map-overlay" onClick={(e) => { if (e.target.className === 'event-map-overlay') onClose(); }}>
-      <div className="event-map-modal">
-        <div className="event-map-header">
-          <h3>Venue Map — {event.name}</h3>
-          <button className="close-btn" onClick={onClose}>✕</button>
-        </div>
-        <div className="event-map-body">
+    <div className="cyber-overlay animate-fade-up" onClick={(e) => { if (e.target.className.includes('cyber-overlay')) onClose(); }}>
+      <div className="cyber-modal animate-fade-up" style={{ maxWidth: '1000px' }}>
+        <header className="modal-header">
+          <h2 className="text-main" style={{ margin: 0, fontSize: '1.2rem' }}>📍 Spatial Analysis: {event.name}</h2>
+          <button className="cyber-btn btn-outline" style={{ padding: '0.4rem', borderRadius: '50%' }} onClick={onClose}>&times;</button>
+        </header>
+        <div className="modal-content">
           {event.venueLayoutType && event.venueLayoutType !== 'none' ? (
             <VenueMap
               layoutType={event.venueLayoutType}
@@ -44,12 +43,14 @@ export default function EventMapModal({ event, onClose }) {
               showPrices={false}
             />
           ) : (
-            <div style={{ padding: 20 }}>No layout defined for this event.</div>
+            <div className="flex-center" style={{ padding: '3rem', border: '1px dashed var(--border-dim)', borderRadius: '12px' }}>
+              <p className="text-dim">No spatial layout protocols defined for this event.</p>
+            </div>
           )}
 
           {/* Seat matrix preview: unified when seatMap exists, otherwise per-category previews */}
-          <div style={{ marginTop: 12 }}>
-            <h4 style={{ margin: '8px 0' }}>Seat assignments</h4>
+          <div style={{ marginTop: '2rem' }}>
+            <h4 className="cyber-label" style={{ marginBottom: '1rem' }}>Neural Matrix Status (Seat Assignments)</h4>
             {event.seatMap && event.seatMap.length > 0 ? (
               <SeatGrid
                 categories={event.ticketCategories || []}

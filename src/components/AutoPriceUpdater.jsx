@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api/client';
-import './AutoPriceUpdater.css';
 
 function AutoPriceUpdater({ eventId, onPriceUpdate, compact = false }) {
   const [priceInfo, setPriceInfo] = useState(null);
@@ -28,18 +27,20 @@ function AutoPriceUpdater({ eventId, onPriceUpdate, compact = false }) {
   }, [fetchDynamicPrice]);
 
   return (
-    <div className={`auto-price-updater ${compact ? 'compact' : ''} bg-white dark:bg-gray-900 text-gray-900 dark:text-white`}>
-      <div className="updater-header">
-        <span className="updater-icon">🤖</span>
-        <span className="updater-title">Dynamic Pricing</span>
-        {/* Removed daysUntilEvent display */}
+    <div className={`cyber-card ${compact ? 'compact' : ''}`} style={{ padding: compact ? '0.5rem 1rem' : '1rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-dim)' }}>
+      <div className="flex-between" style={{ marginBottom: '0.8rem' }}>
+        <div className="flex-center" style={{ gap: '0.5rem' }}>
+          <span style={{ fontSize: '1.2rem' }}>🤖</span>
+          <span className="cyber-label" style={{ fontSize: '0.75rem' }}>Dynamic Pricing Engine</span>
+        </div>
+        <div className="cyber-pulse" style={{ width: '8px', height: '8px', background: 'var(--success)', borderRadius: '50%' }}></div>
       </div>
 
       {priceInfo?.prices && (
-        <div className="prices-row">
+        <div className="flex-center" style={{ flexWrap: 'wrap', gap: '0.6rem', justifyContent: 'flex-start' }}>
           {Object.entries(priceInfo.prices).map(([category, price]) => (
-            <span key={category} className="price-tag">
-              {category}: ₹{price}
+            <span key={category} className="cyber-badge badge-info" style={{ fontSize: '0.65rem', padding: '0.2rem 0.6rem' }}>
+              {category}: ₹{price.toLocaleString()}
             </span>
           ))}
         </div>

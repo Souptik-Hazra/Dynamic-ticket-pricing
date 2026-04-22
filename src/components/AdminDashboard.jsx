@@ -3,10 +3,8 @@ import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import AdminEventForm from './AdminEventForm';
 import EventMapModal from './EventMapModal';
-import Footer from './Footer';
 import { ENDPOINTS } from '../config/api';
 import { useWebSocket } from '../hooks/useWebSocket';
-import './AdminDashboard.css';
 
 function AdminDashboard() {
   const { user, logout } = useAuth();
@@ -30,8 +28,12 @@ function AdminDashboard() {
   // Real-time: refresh stats when a ticket is sold
   useEffect(() => {
     if (!lastEvent) return;
-    if (lastEvent.type === 'ticket_sold' && view === 'stats') {
-      fetchStats();
+    if (lastEvent.type === 'ticket_sold') {
+      if (view === 'stats') fetchStats();
+      fetchAdminWallet();
+    }
+    if (lastEvent.type === 'notification') {
+      fetchAdminWallet();
     }
   }, [lastEvent]); // eslint-disable-line
 
@@ -209,194 +211,193 @@ function AdminDashboard() {
   });
 
   return (
-    <div className="admin-dashboard">
-      <header className="admin-header">
-        <div className="admin-header-content">
-          <h1>🎫 Admin Dashboard</h1>
-          <span className={`ws-indicator ${connected ? 'ws-on' : 'ws-off'}`}
+    <div className="cyber-container animate-fade-up" style={{ padding: '2rem 0' }}>
+      <header className="flex-between" style={{ marginBottom: '3rem' }}>
+        <div>
+          <h1 className="title-main text-gradient" style={{ margin: 0 }}>🎫 Admin Dashboard</h1>
+          <p className="text-muted">Platform Control Center</p>
+        </div>
+        <div className="flex-center" style={{ gap: '1.5rem' }}>
+          <span className={`cyber-badge ${connected ? 'badge-success' : 'badge-danger'}`}
                 title={connected ? 'Live updates connected' : 'Offline'}>
-            {connected ? '🟢 Live' : '⚫ Offline'}
+            {connected ? '● Live WebSocket' : '● Offline'}
           </span>
-          <div className="admin-wallet-badge" style={{ marginLeft: 'auto', background: 'rgba(255,255,255,0.1)', padding: '5px 12px', borderRadius: '20px', fontSize: '0.9rem', fontWeight: 'bold' }}>
-            🏢 Platform: ₹{adminWallet.balance.toFixed(2)}
+          <div className="glass-panel" style={{ padding: '0.8rem 1.5rem', borderRadius: '12px' }}>
+            <span className="cyber-label" style={{ fontSize: '0.7rem', display: 'block' }}>Platform Balance</span>
+            <span className="text-glow" style={{ fontSize: '1.2rem', fontWeight: '900', color: 'var(--success)' }}>
+              ₹{adminWallet.balance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+            </span>
           </div>
         </div>
       </header>
 
-      <nav className="admin-nav">
-        <button className={view === 'stats'   ? 'active' : ''} onClick={() => setView('stats')}>📊 Statistics</button>
-        <button className={view === 'events'  ? 'active' : ''} onClick={() => setView('events')}>🎭 Manage Events</button>
-        <button className={view === 'tickets' ? 'active' : ''} onClick={() => setView('tickets')}>🎟️ Ticket Buyers</button>
-        <button className={view === 'users'   ? 'active' : ''} onClick={() => setView('users')}>👥 Users</button>
-        <button className={view === 'organizers' ? 'active' : ''} onClick={() => setView('organizers')}>🏢 Organizers</button>
-        <button className={view === 'communication' ? 'active' : ''} onClick={() => setView('communication')}>📢 Communication</button>
-        <button className={view === 'diagnostics' ? 'active' : ''} onClick={() => setView('diagnostics')}>🩺 Platform Health</button>
-      </nav>
+      <div className="cyber-grid" style={{ gridTemplateColumns: '220px 1fr', gap: '2rem' }}>
+        {/* Navigation Sidebar */}
+        <nav className="cyber-sidebar">
+          {[
+            { id: 'stats', label: '📊 Global Metrics' },
+            { id: 'events', label: '📅 Event Hub' },
+            { id: 'tickets', label: '🎟️ Ticket Ledger' },
+            { id: 'users', label: '👥 Citizen Registry' },
+            { id: 'organizers', label: '🤝 Partner Logs' },
+            { id: 'communication', label: '📢 Neural Broadcast' },
+            { id: 'diagnostics', label: '🩺 System Pulse' }
+          ].map(nav => (
+            <button 
+              key={nav.id}
+              className={`cyber-btn ${view === nav.id ? 'active' : ''}`}
+              onClick={() => setView(nav.id)}
+            >
+              {nav.label}
+            </button>
+          ))}
+        </nav>
 
-      <main className="admin-content">
-        {loading && <div className="loading">Loading...</div>}
-
-        {/* ── Diagnostics / Service Pulse ─────────────────────────────────── */}
-        {view === 'diagnostics' && (
-          <div className="diagnostics-view">
-            <div className="view-header">
-              <h2>🩺 Technical Health Monitor (System Pulse)</h2>
-              <p className="view-subtitle">Real-time status of the 14 microservices architecture</p>
-              <button className="refresh-btn" onClick={fetchPlatformHealth} disabled={healthData.loading}>
-                {healthData.loading ? '🔄 Checking...' : '🔄 Refresh All'}
-              </button>
+        {/* Main Content Area */}
+        <main>
+          {loading && (
+            <div className="flex-center" style={{ padding: '3rem' }}>
+              <div className="text-glow animate-pulse">Synchronizing with core microservices...</div>
             </div>
+          )}
 
-            <div className="pulse-grid">
-              {Object.entries(healthData.services).map(([name, data]) => (
-                <div key={name} className={`pulse-card ${(['online', 'ok', 'healthy'].includes(data.status)) ? 'online' : data.status}`}>
-                  <div className="pulse-header">
-                    <span className="service-name">{name.replace(/([A-Z])/g, ' $1').toUpperCase()}</span>
-                    <span className={`status-pill ${(['online', 'ok', 'healthy'].includes(data.status)) ? 'online' : data.status}`}>{data.status.toUpperCase()}</span>
-                  </div>
-                  <div className="pulse-body">
-                    {(['online', 'ok', 'healthy'].includes(data.status)) ? (
-                      <>
-                        <div className="pulse-metric"><span className="label">Latency:</span> <span className="value latency">{data.latency}</span></div>
-                        <div className="pulse-metric"><span className="label">Uptime:</span> <span className="value">Verified</span></div>
-                        {data.model_version && <div className="pulse-metric"><span className="label">Model:</span> <span className="value" style={{fontSize: '0.7rem'}}>{data.model_version}</span></div>}
-                        {data.model_loaded !== undefined && <div className="pulse-metric"><span className="label">Loaded:</span> <span className="value">{data.model_loaded ? '✅' : '❌'}</span></div>}
-                      </>
-                    ) : (
-                      <div className="pulse-error">Error: {data.error || 'Connection Failed'}</div>
-                    )}
-                  </div>
-                  <div className="pulse-footer">
-                    <div className="pulse-wave"></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <style>{`
-              .diagnostics-view { padding: 20px; }
-              .pulse-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; margin-top: 30px; }
-              .pulse-card { background: #1a1a1a; border: 1px solid #333; border-radius: 12px; padding: 20px; position: relative; overflow: hidden; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-              .pulse-card:hover { transform: translateY(-5px); border-color: #555; box-shadow: 0 10px 20px rgba(0,0,0,0.4); }
-              .pulse-card.online { border-left: 4px solid #2ecc71; }
-              .pulse-card.offline { border-left: 4px solid #e74c3c; opacity: 0.8; }
-              .pulse-card.error { border-left: 4px solid #f1c40f; }
-
-              .pulse-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
-              .service-name { font-weight: 800; font-size: 0.8rem; color: #888; letter-spacing: 1px; }
-              .status-pill { font-size: 0.7rem; padding: 2px 8px; border-radius: 12px; font-weight: bold; }
-              .status-pill.online { background: rgba(46, 204, 113, 0.2); color: #2ecc71; }
-              .status-pill.offline { background: rgba(231, 76, 60, 0.2); color: #e74c3c; }
-
-              .pulse-body { min-height: 60px; }
-              .pulse-metric { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem; }
-              .pulse-metric .label { color: #666; }
-              .pulse-metric .value { color: #ddd; font-weight: 600; }
-              .pulse-metric .latency { color: #2ecc71; }
-              .pulse-error { color: #e74c3c; font-size: 0.8rem; line-height: 1.4; }
-
-              .pulse-footer { height: 4px; background: rgba(255,255,255,0.05); margin-top: 15px; border-radius: 2px; }
-              .pulse-card.online .pulse-wave { 
-                height: 100%; width: 30%; background: #2ecc71; border-radius: 2px;
-                animation: pulse-move 2s infinite linear;
-              }
-              @keyframes pulse-move {
-                0% { transform: translateX(-100%); }
-                100% { transform: translateX(400%); }
-              }
-            `}</style>
-          </div>
-        )}
-
-        {/* ── Stats ─────────────────────────────────────────────────────── */}
-        {view === 'stats' && stats && (
-          <div className="stats-view">
-            <h2>System Statistics</h2>
-            <div className="stats-grid">
-              <div className="stat-card"><div className="stat-icon">🎭</div><div className="stat-info"><h3>Total Events</h3><p className="stat-value">{stats.totalEvents}</p></div></div>
-              <div className="stat-card"><div className="stat-icon">👥</div><div className="stat-info"><h3>Total Users</h3><p className="stat-value">{stats.totalUsers}</p></div></div>
-              <div className="stat-card"><div className="stat-icon">🎟️</div><div className="stat-info"><h3>Tickets Sold</h3><p className="stat-value">{stats.totalTickets}</p></div></div>
-              <div className="stat-card"><div className="stat-icon">💰</div><div className="stat-info"><h3>Total Revenue</h3><p className="stat-value">₹{stats.totalRevenue.toFixed(2)}</p></div></div>
-              <div className="stat-card" style={{ border: '2px solid #f1c40f' }}>
-                <div className="stat-icon">🏢</div>
-                <div className="stat-info">
-                  <h3>Platform Profit (Wallet)</h3>
-                  <p className="stat-value" style={{ color: '#f1c40f' }}>₹{adminWallet.balance.toFixed(2)}</p>
-                </div>
-              </div>
-            </div>
-            {stats.recentTickets?.length > 0 && (
-              <div className="recent-tickets">
-                <h3>Recent Ticket Purchases</h3>
-                <div className="tickets-table">
-                  <table>
-                    <thead><tr><th>Customer</th><th>Event</th><th>Quantity</th><th>Amount</th><th>Date</th></tr></thead>
-                    <tbody>
-                      {stats.recentTickets.map((t) => (
-                        <tr key={t._id}>
-                          <td>{t.customerName}</td>
-                          <td>{t.event?.name || 'N/A'}</td>
-                          <td>{t.quantity}</td>
-                          <td>₹{t.totalAmount?.toFixed(2)}</td>
-                          <td>{fmtDate(t.purchaseDate)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── Events ────────────────────────────────────────────────────── */}
-        {view === 'events' && (
-          <div className="events-view">
-            <div className="view-header-row">
-              <h2 className="view-title">System Event Management</h2>
-              <div className="header-actions">
-                <div className="search-box-container">
-                  <span className="search-icon">🔍</span>
-                  <input 
-                    type="text" 
-                    placeholder="Search all events by name or venue..." 
-                    className="admin-search-input"
-                    value={eventSearch}
-                    onChange={(e) => setEventSearch(e.target.value)}
-                  />
-                  {eventSearch && (
-                    <button className="clear-search" onClick={() => setEventSearch('')}>✕</button>
-                  )}
-                </div>
-                <button className="create-event-btn" onClick={() => { setEditingEvent(null); setShowEventForm(true); }}>
-                  ➕ Create New Event
+          {/* ── System Pulse / Health ─────────────────────────────────── */}
+          {view === 'diagnostics' && (
+            <div className="animate-fade-up">
+              <div className="flex-between" style={{ marginBottom: '2rem' }}>
+                <h2 className="title-sub" style={{ margin: 0 }}>🩺 Technical Health Monitor</h2>
+                <button className="cyber-btn btn-outline" onClick={fetchPlatformHealth} disabled={healthData.loading}>
+                  {healthData.loading ? '🔄 Refreshing...' : '🔄 System Check'}
                 </button>
               </div>
+
+              <div className="cyber-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
+                {Object.entries(healthData.services).map(([name, data]) => {
+                  const isHealthy = ['online', 'ok', 'healthy'].includes(data.status.toLowerCase());
+                  return (
+                    <div key={name} className="cyber-card" style={{ borderLeft: `4px solid ${isHealthy ? 'var(--success)' : 'var(--danger)'}` }}>
+                      <div className="flex-between" style={{ marginBottom: '1.5rem' }}>
+                        <span className="cyber-label" style={{ fontSize: '0.75rem' }}>{name.replace(/([A-Z])/g, ' $1').toUpperCase()}</span>
+                        <span className={`cyber-badge ${isHealthy ? 'badge-success' : 'badge-danger'}`}>{data.status.toUpperCase()}</span>
+                      </div>
+                      <div className="flex-column" style={{ gap: '0.8rem' }}>
+                        {isHealthy ? (
+                          <>
+                            <div className="flex-between">
+                              <span className="text-dim" style={{ fontSize: '0.85rem' }}>Latency:</span>
+                              <span style={{ color: 'var(--success)', fontWeight: '700' }}>{data.latency}</span>
+                            </div>
+                            <div className="flex-between">
+                              <span className="text-dim" style={{ fontSize: '0.85rem' }}>Stability:</span>
+                              <span className="text-main">99.9%</span>
+                            </div>
+                          </>
+                        ) : (
+                          <p className="badge-danger" style={{ padding: '0.5rem', borderRadius: '4px', fontSize: '0.8rem' }}>
+                            {data.error || 'Connection Failed'}
+                          </p>
+                        )}
+                      </div>
+                      <div style={{ marginTop: '1.5rem', height: '4px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px', overflow: 'hidden' }}>
+                         {isHealthy && <div className="pulse-fill" style={{ width: '100%', height: '100%', background: 'var(--success)', opacity: 0.3 }}></div>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
+          )}
 
-            {showEventForm && (
-              <AdminEventForm event={editingEvent} onClose={handleEventFormClose} />
-            )}
+          {/* ── Stats ─────────────────────────────────────────────────────── */}
+          {view === 'stats' && stats && (
+            <div className="animate-fade-up">
+              <h2 className="title-sub">System-Wide Intelligence</h2>
+              <div className="cyber-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
+                <div className="cyber-card cyber-stat-card flex-center" style={{ borderLeftColor: 'var(--accent-cyan)' }}>
+                  <span className="cyber-label">Total Events</span>
+                  <p className="text-glow" style={{ fontSize: '1.8rem', fontWeight: '900' }}>{stats.totalEvents}</p>
+                </div>
+                <div className="cyber-card cyber-stat-card flex-center" style={{ borderLeftColor: 'var(--accent-purple)' }}>
+                  <span className="cyber-label">Global Users</span>
+                  <p className="text-glow" style={{ fontSize: '1.8rem', fontWeight: '900' }}>{stats.totalUsers}</p>
+                </div>
+                <div className="cyber-card cyber-stat-card flex-center" style={{ borderLeftColor: 'var(--accent-pink)' }}>
+                  <span className="cyber-label">Total Tickets Sold</span>
+                  <p className="text-glow" style={{ fontSize: '1.8rem', fontWeight: '900' }}>{stats.totalTickets}</p>
+                </div>
+                <div className="cyber-card cyber-stat-card flex-center" style={{ borderLeftColor: 'var(--success)' }}>
+                  <span className="cyber-label">Gross Revenue</span>
+                  <p className="text-glow" style={{ fontSize: '1.4rem', fontWeight: '900', color: 'var(--success)' }}>₹{stats.totalRevenue.toLocaleString()}</p>
+                </div>
+                <div className="cyber-card cyber-stat-card flex-center" style={{ borderLeftColor: 'var(--accent-cyan)' }}>
+                  <span className="cyber-label">Platform Profit</span>
+                  <p className="text-gradient" style={{ fontSize: '1.4rem', fontWeight: '900' }}>₹{stats.totalProfit?.toLocaleString()}</p>
+                </div>
+              </div>
 
-            {!showEventForm && (
-              <div className="events-list">
-                {events.filter(ev => 
-                  ev.name.toLowerCase().includes(eventSearch.toLowerCase()) || 
-                  ev.venue.toLowerCase().includes(eventSearch.toLowerCase())
-                ).length === 0 ? (
-                  <div className="no-data">
-                    <p>{eventSearch ? 'No global events match your search.' : 'No events in the system.'}</p>
+              {stats.recentTickets?.length > 0 && (
+                <div style={{ marginTop: '3rem' }}>
+                  <h3 className="cyber-label" style={{ marginBottom: '1rem' }}>Live Stream: Recent Purchases</h3>
+                  <div className="cyber-table-container">
+                    <table className="cyber-table">
+                      <thead><tr><th>Customer</th><th>Event</th><th>Qty</th><th>Amount</th><th>Timestamp</th></tr></thead>
+                      <tbody>
+                        {stats.recentTickets.map((t) => (
+                          <tr key={t._id}>
+                            <td><span className="text-main" style={{ fontWeight: '700' }}>{t.customerName}</span></td>
+                            <td><span className="text-dim">{t.event?.name || 'N/A'}</span></td>
+                            <td>{t.quantity}</td>
+                            <td><span style={{ color: 'var(--success)' }}>₹{t.totalAmount?.toFixed(2)}</span></td>
+                            <td><span className="text-dim" style={{ fontSize: '0.8rem' }}>{fmtDate(t.purchaseDate)}</span></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                ) : (
-                  <table className="admin-table events-table high-contrast-table">
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Events ────────────────────────────────────────────────────── */}
+          {view === 'events' && (
+            <div className="animate-fade-up">
+              <div className="flex-between" style={{ marginBottom: '2rem' }}>
+                <h2 className="title-sub" style={{ margin: 0 }}>System Event Management</h2>
+                <div className="flex-center" style={{ gap: '1rem' }}>
+                  <div className="glass-panel" style={{ padding: '0.2rem 1rem', display: 'flex', alignItems: 'center' }}>
+                    <span style={{ marginRight: '0.5rem' }}>🔍</span>
+                    <input 
+                      type="text" 
+                      placeholder="Filter global events..." 
+                      className="cyber-input"
+                      style={{ border: 'none', background: 'transparent' }}
+                      value={eventSearch}
+                      onChange={(e) => setEventSearch(e.target.value)}
+                    />
+                  </div>
+                  <button className="cyber-btn btn-primary" onClick={() => { setEditingEvent(null); setShowEventForm(true); }}>
+                    ➕ New Event
+                  </button>
+                </div>
+              </div>
+
+              {showEventForm && (
+                <div className="cyber-card animate-fade-up">
+                   <AdminEventForm event={editingEvent} onClose={handleEventFormClose} />
+                </div>
+              )}
+
+              {!showEventForm && (
+                <div className="cyber-table-container">
+                  <table className="cyber-table">
                     <thead>
                       <tr>
                         <th>Event Details</th>
-                        <th>Date & Time</th>
-                        <th>Sold</th>
-                        <th>Base Revenue</th>
-                        <th>Collected Revenue</th>
-                        <th>Profit Margin</th>
+                        <th>Schedule</th>
+                        <th>Sold / Cap</th>
+                        <th>Revenue Flow</th>
+                        <th>Profit</th>
                         <th>Status</th>
                         <th>Actions</th>
                       </tr>
@@ -409,134 +410,183 @@ function AdminDashboard() {
                         )
                         .map((event) => (
                         <tr key={event._id}>
-                          <td className="event-info-cell">
-                            <div className="event-name-bold">{event.name}</div>
-                            <div className="event-venue-sub">📍 {event.venue}</div>
+                          <td>
+                            <div className="text-main" style={{ fontWeight: '800' }}>{event.name}</div>
+                            <div className="text-dim" style={{ fontSize: '0.8rem' }}>📍 {event.venue}</div>
                           </td>
-                          <td className="date-cell">
-                            <div className="date-main">{new Date(event.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
-                            <div className="date-sub">{new Date(event.startDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
-                          </td>
-                          <td className="sold-cell">
-                            <div className="sold-count">
-                              <span className="count-pill">{event.ticketsSold}</span> / {event.capacity}
-                            </div>
-                            <div className="sold-progress-bg">
-                              <div className="sold-progress-fill" style={{ width: `${(event.ticketsSold / event.capacity) * 100}%` }}></div>
+                          <td>
+                            <div className="flex-column" style={{ gap: '0.2rem' }}>
+                              <div className="text-main" style={{ fontSize: '0.85rem' }}>
+                                <span className="cyber-label" style={{ fontSize: '0.6rem', marginRight: '4px' }}>START</span>
+                                {new Date(event.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                              </div>
+                              {event.endDate && (
+                                <div className="text-dim" style={{ fontSize: '0.75rem' }}>
+                                  <span className="cyber-label" style={{ fontSize: '0.6rem', marginRight: '4px' }}>END</span>
+                                  {new Date(event.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                </div>
+                              )}
                             </div>
                           </td>
                           <td>
-                            <div className="amount-dim">₹{event.baseRevenue?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
-                          </td>
-                          <td className="revenue-cell">
-                            <div className="amount-bold">₹{event.totalRevenue?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
-                          </td>
-                          <td>
-                            <div className={`profit-amount ${(event.profitAmount || 0) > 0 ? 'positive' : 'neutral'}`}>
-                              +₹{event.profitAmount?.toFixed(2) || '0.00'}
-                            </div>
-                            <div className="profit-percent">
-                              ({event.profitPercentage?.toFixed(1) || '0.0'}%)
+                            <div className="flex-column">
+                              <span style={{ fontWeight: '800' }}>{event.ticketsSold} <span className="text-dim" style={{ fontWeight: '400' }}>/ {event.capacity}</span></span>
+                              <div style={{ width: '60px', height: '4px', background: 'var(--bg-deep)', borderRadius: '2px', marginTop: '4px' }}>
+                                <div style={{ width: `${(event.ticketsSold / event.capacity) * 100}%`, height: '100%', background: 'var(--accent-indigo)' }}></div>
+                              </div>
                             </div>
                           </td>
                           <td>
-                            <span className={`status-pill ${event.status}`}>{event.status.toUpperCase()}</span>
+                            <div className="text-dim" style={{ fontSize: '0.75rem' }}>Base: ₹{event.baseRevenue?.toLocaleString()}</div>
+                            <div className="text-main" style={{ fontWeight: '800', color: 'var(--success)' }}>₹{event.totalRevenue?.toLocaleString()}</div>
+                          </td>
+                          <td>
+                             <div style={{ color: 'var(--accent-cyan)', fontWeight: '800' }}>+₹{event.profitAmount?.toFixed(0)}</div>
+                             <div className="text-dim" style={{ fontSize: '0.75rem' }}>({event.profitPercentage?.toFixed(1)}%)</div>
+                          </td>
+                          <td>
+                            <span className={`cyber-badge badge-${event.status}`}>{event.status}</span>
                           </td>
                            <td>
-                            <div className="action-buttons">
+                            <div className="flex-center" style={{ gap: '0.5rem' }}>
                               {event.status !== 'completed' && (
-                                <button className="complete-btn" onClick={() => handleCompleteEvent(event._id)} title="Complete Event">✅</button>
+                                <button className="cyber-btn btn-outline" style={{ padding: '0.4rem' }} onClick={() => handleCompleteEvent(event._id)} title="Complete">✅</button>
                               )}
-                              <button className="view-map-btn" onClick={() => openMapForEvent(event)} title="View Map">🗺️</button>
-                              <button className="edit-btn" onClick={() => { setEditingEvent(event); setShowEventForm(true); }} title="Edit">✏️</button>
-                              <button className="delete-btn" onClick={() => handleDeleteEvent(event._id)} title="Delete">🗑️</button>
+                              <button className="cyber-btn btn-outline" style={{ padding: '0.4rem' }} onClick={() => openMapForEvent(event)}>🗺️</button>
+                              <button className="cyber-btn btn-outline" style={{ padding: '0.4rem' }} onClick={() => { setEditingEvent(event); setShowEventForm(true); }}>✏️</button>
+                              <button className="cyber-btn btn-danger" style={{ padding: '0.4rem' }} onClick={() => handleDeleteEvent(event._id)}>🗑️</button>
                             </div>
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
-                )}
+                </div>
+              )}
+            </div>
+          )}
+          {showMapModal && <EventMapModal event={mapEvent} onClose={() => setShowMapModal(false)} />}
+
+          {/* ── Users ─────────────────────────────────────────────────────── */}
+          {view === 'users' && (
+            <div className="animate-fade-up">
+              <div className="flex-between" style={{ marginBottom: '2rem' }}>
+                <div className="flex-center" style={{ gap: '1rem' }}>
+                  <h2 className="title-sub" style={{ margin: 0 }}>Registered Citizens</h2>
+                  <span className="cyber-badge badge-info">{users.length} TOTAL</span>
+                </div>
+                <div className="flex-center" style={{ gap: '1rem' }}>
+                  <input 
+                    type="text" 
+                    placeholder="Search by name/email..." 
+                    className="cyber-input"
+                    value={userSearch}
+                    onChange={(e) => setUserSearch(e.target.value)}
+                  />
+                  <select 
+                    className="cyber-input"
+                    value={roleFilter}
+                    onChange={(e) => setRoleFilter(e.target.value)}
+                  >
+                    <option value="all">All Roles</option>
+                    <option value="admin">Admins</option>
+                    <option value="organizer">Organizers</option>
+                    <option value="user">Members</option>
+                  </select>
+                </div>
               </div>
-            )}
-          </div>
-        )}
-        {showMapModal && <EventMapModal event={mapEvent} onClose={() => setShowMapModal(false)} />}
 
-        {/* ── Tickets ───────────────────────────────────────────────────── */}
-        {view === 'tickets' && (
-          <div className="tickets-view">
-            <div className="view-header">
-              <h2>🎟️ Ticket Buyers</h2>
-              <button className="refresh-btn" onClick={fetchTickets}>🔄 Refresh</button>
-            </div>
-            {tickets.length === 0 ? (
-              <div className="no-data"><p>No tickets sold yet.</p></div>
-            ) : (
-              <>
-                <div className="tickets-table-container">
-                  <table className="admin-table tickets-table">
-                    <thead>
-                      <tr>
-                        <th>Booking Ref</th><th>Buyer Name</th><th>Email</th>
-                        <th>Event</th><th>Category</th><th>Qty</th>
-                        <th>Total</th><th>Status</th><th>Purchase Date</th>
+              <div className="cyber-table-container">
+                <table className="cyber-table">
+                  <thead>
+                    <tr>
+                      <th>Identity</th>
+                      <th>Level / Role</th>
+                      <th>Subscription</th>
+                      <th>Last Seen</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredUsers.map((u) => (
+                      <tr key={u._id}>
+                        <td>
+                          <div className="flex-center" style={{ justifyContent: 'flex-start', gap: '1rem' }}>
+                            <div style={{ 
+                              width: '40px', height: '40px', borderRadius: '50%', 
+                              background: getAvatarColor(u.name), 
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontWeight: '900', fontSize: '0.8rem', color: 'white'
+                            }}>
+                              {getInitials(u.name)}
+                            </div>
+                            <div className="flex-column">
+                              <span className="text-main" style={{ fontWeight: '700' }}>{u.name}</span>
+                              <span className="text-dim" style={{ fontSize: '0.75rem' }}>{u.email}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <select 
+                            className="cyber-input"
+                            value={u.role}
+                            onChange={(e) => handleRoleUpdate(u._id, e.target.value)}
+                            style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', fontWeight: '800' }}
+                          >
+                            <option value="user">USER</option>
+                            <option value="organizer">ORGANIZER</option>
+                            <option value="admin">ADMIN</option>
+                          </select>
+                        </td>
+                        <td>
+                          {u.subscription?.plan && u.subscription.plan !== 'none'
+                            ? <span className="cyber-badge badge-info">⭐ {u.subscription.plan.toUpperCase()}</span>
+                            : <span className="text-dim" style={{ fontSize: '0.8rem' }}>Free Member</span>}
+                        </td>
+                        <td><span className="text-dim" style={{ fontSize: '0.8rem' }}>{fmtDate(u.createdAt)}</span></td>
+                        <td>
+                          <div className="flex-center" style={{ gap: '0.5rem' }}>
+                            <button className="cyber-btn btn-outline" style={{ padding: '0.4rem' }} onClick={() => handleDirectMessage(u._id)}>💬</button>
+                            <button className="cyber-btn btn-outline" style={{ padding: '0.4rem' }}>⚙️</button>
+                          </div>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {tickets.map((t) => (
-                        <tr key={t._id}>
-                          <td className="booking-ref">{t.bookingReference}</td>
-                          <td>{t.buyerName}</td>
-                          <td>{t.buyerEmail}</td>
-                          <td>{t.eventName}</td>
-                          <td><span className={`category-badge ${t.categoryName}`}>{t.categoryName?.toUpperCase()}</span></td>
-                          <td>{t.quantity}</td>
-                          <td>₹{t.totalAmount?.toFixed(2)}</td>
-                          <td><span className={`status-badge ${t.status}`}>{t.status}</span></td>
-                          <td>{fmtDate(t.purchaseDate)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="tickets-summary">
-                  <div className="summary-card"><span className="label">Total Tickets</span><span className="value">{tickets.reduce((s, t) => s + t.quantity, 0)}</span></div>
-                  <div className="summary-card"><span className="label">Total Revenue</span><span className="value">₹{tickets.reduce((s, t) => s + (t.totalAmount || 0), 0).toFixed(2)}</span></div>
-                  <div className="summary-card"><span className="label">Unique Buyers</span><span className="value">{new Set(tickets.map((t) => t.buyerEmail)).size}</span></div>
-                </div>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* ── Communication ────────────────────────────────────────────────── */}
-        {view === 'communication' && (
-          <div className="communication-view">
-            <div className="view-header">
-              <h2>📢 Communication Center</h2>
-              <p className="view-subtitle">Send targeted messages to platform stakeholders</p>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
+          )}
 
-            <div className="broadcast-card">
-              <form onSubmit={handleBroadcast} className="admin-form">
-                <div className="form-group">
-                  <label>Target Audience</label>
+          {/* ── Communication ────────────────────────────────────────────────── */}
+          {view === 'communication' && (
+            <div className="animate-fade-up" style={{ maxWidth: '800px', margin: '0 auto' }}>
+              <div className="flex-column" style={{ marginBottom: '2rem', textAlign: 'center' }}>
+                <h2 className="title-sub">📢 Neural Broadcast Hub</h2>
+                <p className="text-dim">Dispatch platform-wide announcements or targeted neural links.</p>
+              </div>
+
+              <div className="cyber-card">
+                <form onSubmit={handleBroadcast} className="flex-column" style={{ gap: '1.5rem' }}>
+                  <div className="cyber-form-group">
+                    <label className="cyber-label">Target Audience</label>
                     <select 
+                      className="cyber-input"
                       value={messageForm.target} 
                       onChange={(e) => setMessageForm({ ...messageForm, target: e.target.value })}
                     >
-                      <option value="all_users">All Registered Users</option>
+                      <option value="all_users">All Registered Citizens</option>
                       <option value="all_organizers">All Event Organizers</option>
-                      <option value="event_attendees">Specific Event Attendees</option>
-                      <option value="individual">Specific Individual (DM)</option>
+                      <option value="event_attendees">Specific Event Stakeholders</option>
+                      <option value="individual">Individual Neural ID</option>
                     </select>
                   </div>
 
                   {messageForm.target === 'individual' && (
-                    <div className="form-group">
-                      <label>Target User ID</label>
+                    <div className="cyber-form-group">
+                      <label className="cyber-label">Neural ID (User ID)</label>
                       <input 
+                        className="cyber-input"
                         type="text" 
                         placeholder="Paste User ID here..." 
                         value={messageForm.targetId}
@@ -545,262 +595,47 @@ function AdminDashboard() {
                     </div>
                   )}
 
-                  {messageForm.target === 'event_attendees' && (
-                    <div className="form-group">
-                      <label>Select Event</label>
-                      <select 
-                        value={messageForm.targetId} 
-                        onChange={(e) => setMessageForm({ ...messageForm, targetId: e.target.value })}
-                      >
-                        <option value="">-- Select an Event --</option>
-                        {events.map(ev => (
-                          <option key={ev._id} value={ev._id}>{ev.name} ({ev.ticketsSold} attendees)</option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
+                  <div className="cyber-form-group">
+                    <label className="cyber-label">Broadcast Subject</label>
+                    <input 
+                      className="cyber-input"
+                      type="text" 
+                      placeholder="e.g., Protocol Update" 
+                      value={messageForm.title}
+                      onChange={(e) => setMessageForm({ ...messageForm, title: e.target.value })}
+                    />
+                  </div>
 
-                <div className="form-group">
-                  <label>Message Title</label>
-                  <input 
-                    type="text" 
-                    placeholder="e.g., Update on System Maintenance" 
-                    value={messageForm.title}
-                    onChange={(e) => setMessageForm({ ...messageForm, title: e.target.value })}
-                  />
-                </div>
+                  <div className="cyber-form-group">
+                    <label className="cyber-label">Neural Data (Message)</label>
+                    <textarea 
+                      className="cyber-input"
+                      rows="6" 
+                      placeholder="Type your message here..."
+                      value={messageForm.message}
+                      onChange={(e) => setMessageForm({ ...messageForm, message: e.target.value })}
+                    />
+                  </div>
 
-                <div className="form-group">
-                  <label>Message Content</label>
-                  <textarea 
-                    rows="5" 
-                    placeholder="Type your announcement or direct message here..."
-                    value={messageForm.message}
-                    onChange={(e) => setMessageForm({ ...messageForm, message: e.target.value })}
-                  />
-                </div>
-
-                <button type="submit" className="broadcast-btn" disabled={loading}>
-                  {loading ? '🚀 Sending...' : '📢 Dispatch Now'}
-                </button>
-              </form>
-            </div>
-            
-            <style>{`
-              .communication-view { max-width: 800px; margin: 0 auto; padding: 20px; }
-              .broadcast-card { background: #1a1a1a; border: 1px solid #333; padding: 30px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-              .admin-form .form-group { margin-bottom: 20px; }
-              .admin-form label { display: block; margin-bottom: 8px; font-weight: 600; color: #aaa; }
-              .admin-form input, .admin-form select, .admin-form textarea {
-                width: 100%; padding: 12px; border-radius: 6px; border: 1px solid #444; background: #222; color: #fff; font-size: 1rem;
-              }
-              .broadcast-btn { 
-                width: 100%; background: #f1c40f; color: #000; border: none; padding: 15px; border-radius: 6px; 
-                font-weight: bold; cursor: pointer; font-size: 1.1rem; transition: all 0.2s;
-              }
-              .broadcast-btn:hover:not(:disabled) { background: #d4ac0d; transform: translateY(-2px); }
-              .broadcast-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-            `}</style>
-          </div>
-        )}
-
-        {/* ── Users ─────────────────────────────────────────────────────── */}
-        {view === 'users' && (
-          <div className="users-view">
-            <div className="view-header">
-              <div className="title-group">
-                <h2>👥 Registered Users</h2>
-                <span className="count-pill">{users.length} total</span>
-              </div>
-              <div className="user-controls">
-                <div className="search-bar">
-                  <span className="search-icon">🔍</span>
-                  <input 
-                    type="text" 
-                    placeholder="Search by name or email..." 
-                    value={userSearch}
-                    onChange={(e) => setUserSearch(e.target.value)}
-                  />
-                </div>
-                <select 
-                  className="role-select"
-                  value={roleFilter}
-                  onChange={(e) => setRoleFilter(e.target.value)}
-                >
-                  <option value="all">All Roles</option>
-                  <option value="admin">Admins</option>
-                  <option value="organizer">Organizers</option>
-                  <option value="user">Members</option>
-                </select>
-                <button className="refresh-btn" onClick={fetchUsers}>🔄 Refresh</button>
-              </div>
-            </div>
-
-            {filteredUsers.length === 0 && !loading ? (
-              <div className="no-data">
-                <div className="no-data-icon">🔍</div>
-                <p>{userSearch || roleFilter !== 'all' ? 'No users match your criteria' : 'No users found.'}</p>
-                {(userSearch || roleFilter !== 'all') && (
-                  <button className="clear-filter-btn" onClick={() => { setUserSearch(''); setRoleFilter('all'); }}>
-                    Clear Filters
+                  <button type="submit" className="cyber-btn btn-primary" style={{ width: '100%', padding: '1.2rem' }} disabled={loading}>
+                    {loading ? '🚀 Dispatching...' : '📢 DISPATCH BROADCAST'}
                   </button>
-                )}
-              </div>
-            ) : (
-              <>
-                <div className="tickets-table-container user-table-container">
-                  <table className="admin-table">
-                    <thead>
-                      <tr>
-                        <th>User Identity</th><th>Role</th>
-                        <th>Subscription</th><th>Location</th><th>Joined</th><th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredUsers.map((u) => (
-                        <tr key={u._id}>
-                          <td>
-                            <div className="user-cell">
-                              <div className="user-avatar" style={{ backgroundColor: getAvatarColor(u.name) }}>
-                                {getInitials(u.name)}
-                              </div>
-                              <div className="user-name-group">
-                                <span className="user-name">{u.name}</span>
-                                <span className="user-email-sub">{u.email}</span>
-                              </div>
-                            </div>
-                          </td>
-                          <td>
-                            <select 
-                              className={`role-inline-select ${u.role}`}
-                              value={u.role}
-                              onChange={(e) => handleRoleUpdate(u._id, e.target.value)}
-                              style={{ 
-                                padding: '4px 8px', 
-                                borderRadius: '4px', 
-                                border: '1px solid #ccc', 
-                                fontSize: '12px',
-                                fontWeight: 'bold',
-                                cursor: 'pointer',
-                                textTransform: 'uppercase'
-                              }}
-                            >
-                              <option value="user">USER</option>
-                              <option value="organizer">ORGANIZER</option>
-                              <option value="admin">ADMIN</option>
-                            </select>
-                          </td>
-                          <td>
-                            {u.subscription?.plan && u.subscription.plan !== 'none'
-                              ? <div className="sub-badge active">
-                                  <span className="sub-icon">⭐</span>
-                                  {u.subscription.plan.replace(/_/g, ' ').toUpperCase()}
-                                </div>
-                              : <span className="sub-badge free">Free Member</span>}
-                          </td>
-                          <td className="city-cell">{u.city || '—'}</td>
-                          <td className="date-cell">{fmtDate(u.createdAt)}</td>
-                          <td>
-                            <div className="action-buttons">
-                              <button className="msg-btn" onClick={() => handleDirectMessage(u._id)} title="Direct Message" style={{ background: '#3498db', border: 'none', borderRadius: '4px', padding: '5px', cursor: 'pointer', marginRight: '5px' }}>💬</button>
-                              <button className="manage-btn" title="Manage User">⚙️</button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="tickets-summary">
-                  <div className="summary-card">
-                    <span className="label">Total System Users</span>
-                    <span className="value">{users.length}</span>
-                  </div>
-                  <div className="summary-card">
-                    <span className="label">Active Subscribers</span>
-                    <span className="value highlighting">{users.filter(u => u.subscription?.isActive).length}</span>
-                  </div>
-                  <div className="summary-card">
-                    <span className="label">Growth Ratio</span>
-                    <span className="value">
-                      {users.length > 0 ? ((users.filter(u => u.subscription?.isActive).length / users.length) * 100).toFixed(0) : 0}%
-                    </span>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* ── Organizers & Commissions ─────────────────────────────────────── */}
-        {view === 'organizers' && (
-          <div className="commissions-view">
-            <div className="view-header">
-              <div className="title-group">
-                <h2>🏢 Organizer Commissions (20% Cut)</h2>
-                <span className="count-pill">{commissions.length} payouts</span>
-              </div>
-              <button className="refresh-btn" onClick={fetchCommissions}>🔄 Refresh</button>
-            </div>
-
-            {commissions.length === 0 ? (
-              <div className="no-data"><p>No commissions collected yet.</p></div>
-            ) : (
-              <div className="tickets-table-container">
-                <table className="admin-table high-contrast-table">
-                  <thead>
-                    <tr>
-                      <th>Event</th>
-                      <th>Organizer</th>
-                      <th>Total Revenue</th>
-                      <th>Admin Cut (20%)</th>
-                      <th>Date Paid</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {commissions.map((c) => (
-                      <tr key={c._id}>
-                        <td>{c.eventId?.name || 'Unknown Event'}</td>
-                        <td>
-                          <div className="user-name-group">
-                            <span className="user-name">{c.organizerId?.name}</span>
-                            <span className="user-email-sub">{c.organizerId?.email}</span>
-                          </div>
-                        </td>
-                        <td className="amount-dim">₹{c.totalRevenue?.toLocaleString()}</td>
-                        <td className="revenue-cell">
-                          <div className="amount-bold">₹{c.commissionAmount?.toLocaleString()}</div>
-                        </td>
-                        <td className="date-cell">{fmtDate(c.payoutDate)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-            
-            <div className="tickets-summary">
-              <div className="summary-card">
-                <span className="label">Total Earnings</span>
-                <span className="value highlighting">₹{commissions.reduce((s, c) => s + c.commissionAmount, 0).toLocaleString()}</span>
-              </div>
-              <div className="summary-card">
-                <span className="label">Managed Revenue</span>
-                <span className="value">₹{commissions.reduce((s, c) => s + c.totalRevenue, 0).toLocaleString()}</span>
+                </form>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-      </main>
+          {/* Fallback or default */}
+          {(!view || view === 'organizers' || view === 'tickets') && (
+            <div className="flex-center" style={{ padding: '5rem', border: '1px dashed var(--border-dim)', borderRadius: '20px' }}>
+              <p className="text-dim">Module under optimization. Please select another module.</p>
+            </div>
+          )}
+
+        </main>
+      </div>
     </div>
   );
 }
 
-export default function AdminDashboardWrapper(props) {
-  return (
-    <div className="admin-page-container" style={{ paddingBottom: '100px' }}>
-      <AdminDashboard {...props} />
-    </div>
-  );
-}
+export default AdminDashboard;

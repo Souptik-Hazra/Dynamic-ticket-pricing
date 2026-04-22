@@ -5,7 +5,6 @@ import {
 } from 'recharts';
 import api from '../api/client';
 import { ENDPOINTS } from '../config/api';
-import './SystemLogs.css';
 
 const SystemLogs = () => {
   const [logs, setLogs] = useState([]);
@@ -38,38 +37,38 @@ const SystemLogs = () => {
   const COLORS = ['#ef4444', '#f59e0b', '#3b82f6', '#10b981', '#8b5cf6'];
 
   return (
-    <div className="system-logs-dashboard">
-      <div className="logs-header">
+    <div className="cyber-container animate-fade-up" style={{ padding: '4rem 0' }}>
+      <div className="flex-between" style={{ marginBottom: '3rem' }}>
         <div>
-          <h1>System Health Monitoring</h1>
-          <p className="text-muted">Real-time distributed tracing and error telemetry</p>
+          <h1 className="title-main text-gradient" style={{ margin: 0, fontSize: '2.5rem' }}>System Health Monitor</h1>
+          <p className="text-dim">Real-time distributed tracing and neural telemetry</p>
         </div>
-        <button className="refresh-btn" onClick={() => setRefreshKey(prev => prev + 1)}>
-          🔄 Force Refresh
+        <button className="cyber-btn btn-outline" onClick={() => setRefreshKey(prev => prev + 1)}>
+          🔄 System Check
         </button>
       </div>
 
-      <div className="health-charts-grid">
+      <div className="cyber-grid" style={{ gridTemplateColumns: '1.5fr 1fr', gap: '2rem', marginBottom: '3rem' }}>
         {/* Error Timeline Graph */}
-        <div className="health-card">
-          <h3>📈 Error Frequency (Last 24h)</h3>
+        <div className="cyber-card">
+          <h3 className="cyber-label" style={{ marginBottom: '1.5rem', color: 'var(--danger)' }}>📈 Error Frequency (Last 24h)</h3>
           <div style={{ width: '100%', height: 250 }}>
             <ResponsiveContainer>
               <LineChart data={healthData.errorTimeline}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                <XAxis dataKey="time" stroke="#94a3b8" fontSize={12} />
-                <YAxis stroke="#94a3b8" fontSize={12} />
+                <XAxis dataKey="time" stroke="var(--text-dim)" fontSize={12} />
+                <YAxis stroke="var(--text-dim)" fontSize={12} />
                 <Tooltip 
-                  contentStyle={{ background: '#0a1128', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
-                  itemStyle={{ color: '#ef4444' }}
+                  contentStyle={{ background: 'var(--bg-surface)', border: '1px solid var(--border-dim)', borderRadius: '12px', backdropFilter: 'blur(10px)' }}
+                  itemStyle={{ color: 'var(--danger)' }}
                 />
                 <Line 
                   type="monotone" 
                   dataKey="errors" 
-                  stroke="#ef4444" 
+                  stroke="var(--danger)" 
                   strokeWidth={3} 
-                  dot={{ r: 4, fill: '#ef4444' }}
-                  activeDot={{ r: 8 }}
+                  dot={{ r: 4, fill: 'var(--danger)' }}
+                  activeDot={{ r: 8, stroke: 'white', strokeWidth: 2 }}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -77,20 +76,20 @@ const SystemLogs = () => {
         </div>
 
         {/* Service Distribution Bar Chart */}
-        <div className="health-card">
-          <h3>📦 Errors by Service</h3>
+        <div className="cyber-card">
+          <h3 className="cyber-label" style={{ marginBottom: '1.5rem', color: 'var(--accent-cyan)' }}>📦 Distribution per Sector</h3>
           <div style={{ width: '100%', height: 250 }}>
             <ResponsiveContainer>
               <BarChart data={healthData.serviceDistribution} layout="vertical">
                 <XAxis type="number" hide />
-                <YAxis dataKey="name" type="category" stroke="#94a3b8" fontSize={10} width={100} />
+                <YAxis dataKey="name" type="category" stroke="var(--text-dim)" fontSize={10} width={100} />
                 <Tooltip 
-                   cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                   contentStyle={{ background: '#0a1128', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
+                   cursor={{ fill: 'rgba(255,255,255,0.02)' }}
+                   contentStyle={{ background: 'var(--bg-surface)', border: '1px solid var(--border-dim)', borderRadius: '12px' }}
                 />
                 <Bar dataKey="value" radius={[0, 4, 4, 0]}>
                   {healthData.serviceDistribution.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} opacity={0.8} />
                   ))}
                 </Bar>
               </BarChart>
@@ -100,48 +99,48 @@ const SystemLogs = () => {
       </div>
 
       {/* Raw Logs Table */}
-      <div className="health-card">
-        <h3>📄 Recent Incident Logs</h3>
-        <div className="logs-table-container">
-          <table className="logs-table">
+      <div className="cyber-card">
+        <h3 className="cyber-label" style={{ marginBottom: '1.5rem' }}>📄 Recent Incident Logs</h3>
+        <div className="cyber-table-container">
+          <table className="cyber-table">
             <thead>
               <tr>
                 <th>Level</th>
                 <th>Service</th>
-                <th>Message</th>
+                <th>Protocol Message</th>
                 <th>Trace ID</th>
-                <th>Time</th>
+                <th>Timestamp</th>
               </tr>
             </thead>
             <tbody>
               {logs.map((log) => (
                 <tr key={log._id}>
                   <td>
-                    <span className={`badge-level ${log.level}`}>
+                    <span className={`cyber-badge badge-${log.level === 'CRITICAL' ? 'danger' : log.level === 'WARN' ? 'warning' : 'danger'}`}>
                       {log.level}
                     </span>
                   </td>
-                  <td>{log.service}</td>
+                  <td className="text-main" style={{ fontWeight: '700' }}>{log.service}</td>
                   <td>
-                    <div style={{ fontWeight: 600 }}>{log.message}</div>
+                    <div className="text-main" style={{ fontWeight: '800' }}>{log.message}</div>
                     {log.context && (
-                        <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                        <div className="text-dim" style={{ fontSize: '0.75rem' }}>
                             {log.context.method} {log.context.url} ({log.context.statusCode})
                         </div>
                     )}
                   </td>
                   <td>
-                    <span className="trace-id">{log.traceId}</span>
+                    <code className="text-glow" style={{ color: 'var(--accent-cyan)', fontSize: '0.75rem' }}>{log.traceId}</code>
                   </td>
-                  <td className="text-muted" style={{ fontSize: '0.8rem' }}>
-                    {new Date(log.timestamp).toLocaleString()}
+                  <td>
+                    <span className="text-dim" style={{ fontSize: '0.8rem' }}>{new Date(log.timestamp).toLocaleString()}</span>
                   </td>
                 </tr>
               ))}
               {logs.length === 0 && (
                   <tr>
-                      <td colSpan="5" style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>
-                          ✨ No critical errors detected in the last 7 days.
+                      <td colSpan="5" style={{ textAlign: 'center', padding: '5rem' }}>
+                          <span className="text-glow">✨ All neural channels are optimal. No incidents detected.</span>
                       </td>
                   </tr>
               )}
@@ -149,6 +148,7 @@ const SystemLogs = () => {
           </table>
         </div>
       </div>
+    </div>
     </div>
   );
 };

@@ -11,7 +11,6 @@ import Analytics from './components/Analytics';
 import TicketPurchase from './components/TicketPurchase';
 import Subscription from './components/Subscription';
 import { ENDPOINTS } from './config/api';
-import './components/Navigation.css';
 import UserProfile from "./components/UserProfile.jsx";
 import Notifications from "./components/Notifications.jsx";
 import OrganizerDashboard from "./components/OrganizerDashboard.jsx";
@@ -39,6 +38,7 @@ function AppContent() {
       setView('home');
     }
   }, [isAuthenticated, view]);
+
   // Redirect to events page (user) or scanner page (staff/organizer/admin) after login
   useEffect(() => {
     if (isAuthenticated && view === 'login') {
@@ -112,123 +112,51 @@ function AppContent() {
     if (data) setSelectedEvent(data);
   };
 
-  // Render navigation bar
   const renderNavigation = () => (
-    <nav className="top-navigation">
-      <div className="nav-container">
-        <div className="nav-brand" onClick={() => setView('home')}>
-          <span className="brand-icon">🎫</span>
-          <span className="brand-name">FanFeverTickets</span>
+    <nav className="cyber-nav">
+      <div className="cyber-container flex-between">
+        <div className="flex-center" style={{ gap: '1rem', cursor: 'pointer' }} onClick={() => setView('home')}>
+          <span style={{ fontSize: '1.8rem' }}>🎫</span>
+          <span className="text-gradient" style={{ fontSize: '1.4rem', fontWeight: '900', letterSpacing: '1px' }}>FANFEVER</span>
         </div>
 
-        <button
-          className="mobile-menu-toggle"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          aria-label="Toggle menu"
-        >
-          {mobileMenuOpen ? '✕' : '☰'}
-        </button>
-
-        <div className={`nav-links ${mobileMenuOpen ? 'mobile-open' : ''}`}>
-          <button onClick={() => setView('home')} className={view === 'home' ? 'active' : ''}>
-            Home
-          </button>
-          <button onClick={() => setView('events')} className={view === 'events' ? 'active' : ''}>
-            Events
-          </button>
-          {isAuthenticated && isAdmin() && (
+        <div className="flex-center" style={{ gap: '0.5rem' }}>
+          <button onClick={() => setView('home')} className={`nav-link ${view === 'home' ? 'active' : ''}`}>Home</button>
+          <button onClick={() => setView('events')} className={`nav-link ${view === 'events' ? 'active' : ''}`}>Events</button>
+          
+          {isAuthenticated && (
             <>
-              <button onClick={() => setView('analytics')} className={view === 'analytics' ? 'active' : ''}>
-                Analytics
-              </button>
-              <button onClick={() => setView('admin')} className={view === 'admin' ? 'active' : ''}>
-                Admin
-              </button>
-              <button onClick={() => setView('scanner')} className={view === 'scanner' ? 'active' : ''}>
-                🛡️ Scanner
-              </button>
+              {(isAdmin() || user?.role === 'organizer' || user?.role === 'staff') && (
+                <button onClick={() => setView('scanner')} className={`nav-link ${view === 'scanner' ? 'active' : ''}`}>🛡️ Scanner</button>
+              )}
+              {isAdmin() && (
+                <>
+                  <button onClick={() => setView('analytics')} className={`nav-link ${view === 'analytics' ? 'active' : ''}`}>Analytics</button>
+                  <button onClick={() => setView('admin')} className={`nav-link ${view === 'admin' ? 'active' : ''}`}>Admin</button>
+                </>
+              )}
+              {user?.role === 'organizer' && (
+                <button onClick={() => setView('organizer')} className={`nav-link ${view === 'organizer' ? 'active' : ''}`}>Dashboard</button>
+              )}
             </>
           )}
-
-          {isAuthenticated && user?.role === 'organizer' && (
-            <>
-              <button onClick={() => setView('organizer')} className={view === 'organizer' ? 'active' : ''}>
-                Dashboard
-              </button>
-              <button onClick={() => setView('scanner')} className={view === 'scanner' ? 'active' : ''}>
-                Scanner
-              </button>
-            </>
-          )}
-
-          {isAuthenticated && user?.role === 'staff' && (
-            <button onClick={() => setView('scanner')} className={view === 'scanner' ? 'active' : ''}>
-              🛡️ Staff Scanner
-            </button>
-          )}
-
-          {/* Mobile-only auth buttons */}
-          <div className="mobile-auth-buttons">
-            {!isAuthenticated ? (
-              <>
-                <button onClick={() => { setAuthView('login'); setView('login'); }} className="nav-login-btn">
-                  Login
-                </button>
-                <button onClick={() => { setAuthView('signup'); setView('signup'); }} className="nav-signup-btn">
-                  Sign Up
-                </button>
-              </>
-            ) : (
-              <>
-                <span className="mobile-user-name">{user?.name}</span>
-                {user?.subscription && user.subscription.isActive && user.subscription.plan !== 'none' && (
-                  <span className="nav-subscription-badge">
-                    {user.subscription.plan === '7_days' ? 'WEEKLY' :
-                      user.subscription.plan === '30_days' ? 'MONTHLY' :
-                        user.subscription.plan === '3_months' ? 'QUARTERLY' :
-                          user.subscription.plan === '6_months' ? 'BIANNUAL' :
-                            user.subscription.plan === '1_year' ? 'ANNUAL' : 'MEMBER'}
-                  </span>
-                )}
-                {!isAdmin() && (
-                  <button onClick={() => setView('subscription')} className="nav-profile-btn">Membership</button>
-                )}
-                <button onClick={() => setView('notifications')} className="nav-profile-btn">🔔</button>
-                <button onClick={() => setView('profile')} className="nav-profile-btn">Profile</button>
-                <button onClick={logout} className="nav-logout-btn">Logout</button>
-              </>
-            )}
-          </div>
         </div>
 
-        <div className="nav-actions">
+        <div className="flex-center" style={{ gap: '1rem' }}>
           {!isAuthenticated ? (
             <>
-              <button onClick={() => { setAuthView('login'); setView('login'); }} className="nav-login-btn">
-                Login
-              </button>
-              <button onClick={() => { setAuthView('signup'); setView('signup'); }} className="nav-signup-btn">
-                Sign Up
-              </button>
+              <button onClick={() => { setAuthView('login'); setView('login'); }} className="cyber-btn btn-outline" style={{ padding: '0.5rem 1.2rem', fontSize: '0.8rem' }}>Login</button>
+              <button onClick={() => { setAuthView('signup'); setView('signup'); }} className="cyber-btn btn-primary" style={{ padding: '0.5rem 1.2rem', fontSize: '0.8rem' }}>Sign Up</button>
             </>
           ) : (
-            <div className="nav-user">
-              <span className="user-name">{user?.name}</span>
-              {user?.subscription && user.subscription.isActive && user.subscription.plan !== 'none' && (
-                <span className="nav-subscription-badge">
-                  {user.subscription.plan === '7_days' ? 'WEEKLY' :
-                    user.subscription.plan === '30_days' ? 'MONTHLY' :
-                      user.subscription.plan === '3_months' ? 'QUARTERLY' :
-                        user.subscription.plan === '6_months' ? 'BIANNUAL' :
-                          user.subscription.plan === '1_year' ? 'ANNUAL' : 'MEMBER'}
-                </span>
-              )}
-              {!isAdmin() && (
-                <button onClick={() => setView('subscription')} className="nav-profile-btn">Membership</button>
-              )}
-              <button onClick={() => setView('notifications')} className="nav-profile-btn" title="Notifications">🔔</button>
-              <button onClick={() => setView('profile')} className="nav-profile-btn">Profile</button>
-              <button onClick={logout} className="nav-logout-btn">Logout</button>
+            <div className="flex-center" style={{ gap: '1rem' }}>
+              <div className="flex-column" style={{ alignItems: 'flex-end', lineHeight: '1' }}>
+                <span className="text-main" style={{ fontSize: '0.85rem', fontWeight: '700' }}>{user?.name}</span>
+                <span className="text-dim" style={{ fontSize: '0.65rem' }}>{user?.role?.toUpperCase()}</span>
+              </div>
+              <button onClick={() => setView('notifications')} className="cyber-btn btn-outline" style={{ padding: '0.5rem', borderRadius: '50%' }} title="Notifications">🔔</button>
+              <button onClick={() => setView('profile')} className="cyber-btn btn-outline" style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}>Profile</button>
+              <button onClick={logout} className="cyber-btn btn-outline" style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', borderColor: 'var(--danger)', color: 'var(--danger)' }}>Logout</button>
             </div>
           )}
         </div>

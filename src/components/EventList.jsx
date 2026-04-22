@@ -1,7 +1,5 @@
 import React from 'react';
-import './EventList.css';
 import AutoPriceUpdater from './AutoPriceUpdater';
-import Footer from './Footer';
 
 // ── Category emoji map ────────────────────────────────────────────────────
 const CATEGORY_EMOJI = {
@@ -61,80 +59,96 @@ const isPurchasable = (event) => {
 // ── Component ─────────────────────────────────────────────────────────────
 function EventList({ events, onSelectEvent, onRefresh }) {
   return (
-    <div className="event-list-container bg-white dark:bg-gray-900 text-gray-900 dark:text-white min-h-screen">
-      <div className="list-header">
-        <h2>Available Events</h2>
-        <button className="refresh-btn" onClick={onRefresh}>🔄 Refresh</button>
-      </div>
+    <div className="cyber-container animate-fade-up" style={{ padding: '4rem 0' }}>
+      <header className="flex-between" style={{ marginBottom: '3rem' }}>
+        <div>
+          <h1 className="title-main text-gradient" style={{ margin: 0 }}>LIVE PRODUCTIONS</h1>
+          <p className="text-muted">Experience the next generation of entertainment.</p>
+        </div>
+        <button className="cyber-btn btn-outline" onClick={onRefresh}>
+          🔄 RE-SYNC DATA
+        </button>
+      </header>
 
       {events.length === 0 ? (
-        <div className="no-events">
-          <p>No events available. Create one to get started!</p>
+        <div className="flex-center" style={{ minHeight: '300px', border: '1px dashed var(--border-dim)', borderRadius: '20px' }}>
+          <p className="text-dim">No events detected in the current sector.</p>
         </div>
       ) : (
-        <div className="events-grid">
+        <div className="cyber-grid">
           {events.map((event) => (
-            <div key={event._id} className="event-card">
-              <div className="event-image">
+            <div key={event._id} className="cyber-card flex-column" style={{ padding: '0', gap: '0' }}>
+              {/* Event Visual */}
+              <div style={{ position: 'relative', height: '220px', overflow: 'hidden' }}>
                 {event.image ? (
-                  <img src={event.image} alt="" onError={(e) => { e.target.src = '/default-event.png'; }} />
-                ) : null}
-                <span className="event-emoji-placeholder" style={{ display: event.image ? 'none' : 'flex' }}>
-                  {getCategoryEmoji(event.category)}
-                </span>
-                <span className="event-image-title">{event.name}</span>
-                <span className={`event-status ${event.status}`}>{event.status}</span>
+                  <img src={event.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s ease' }} className="hover-scale" onError={(e) => { e.target.src = '/default-event.png'; }} />
+                ) : (
+                  <div className="flex-center" style={{ width: '100%', height: '100%', background: 'var(--bg-accent)', fontSize: '4rem' }}>
+                    {getCategoryEmoji(event.category)}
+                  </div>
+                )}
+                <div style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
+                  <span className={`cyber-badge badge-${event.status === 'active' ? 'success' : event.status === 'completed' ? 'info' : 'danger'}`}>
+                    {event.status?.toUpperCase()}
+                  </span>
+                </div>
+                <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', padding: '2rem 1.5rem 1rem', background: 'linear-gradient(to top, var(--bg-deep), transparent)' }}>
+                  <h3 className="text-main" style={{ fontSize: '1.5rem', fontWeight: '900', margin: 0 }}>{event.name}</h3>
+                </div>
               </div>
 
-              <div className="event-content">
-                <h3>{event.name}</h3>
-                <p className="event-description">{event.description}</p>
+              {/* Event Content */}
+              <div style={{ padding: '1.5rem' }} className="flex-column">
+                <p className="text-muted" style={{ fontSize: '0.9rem', marginBottom: '1.5rem', height: '3em', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                  {event.description}
+                </p>
 
-                <div className="event-details">
-                  <div className="detail-item">
-                    <span className="label">📍 Venue:</span>
-                    <span>{event.venue}</span>
+                <div className="flex-column" style={{ gap: '0.8rem', marginBottom: '2rem' }}>
+                  <div className="flex-center" style={{ justifyContent: 'flex-start', gap: '0.8rem', fontSize: '0.85rem' }}>
+                    <span className="text-dim">📍</span>
+                    <span className="text-main">{event.venue}</span>
                   </div>
-                  <div className="detail-item">
-                    <span className="label">📅 Start:</span>
-                    <span>{formatDateTime(event.startDate)}</span>
-                  </div>
-                  <div className="detail-item">
-                    <span className="label">📅 End:</span>
-                    <span>{formatDateTime(event.endDate)}</span>
-                  </div>
-                  <div className="detail-item">
-                    <span className="label">🎭 Category:</span>
-                    <span>{event.category}</span>
+                  <div className="flex-center" style={{ justifyContent: 'flex-start', gap: '0.8rem', fontSize: '0.85rem' }}>
+                    <span className="text-dim">📅</span>
+                    <div className="flex-column" style={{ gap: '0.2rem' }}>
+                      <span className="text-main">Starts: {formatDateTime(event.startDate)}</span>
+                      {event.endDate && (
+                        <span className="text-dim" style={{ fontSize: '0.75rem' }}>
+                          Ends: {formatDateTime(event.endDate)}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                <div className="occupancy-bar">
-                  <div className="occupancy-label">
-                    <span>Occupancy</span>
-                    <span>{getOccupancyPct(event)}%</span>
+                {/* Occupancy Indicator */}
+                <div className="flex-column" style={{ gap: '0.5rem', marginBottom: '2rem' }}>
+                  <div className="flex-between" style={{ fontSize: '0.7rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                    <span className="text-muted">Sector Saturation</span>
+                    <span className="text-glow" style={{ color: 'var(--accent-cyan)' }}>{getOccupancyPct(event)}%</span>
                   </div>
-                  <div className="progress-bar">
-                    <div className="progress-fill" style={{ width: `${getOccupancyPct(event)}%` }} />
+                  <div style={{ height: '6px', background: 'var(--bg-accent)', borderRadius: '3px', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${getOccupancyPct(event)}%`, background: 'linear-gradient(90deg, var(--accent-cyan), var(--accent-indigo))', borderRadius: '3px' }} />
                   </div>
-                  <span className="capacity-text">
-                    {getTicketsSold(event)} / {getTotalCapacity(event)} tickets sold
+                  <span className="text-dim" style={{ fontSize: '0.7rem', textAlign: 'right' }}>
+                    {getTicketsSold(event)} / {getTotalCapacity(event)} UNIT RESERVATIONS
                   </span>
                 </div>
 
-                <div className="event-actions">
+                <div className="flex-column" style={{ gap: '1rem' }}>
                   <button
-                    className="btn-primary"
+                    className="cyber-btn btn-primary"
+                    style={{ width: '100%' }}
                     onClick={() => onSelectEvent(event)}
                     disabled={!isPurchasable(event)}
                   >
-                    {event.status === 'completed' ? 'Event Ended' : 
-                     event.status === 'cancelled' ? 'Cancelled' :
-                     !isPurchasable(event) ? 'Sold Out' : 'Buy Tickets'}
+                    {event.status === 'completed' ? 'ARCHIVED' : 
+                     event.status === 'cancelled' ? 'ABORTED' :
+                     !isPurchasable(event) ? 'SOLD OUT' : 'INITIALIZE BOOKING'}
                   </button>
+                  
+                  <AutoPriceUpdater eventId={event._id} onPriceUpdate={onRefresh} compact={true} />
                 </div>
-
-                <AutoPriceUpdater eventId={event._id} onPriceUpdate={onRefresh} compact={true} />
               </div>
             </div>
           ))}
@@ -145,9 +159,5 @@ function EventList({ events, onSelectEvent, onRefresh }) {
 }
 
 export default function EventListWrapper(props) {
-  return (
-    <>
-      <EventList {...props} />
-    </>
-  );
+  return <EventList {...props} />;
 }
