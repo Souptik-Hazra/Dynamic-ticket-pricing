@@ -27,6 +27,7 @@
     "start:analytics-service": "node microservices/analytics-service/index.js",
     "start:subscription-service": "node microservices/subscription-service/index.js",
     "start:organizer-service": "node microservices/organizer-service/index.js",
+    "seed:neo4j": "node microservices/organizer-service/scripts/seed_neo4j.js",
     "start:qr-service": "node microservices/qr-service/index.js",
     "start:scanner-service": "node microservices/scanner-service/index.js",
     "start:wallet-service": "node microservices/wallet-service/index.js",

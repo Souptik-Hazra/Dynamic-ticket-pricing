@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import VenueMap from './VenueMap';
 import SeatGrid from './SeatGrid';
-import { simulateCrowdSafety, generateAutoBlockSeats } from '../utils/CrowdSimulator';
+import { generateAutoBlockSeats } from '../utils/CrowdSimulator';
+import client from '../api/client';
 import './VenueLayoutDesigner.css';
 
 const LAYOUT_OPTIONS = [
@@ -41,6 +42,12 @@ const LAYOUT_OPTIONS = [
     icon: '🎪',
     desc: 'Concentric zones — Open-air',
   },
+  {
+    type: 'premium_concert',
+    label: 'Premium Concert',
+    icon: '🎸',
+    desc: 'Multi-tier luxe arena matching your exact references',
+  },
 ];
 
 const DEFAULT_COLORS = [
@@ -64,22 +71,102 @@ function VenueLayoutDesigner({
   onCategoryBlockedSeatsChange,
   venueMetrics = { exitsCount: 4, aisleWidth: 'standard', securitySpeed: 'normal' },
   setVenueMetrics = () => {},
+  isSafetyMode = false,
+  setIsSafetyMode = () => {},
+  safetyScores = {},
+  setSafetyScores = () => {}
+  , eventName, eventId, eventPopularity,
+  selectedCategory: selectedCategoryProp = null,
+  onSelectCategory: onSelectCategoryProp = null,
+  seatMap = []
 }) {
   const [showColorPicker, setShowColorPicker]   = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [isSafetyMode, setIsSafetyMode]         = useState(false);
-  const [safetyScores, setSafetyScores]         = useState({});
+  const [isSimulating, setIsSimulating]         = useState(false);
 
-  const toggleSafetyMode = () => {
-    if (!isSafetyMode) {
-      const scores = simulateCrowdSafety(categories.filter(c => c.name), layoutType, stagePosition, venueMetrics);
-      setSafetyScores(scores);
+  React.useEffect(() => {
+    // sync parent-selected category into local state
+    if (selectedCategoryProp) setSelectedCategory(selectedCategoryProp);
+  }, [selectedCategoryProp]);
+
+  const toggleSafetyMode = async () => {
+    if (isSafetyMode) {
+      setIsSafetyMode(false);
+      return;
     }
-    setIsSafetyMode(!isSafetyMode);
+
+    setIsSimulating(true);
+    try {
+      // Normalize categories to include seats (number), blockedSeats and bookedSeats arrays
+      const normalized = categories.filter(c => c.name).map(c => ({
+        name: c.name,
+        seats: Number(c.seats) || 0,
+        blockedSeats: Array.isArray(c.blockedSeats) ? c.blockedSeats : (c.blockedSeats ? [c.blockedSeats] : []),
+        bookedSeats: Array.isArray(c.bookedSeats) ? c.bookedSeats : (c.bookedSeats ? [c.bookedSeats] : [])
+      }));
+
+      const response = await client.post('/simulator/neo4j', {
+        categories: normalized,
+        layoutType,
+        stagePosition,
+        venueMetrics,
+        seatMap,
+        eventName: eventName || undefined,
+        eventId: eventId || undefined,
+        eventPopularity: typeof eventPopularity !== 'undefined' ? eventPopularity : undefined
+      });
+      const scores = response.data.scores || {};
+      setSafetyScores(scores);
+
+      // Auto-apply blocking for high-risk categories
+      const AUTO_BLOCK_THRESHOLD = 60;
+      try {
+        normalized.forEach((cat) => {
+          const score = scores[cat.name] || 0;
+          if (score >= AUTO_BLOCK_THRESHOLD) {
+            const suggested = generateAutoBlockSeats(cat, score) || [];
+            if (suggested.length > 0) {
+              const originalIndex = categories.findIndex(c => c.name === cat.name);
+              if (originalIndex >= 0) {
+                const existing = categories[originalIndex].blockedSeats || [];
+                const merged = Array.from(new Set([...(Array.isArray(existing) ? existing : [existing]), ...suggested]));
+                onCategoryBlockedSeatsChange(originalIndex, merged);
+                // If this category is currently selected in the UI, update it locally too
+                if (selectedCategory && selectedCategory.name === cat.name) {
+                  setSelectedCategory({ ...selectedCategory, blockedSeats: merged });
+                }
+              }
+            }
+          }
+        });
+      } catch (e) {
+        console.warn('Auto-blocking failed:', e);
+      }
+
+      setIsSafetyMode(true);
+    } catch (error) {
+      console.error('Neo4j simulation request failed:', error);
+      // Even if network fails, trigger UI so user knows it failed (will show 0s)
+      setIsSafetyMode(true);
+    } finally {
+      setIsSimulating(false);
+    }
   };
 
-  const activeCategories = categories.filter(c => c.name);
-  
+  // Keep only named categories and normalize numeric fields so the map renders all sections
+  const activeCategories = categories
+    .filter(c => c && c.name && c.name.toString().trim() !== '')
+    .map((c, i) => ({
+      ...c,
+      seats: Number(c.seats) || 0,
+      availableSeats: c.availableSeats !== undefined && c.availableSeats !== null
+        ? Number(c.availableSeats)
+        : (Number(c.seats) || 0),
+      blockedSeats: Array.isArray(c.blockedSeats) ? c.blockedSeats : (c.blockedSeats ? [c.blockedSeats] : []),
+      bookedSeats: Array.isArray(c.bookedSeats) ? c.bookedSeats : (c.bookedSeats ? [c.bookedSeats] : []),
+      color: c.color || DEFAULT_COLORS[i % DEFAULT_COLORS.length]
+    }));
+
   const displayCategories = isSafetyMode ? activeCategories.map(cat => {
     const risk = safetyScores[cat.name] || 0;
     // Map risk to Red/Yellow/Green
@@ -237,8 +324,9 @@ function VenueLayoutDesigner({
               type="button" 
               className={`btn-safety-sim ${isSafetyMode ? 'active' : ''}`}
               onClick={toggleSafetyMode}
+              disabled={isSimulating}
             >
-              {isSafetyMode ? '🛑 Exit Safety Simulation' : '🔮 Run Crowd Safety Simulation'}
+              {isSimulating ? '🔄 Querying Neo4j Graph API...' : isSafetyMode ? '🛑 Exit Safety Simulation' : '🔮 Run Graph Safety Simulation'}
             </button>
           </div>
           
@@ -248,8 +336,9 @@ function VenueLayoutDesigner({
             categories={displayCategories}
             selectedCategory={selectedCategory}
             onSelectCategory={(cat) => {
-               const originalCat = activeCategories.find(c => c.name === cat.name);
-               setSelectedCategory(originalCat);
+              const originalCat = activeCategories.find(c => c.name === cat.name);
+              setSelectedCategory(originalCat);
+              if (onSelectCategoryProp) onSelectCategoryProp(originalCat);
             }}
             showPrices={false}
             interactive={true}

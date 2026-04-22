@@ -58,7 +58,7 @@ const eventSchema = new mongoose.Schema(
     // ── Venue Layout ──
     venueLayoutType: {
       type: String,
-      enum: ['none', 'stadium', 'theater', 'arena', 'rectangle', 'festival'],
+      enum: ['none', 'stadium', 'theater', 'arena', 'rectangle', 'festival', 'premium_concert'],
       default: 'none',
     },
     stagePosition: {
@@ -66,6 +66,10 @@ const eventSchema = new mongoose.Schema(
       enum: ['top', 'bottom', 'left', 'right', 'center'],
       default: 'bottom',
     },
+    seatMap: [{
+      seatId: { type: String, required: true },
+      categoryName: { type: String, required: true }
+    }],
     venueMetrics: {
       exitsCount: { type: Number, default: 4 },
       aisleWidth: { type: String, enum: ['narrow', 'standard', 'wide'], default: 'standard' },

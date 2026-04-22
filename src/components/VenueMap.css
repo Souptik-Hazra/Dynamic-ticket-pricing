@@ -35,7 +35,7 @@
 }
 
 .stage-label {
-  fill: rgba(255, 255, 255, 0.5);
+  fill: #111; /* make stage label dark for readability */
   font-size: 14px;
   font-weight: 600;
   text-anchor: middle;
@@ -90,7 +90,8 @@
 
 /* ── Section text ──────────────────────────────────────────────────────── */
 .section-name {
-  fill: #fff;
+  fill: #111; /* dark text inside sections */
+  fill: #111 !important; /* dark text inside sections */
   font-size: 11px;
   font-weight: 700;
   text-anchor: middle;
@@ -101,7 +102,8 @@
 }
 
 .section-price {
-  fill: rgba(255, 255, 255, 0.85);
+  fill: rgba(0, 0, 0, 0.85);
+  fill: rgba(0, 0, 0, 0.85) !important;
   font-size: 11px;
   font-weight: 600;
   text-anchor: middle;
@@ -110,7 +112,8 @@
 }
 
 .section-seats {
-  fill: rgba(255, 255, 255, 0.6);
+  fill: rgba(0, 0, 0, 0.6);
+  fill: rgba(0, 0, 0, 0.6) !important;
   font-size: 9px;
   font-weight: 500;
   text-anchor: middle;
@@ -167,13 +170,15 @@
 
 .legend-name {
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.9);
+  color: #111; /* dark legend labels */
+  color: #111 !important; /* dark legend labels */
   letter-spacing: 0.5px;
   font-family: 'Inter', 'Segoe UI', sans-serif;
 }
 
 .legend-seats {
-  color: rgba(255, 255, 255, 0.5);
+  color: #333;
+  color: #333 !important;
   font-size: 10px;
   font-family: 'Inter', 'Segoe UI', sans-serif;
 }

@@ -28,22 +28,45 @@ function generateSeatLayout(totalSeats) {
   return layout;
 }
 
-function SeatGrid({ category, selectedSeats = [], onToggleSeat, interactive = true }) {
+function SeatGrid({ category, categories = [], selectedSeats = [], onToggleSeat, interactive = true, seatMap = [], totalCapacity = 0, seatOwners = {} }) {
   const layout = useMemo(() => {
+    if (seatMap && seatMap.length > 0 && totalCapacity > 0) {
+      return generateSeatLayout(totalCapacity); // Global unified grid
+    }
     if (!category || !category.seats) return [];
-    return generateSeatLayout(category.seats);
-  }, [category]);
+    return generateSeatLayout(category.seats); // Fallback: per-category grid
+  }, [category, categories, seatMap, totalCapacity]);
 
-  if (!category) return null;
+  const seatLookup = useMemo(() => {
+    const map = {};
+    if (seatMap) {
+      seatMap.forEach(s => { map[s.seatId] = s.categoryName; });
+    }
+    return map;
+  }, [seatMap]);
 
-  const bookedSeats = category.bookedSeats || [];
-  const blockedSeats = category.blockedSeats || [];
+  // If categories provided (multi-category view), we'll render all seats and color by assigned category
+  const multiMode = Array.isArray(categories) && categories.length > 0 && seatMap && seatMap.length > 0;
 
-  const handleSeatClick = (seatId) => {
+  // If not multiMode, category prop must exist
+  if (!multiMode && !category) return null;
+
+  const handleSeatClick = (seatId, seatCategoryName) => {
     if (!interactive) return;
-    if (bookedSeats.includes(seatId)) return; // Can't select sold seats
-    if (blockedSeats.includes(seatId) && onToggleSeat.name !== 'onToggleSeat') return; // Can't select blocked seats if buyer
-    onToggleSeat(seatId);
+    if (multiMode) {
+      // In multi-mode we don't allow toggling (display-only) unless interactive is true and seat belongs to a single selected category
+      if (!onToggleSeat) return;
+      const catName = seatCategoryName;
+      // if seat belongs to a different category than the primary `category` prop, ignore
+      if (category && catName && catName !== category.name) return;
+    }
+    // Per-category selection checks
+    const targetCategory = multiMode ? categories.find(c => c.name === seatCategoryName) : category;
+    const bookedSeats = (targetCategory && targetCategory.bookedSeats) || [];
+    const blockedSeats = (targetCategory && targetCategory.blockedSeats) || [];
+    if (bookedSeats.includes(seatId)) return;
+    if (blockedSeats.includes(seatId) && onToggleSeat && onToggleSeat.name !== 'onToggleSeat') return;
+    if (onToggleSeat) onToggleSeat(seatId);
   };
 
   return (
@@ -67,27 +90,43 @@ function SeatGrid({ category, selectedSeats = [], onToggleSeat, interactive = tr
               <div className="seat-row-label">{row.id}</div>
               <div className="seat-row-seats">
                 {row.seats.map(seat => {
-                  const isBooked = bookedSeats.includes(seat.id);
-                  const isBlocked = blockedSeats.includes(seat.id);
+                  const assignedCategoryName = seatLookup[seat.id];
+                  const assignedCategory = multiMode ? categories.find(c => c.name === assignedCategoryName) : category;
+                  const isBooked = assignedCategory && assignedCategory.bookedSeats ? assignedCategory.bookedSeats.includes(seat.id) : false;
+                  const isBlocked = assignedCategory && assignedCategory.blockedSeats ? assignedCategory.blockedSeats.includes(seat.id) : false;
                   const isSelected = selectedSeats.includes(seat.id);
-                  
+
                   let className = 'seat-box';
-                  if (isBooked) className += ' booked';
-                  else if (isBlocked) className += ' blocked';
-                  else if (isSelected) className += ' selected';
-                  else className += ' available';
+                  if (multiMode) {
+                    // color by assigned category; display-only if no assignment
+                    if (!assignedCategoryName) className += ' display-only';
+                    else className += ` category-${assignedCategoryName.replace(/\s+/g,'-').toLowerCase()}`;
+                    if (isBooked) className += ' booked';
+                    else if (isBlocked) className += ' blocked';
+                    else if (isSelected) className += ' selected';
+                  } else {
+                    if (isBooked) className += ' booked';
+                    else if (isBlocked) className += ' blocked';
+                    else if (isSelected) className += ' selected';
+                    else className += ' available';
+                  }
 
                   if (!interactive) {
-                      className += ' display-only';
+                    className += ' display-only';
                   }
+
+                  const ownerName = (seatOwners && (seatOwners[seat.id] || seatOwners.find?.(s => s.seatId === seat.id)?.customerName)) || null;
 
                   return (
                     <div
                       key={seat.id}
                       className={className}
-                      onClick={() => handleSeatClick(seat.id)}
-                      title={`Seat ${seat.id}${isBooked ? ' (Sold)' : isBlocked ? ' (Blocked by Organizer)' : ''}`}
+                      onClick={() => handleSeatClick(seat.id, assignedCategoryName)}
+                      title={`Seat ${seat.id}${assignedCategoryName ? ` (${assignedCategoryName})` : ''}${ownerName ? ` — ${ownerName}` : isBooked ? ' (Sold)' : isBlocked ? ' (Blocked)' : ''}`}
                     >
+                      {ownerName && (
+                        <div className="seat-hover-name">{ownerName}</div>
+                      )}
                       {seat.col}
                     </div>
                   );

@@ -121,9 +121,14 @@ function generateTheaterSections(categories, stagePos) {
     });
   });
 
+  // Position stage according to stagePos
+  let stageY = margin;
+  if (stagePos === 'bottom') stageY = 400 - margin - stageH;
+  else if (stagePos === 'center') stageY = Math.max(margin, (400 - stageH) / 2 - 10);
+
   const stage = {
     type: 'rect',
-    x: margin + 30, y: margin,
+    x: margin + 30, y: stageY,
     width: w - margin * 2 - 60, height: stageH,
     label: '🎭 STAGE',
   };
@@ -139,7 +144,9 @@ function generateArenaSections(categories, stagePos) {
 
   const sections = [];
   const stageX = (w - stageW) / 2;
-  const stageY = 20;
+  let stageY = 20;
+  if (stagePos === 'bottom') stageY = h - stageH - 20;
+  else if (stagePos === 'center') stageY = Math.max(10, (h - stageH) / 2 - 10);
 
   // Distribute: left side, center, right side
   const sideCount = Math.floor(n / 3);
@@ -230,9 +237,13 @@ function generateRectangleSections(categories, stagePos) {
     });
   });
 
+  let stageY = margin;
+  if (stagePos === 'bottom') stageY = 400 - margin - stageH;
+  else if (stagePos === 'center') stageY = Math.max(margin, (400 - stageH) / 2 - 10);
+
   const stage = {
     type: 'rect',
-    x: margin + 60, y: margin,
+    x: margin + 60, y: stageY,
     width: areaW - 120, height: stageH,
     label: '🏢 STAGE / PODIUM',
   };
@@ -284,11 +295,115 @@ function generateFestivalSections(categories, stagePos) {
     });
   });
 
+  // adjust festival stage vertical position
+  let stageY = 15;
+  if (stagePos === 'bottom') stageY = 420 - 15 - 35;
+  else if (stagePos === 'center') stageY = Math.max(15, (420 - 35) / 2 - 10);
+
   const stage = {
     type: 'rect',
-    x: cx - 60, y: 15,
+    x: cx - 60, y: stageY,
     width: 120, height: 35,
     label: '🎪 STAGE',
+  };
+
+  return { sections, stage };
+}
+
+function generatePremiumConcertSections(categories, stagePos) {
+  const cx = 300;
+  const cy = 150; // Focal point for rings
+  const w = 600, h = 420;
+  const stageW = 240, stageH = 50;
+  const n = categories.length;
+  if (n === 0) return { sections: [], stage: null };
+
+  const sections = [];
+  
+  // Base Distribution
+  const floorCount = Math.max(1, Math.ceil(n * 0.5));
+  const ringCount = n - floorCount;
+  
+  // 1. Plot the Ground Floor Grid Matrix
+  const cols = Math.ceil(Math.sqrt(floorCount * 1.5));
+  const rows = Math.ceil(floorCount / cols);
+  
+  const gap = 8;
+  const floorW = 320;
+  const floorH = 140;
+  const boxW = (floorW - (cols - 1) * gap) / cols;
+  const boxH = (floorH - (rows - 1) * gap) / rows;
+  const startY = 90;
+
+  for (let i = 0; i < floorCount; i++) {
+    const r = Math.floor(i / cols);
+    const c = i % cols;
+    const curCols = (r === rows - 1 && floorCount % cols !== 0) ? floorCount % cols : cols;
+    const startX = cx - (curCols * boxW + (curCols - 1) * gap) / 2;
+    
+    const x = startX + c * (boxW + gap);
+    const y = startY + r * (boxH + gap);
+    
+    sections.push({
+      path: `M ${x} ${y} L ${x + boxW} ${y} L ${x + boxW} ${y + boxH} L ${x} ${y + boxH} Z`,
+      labelX: x + boxW / 2,
+      labelY: y + boxH / 2,
+      category: categories[i],
+      index: i,
+    });
+  }
+
+  // 2. Plot the Outer Tiered Rings
+  if (ringCount > 0) {
+    const ring1Count = Math.ceil(ringCount / 2);
+    const ring2Count = ringCount - ring1Count;
+    
+    const drawWedge = (rIn, rOut, a1, a2, idxOffset, count, catArrayIdx) => {
+      for (let i = 0; i < count; i++) {
+        const startRad = a1 + (a2 - a1) * (i / count);
+        const endRad = a1 + (a2 - a1) * ((i + 1) / count) - 0.03;
+        
+        const ix1 = cx + rIn * Math.cos(startRad);
+        const iy1 = cy + rIn * Math.sin(startRad);
+        const ix2 = cx + rIn * Math.cos(endRad);
+        const iy2 = cy + rIn * Math.sin(endRad);
+        
+        const ox1 = cx + rOut * Math.cos(startRad);
+        const oy1 = cy + rOut * Math.sin(startRad);
+        const ox2 = cx + rOut * Math.cos(endRad);
+        const oy2 = cy + rOut * Math.sin(endRad);
+        
+        const path = `M ${ix1} ${iy1} A ${rIn} ${rIn} 0 0 1 ${ix2} ${iy2} L ${ox2} ${oy2} A ${rOut} ${rOut} 0 0 0 ${ox1} ${oy1} Z`;
+        
+        const midR = (rIn + rOut) / 2;
+        const midA = (startRad + endRad) / 2;
+        
+        sections.push({
+          path,
+          labelX: cx + midR * Math.cos(midA),
+          labelY: cy + midR * Math.sin(midA),
+          category: categories[catArrayIdx + i],
+          index: catArrayIdx + i,
+        });
+      }
+    };
+    
+    const arcLeft = Math.PI - 0.2;
+    const arcRight = 0.2; 
+    
+    if (ring1Count > 0) drawWedge(160, 200, arcLeft, arcRight, 0, ring1Count, floorCount);
+    if (ring2Count > 0) drawWedge(210, 255, arcLeft + 0.1, arcRight - 0.1, 0, ring2Count, floorCount + ring1Count);
+  }
+
+  let stageY = 20;
+  if (stagePos === 'bottom') stageY = 420 - 20 - stageH;
+  else if (stagePos === 'center') stageY = Math.max(20, (420 - stageH) / 2 - 10);
+
+  const stage = {
+    type: 'rect',
+    x: cx - stageW / 2, y: stageY,
+    width: stageW, height: stageH,
+    label: '🎸 PREMIUM STAGE',
   };
 
   return { sections, stage };
@@ -301,6 +416,7 @@ const GENERATORS = {
   arena: generateArenaSections,
   rectangle: generateRectangleSections,
   festival: generateFestivalSections,
+  premium_concert: generatePremiumConcertSections,
 };
 
 // ── VenueMap Component ────────────────────────────────────────────────────

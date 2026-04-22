@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import AdminEventForm from './AdminEventForm';
+import EventMapModal from './EventMapModal';
 import Footer from './Footer';
 import { ENDPOINTS } from '../config/api';
 import { useWebSocket } from '../hooks/useWebSocket';
@@ -180,6 +181,11 @@ function AdminDashboard() {
     setEditingEvent(null);
     if (refresh) fetchEvents();
   };
+
+  const [showMapModal, setShowMapModal] = useState(false);
+  const [mapEvent, setMapEvent] = useState(null);
+
+  const openMapForEvent = (event) => { setMapEvent(event); setShowMapModal(true); };
 
   const fmtDate = (d) =>
     new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -441,6 +447,7 @@ function AdminDashboard() {
                               {event.status !== 'completed' && (
                                 <button className="complete-btn" onClick={() => handleCompleteEvent(event._id)} title="Complete Event">✅</button>
                               )}
+                              <button className="view-map-btn" onClick={() => openMapForEvent(event)} title="View Map">🗺️</button>
                               <button className="edit-btn" onClick={() => { setEditingEvent(event); setShowEventForm(true); }} title="Edit">✏️</button>
                               <button className="delete-btn" onClick={() => handleDeleteEvent(event._id)} title="Delete">🗑️</button>
                             </div>
@@ -454,6 +461,7 @@ function AdminDashboard() {
             )}
           </div>
         )}
+        {showMapModal && <EventMapModal event={mapEvent} onClose={() => setShowMapModal(false)} />}
 
         {/* ── Tickets ───────────────────────────────────────────────────── */}
         {view === 'tickets' && (

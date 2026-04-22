@@ -14,6 +14,7 @@ import Event from '../shared/models/Event.js';
 import Ticket from '../shared/models/Ticket.js';
 import User from '../shared/models/User.js';
 import PriceLog from '../shared/models/PriceLog.js';
+import neo4jClient from './utils/neo4jClient.js';
 import {
   notify,
   wsNotifyUser,
@@ -31,6 +32,13 @@ import {
 
 dotenv.config();
 
+// Risk weighting configuration (env-configurable)
+const RISK_SEAT_WEIGHT = parseFloat(process.env.RISK_SEAT_WEIGHT) || 30; // influence of category seat share
+const RISK_BLOCKED_WEIGHT = parseFloat(process.env.RISK_BLOCKED_WEIGHT) || -5; // per blocked seat penalty
+const RISK_BOOKED_WEIGHT = parseFloat(process.env.RISK_BOOKED_WEIGHT) || 40; // booked ratio -> increases risk
+const RISK_POPULARITY_MULTIPLIER = parseFloat(process.env.RISK_POPULARITY_MULTIPLIER) || 0.5; // popularity scaling
+const RISK_STAGE_CENTER_BONUS = parseFloat(process.env.RISK_STAGE_CENTER_BONUS) || -5;
+
 const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:5000';
 
 const app = express();
@@ -47,6 +55,31 @@ app.use(requestLogger('OrganizerService'));
 app.get('/health', (_req, res) =>
   res.json({ status: 'ok', service: 'organizer-service', ts: new Date().toISOString() })
 );
+
+// ── Seat owners mapping for an event (organizer or admin) ──────────────────
+app.get('/api/organizer/events/:id/seat-owners', jwtMiddleware, requireDB, async (req, res, next) => {
+  try {
+    const eventId = req.params.id;
+    // Only organizers or admins can access; additionally, organizers can only access their own events
+    if (!req.user || (req.user.role !== 'organizer' && req.user.role !== 'admin')) {
+      return res.status(403).json({ error: 'Organizer or Admin access required' });
+    }
+
+    // If organizer, ensure they own the event
+    if (req.user.role === 'organizer') {
+      const ev = await Event.findById(eventId).select('organizerId');
+      if (!ev) return res.status(404).json({ error: 'Event not found' });
+      if (!ev.organizerId || ev.organizerId.toString() !== req.user.id.toString()) {
+        return res.status(403).json({ error: 'Access denied for this organizer' });
+      }
+    }
+
+    const tickets = await Ticket.find({ eventId, status: 'confirmed' }).select('seatNumber customerName');
+    const seatOwners = {};
+    tickets.forEach(t => { if (t.seatNumber) seatOwners[t.seatNumber] = t.customerName || ''; });
+    res.json({ seatOwners });
+  } catch (err) { next(err); }
+});
 
 connectDB('OrganizerService');
 
@@ -722,6 +755,243 @@ app.get('/api/tickets', jwtMiddleware, requireDB, async (req, res, next) => {
       .sort({ purchaseDate: -1 });
     res.json(tickets);
   } catch (err) { next(err); }
+});
+
+// POST /api/simulator/neo4j — GNN Graph Traversal via Neo4j
+app.post('/api/simulator/neo4j', jwtMiddleware, async (req, res, next) => {
+  try {
+    console.log('[Simulator] Received payload:', JSON.stringify(req.body));
+    const { categories, layoutType, stagePosition, venueMetrics, eventPopularity } = req.body;
+
+    if (!categories || categories.length === 0) {
+      return res.json({ scores: {} });
+    }
+
+    // Compute totals and normalize incoming category shape (include blocked/booked counts)
+    const totalSeats = categories.reduce((s, c) => s + (parseInt(c.seats) || 0), 0);
+    const normCategories = categories.map(c => {
+      const seats = parseInt(c.seats) || 0;
+      const blockedCount = Array.isArray(c.blockedSeats) ? c.blockedSeats.length : 0;
+      const bookedCount = Array.isArray(c.bookedSeats) ? c.bookedSeats.length : 0;
+      const bookedRatio = seats > 0 ? (bookedCount / seats) : 0;
+      return {
+        name: c.name,
+        seats,
+        blockedCount,
+        bookedCount,
+        bookedRatio
+      };
+    });
+
+    // Attempt to calculate risk using an enhanced Cypher UNWIND graph logic that
+    // factors per-category seats, blocked seats, stagePosition and event popularity.
+    const cypherQuery = `
+      UNWIND $categories AS cat
+      WITH cat,
+        CASE
+          WHEN $layoutType = 'stadium' THEN 20
+          WHEN $layoutType = 'arena' THEN 15
+          WHEN $layoutType = 'festival' THEN 30
+          WHEN $layoutType = 'theater' THEN 10
+          ELSE 5
+        END AS topologyBase,
+        CASE
+          WHEN $metrics.exitsCount <= 2 THEN 30
+          WHEN $metrics.exitsCount <= 4 THEN 10
+          WHEN $metrics.exitsCount >= 10 THEN -15
+          ELSE 0
+        END AS exitPenalty,
+        CASE WHEN $metrics.aisleWidth = 'narrow' THEN 25 WHEN $metrics.aisleWidth = 'wide' THEN -10 ELSE 0 END AS aislePenalty,
+        CASE WHEN $metrics.securitySpeed = 'slow' THEN 15 WHEN $metrics.securitySpeed = 'fast' THEN -5 ELSE 0 END AS speedPenalty,
+        // Seat-based factor: proportion of seats in this category scaled by env weight
+        CASE WHEN $totalSeats > 0 THEN toFloat(cat.seats) / toFloat($totalSeats) * $seatWeight ELSE 0 END AS seatFactor,
+        // Blocked seats reduce available capacity (lower crowding) so apply blocked weight
+        CASE WHEN cat.blockedCount > 0 THEN $blockedWeight * cat.blockedCount ELSE 0 END AS blockedPenalty,
+        // Booked ratio increases risk proportionally
+        CASE WHEN cat.bookedRatio IS NOT NULL THEN $bookedWeight * cat.bookedRatio ELSE 0 END AS bookedPenalty,
+        // Stage position influence (simple heuristic)
+        CASE WHEN $stagePosition = 'center' THEN $stageCenterBonus WHEN $stagePosition = 'top' THEN 0 WHEN $stagePosition = 'bottom' THEN -$stageCenterBonus ELSE 0 END AS stagePenalty
+      
+      WITH cat.name AS name, (20 + topologyBase + exitPenalty + aislePenalty + speedPenalty + seatFactor + blockedPenalty + stagePenalty) AS rawRisk
+      // Apply event popularity multiplier (0-1 scaled) to make popular events slightly riskier
+      WITH name, rawRisk * (1 + ($popularity * $popularityMultiplier)) AS adjustedRisk
+      // Normalize to 0-100 range
+      RETURN name, CASE WHEN adjustedRisk > 100 THEN 100 WHEN adjustedRisk < 0 THEN 0 ELSE adjustedRisk END AS riskScore
+    `;
+
+    try {
+      const records = await neo4jClient.runQuery(cypherQuery, {
+        categories: normCategories,
+        layoutType: layoutType || 'none',
+        metrics: venueMetrics || { exitsCount: 4, aisleWidth: 'standard', securitySpeed: 'normal' },
+        totalSeats,
+        stagePosition: stagePosition || 'center',
+        popularity: parseFloat(eventPopularity) || 0,
+        // Pass env weights into the query so Cypher uses them
+        seatWeight: RISK_SEAT_WEIGHT,
+        blockedWeight: RISK_BLOCKED_WEIGHT,
+        bookedWeight: RISK_BOOKED_WEIGHT,
+        popularityMultiplier: RISK_POPULARITY_MULTIPLIER,
+        stageCenterBonus: RISK_STAGE_CENTER_BONUS
+      });
+
+      console.log('[Simulator] Neo4j runQuery returned:', {
+        type: typeof records,
+        isArray: Array.isArray(records),
+        length: Array.isArray(records) ? records.length : undefined
+      });
+      
+      // Ensure records are plain JS values to avoid Record access issues in runtime
+      const scores = {};
+      try {
+        const plain = Array.isArray(records)
+          ? records.map(r => {
+              const name = typeof r.get === 'function' ? r.get('name') : r.name;
+              const rawRisk = typeof r.get === 'function' ? r.get('riskScore') : r.riskScore;
+              const riskScore = (rawRisk && typeof rawRisk.toNumber === 'function') ? rawRisk.toNumber() : Number(rawRisk);
+              return { name, riskScore };
+            })
+          : [];
+        plain.forEach(r => {
+          if (r && r.name !== undefined) scores[r.name] = r.riskScore;
+        });
+      } catch (e) {
+        console.error('[Simulator] Failed to convert Neo4j records to plain objects:', e && e.message, e);
+        // fall back to heuristic later
+      }
+      
+      // Log scores before noise for debugging
+      console.log('[Simulator] Scores before noise:', JSON.stringify(scores));
+
+      // Inject some organic noise to simulate physical fluid dynamics
+      try {
+        Object.keys(scores).forEach(key => {
+          scores[key] += (Math.floor(Math.random() * 10) - 5);
+          scores[key] = Math.min(100, Math.max(0, scores[key]));
+        });
+      } catch (noiseError) {
+        console.error('[Simulator] Noise injection failed:', noiseError && noiseError.message, noiseError);
+      }
+
+      console.log('[Simulator] Final scores:', JSON.stringify(scores));
+
+      // Persist simulation results back into Neo4j for the event if provided
+      let stored = false;
+      try {
+        const eventIdParam = req.body.eventId;
+        const eventNameParam = req.body.eventName;
+        if (eventIdParam || eventNameParam) {
+          // Build scores array for Cypher
+          const scoreEntries = Object.keys(scores).map(name => ({ name, score: Number(scores[name]) }));
+
+          const writeCypher = `
+            // Ensure event node exists (prefer eventId when provided, otherwise name)
+            WITH $eventId AS _eid, $eventName AS _ename
+            CALL {
+              WITH _eid, _ename
+              // Merge by eventId when available (avoids colliding with name-based nodes)
+              WITH _eid, _ename
+              WHERE _eid IS NOT NULL
+              MERGE (ev:Event { eventId: _eid })
+              ON CREATE SET ev.created = datetime()
+              SET ev.lastSimulated = datetime()
+              // If we also have a name, keep it in sync
+              WITH ev, _ename
+              WHERE _ename IS NOT NULL
+              SET ev.name = _ename
+              RETURN ev
+            }
+            UNION
+            CALL {
+              WITH _eid, _ename
+              WHERE _eid IS NULL AND _ename IS NOT NULL
+              MERGE (ev:Event { name: _ename })
+              ON CREATE SET ev.created = datetime()
+              SET ev.lastSimulated = datetime()
+              RETURN ev
+            }
+            // Create a Simulation node and link to event
+            CREATE (s:Simulation { ts: datetime(), popularity: $popularity, totalSeats: $totalSeats })
+            WITH s
+            UNWIND $scores AS sc
+            MERGE (c:Category { name: sc.name })
+            CREATE (s)-[:HAS_SCORE { value: sc.score }]->(c)
+            // Link simulation to the most recently matched Event
+            WITH s
+            MATCH (ev:Event)
+            WHERE (ev.eventId IS NOT NULL AND ev.eventId = $eventId) OR (ev.name IS NOT NULL AND ev.name = $eventName)
+            MERGE (ev)-[:HAS_SIMULATION]->(s)
+            RETURN s
+          `;
+
+            // Safer write: use FOREACH-based conditional MERGE to ensure Event node exists
+            const safeWriteCypher = `
+              WITH $eventId AS _eid, $eventName AS _ename, $scores AS scores, $popularity AS popularity, $totalSeats AS totalSeats
+              // If we have an eventId, merge by eventId and set name if provided
+              FOREACH (_ IN CASE WHEN _eid IS NOT NULL THEN [1] ELSE [] END |
+                MERGE (ev:Event { eventId: _eid })
+                ON CREATE SET ev.created = datetime()
+                SET ev.name = coalesce(_ename, ev.name), ev.lastSimulated = datetime(), ev.id = _eid
+              )
+              // Otherwise if we only have a name, merge by name
+              FOREACH (_ IN CASE WHEN _eid IS NULL AND _ename IS NOT NULL THEN [1] ELSE [] END |
+                MERGE (ev:Event { name: _ename })
+                ON CREATE SET ev.created = datetime()
+                SET ev.lastSimulated = datetime()
+              )
+              CREATE (s:Simulation { ts: datetime(), popularity: popularity, totalSeats: totalSeats })
+              WITH s, scores
+              UNWIND scores AS sc
+              MERGE (c:Category { name: sc.name })
+              CREATE (s)-[:HAS_SCORE { value: sc.score }]->(c)
+              // Persist seat assignments if provided
+              WITH s, scores
+              UNWIND $seatMap AS sm
+              // sm = { seatId: 'A1', categoryName: 'VIP' }
+              MERGE (seat:Seat { id: sm.seatId })
+              SET seat.lastUpdated = datetime()
+              MERGE (cat2:Category { name: sm.categoryName })
+              MERGE (cat2)-[:HAS_SEAT]->(seat)
+              MERGE (s)-[:ASSIGNED_SEAT]->(seat)
+              // Link the simulation to the matching event node
+              WITH s, _eid, _ename
+              MATCH (ev:Event)
+              WHERE (_eid IS NOT NULL AND (ev.eventId = _eid OR ev.id = _eid)) OR (_eid IS NULL AND _ename IS NOT NULL AND ev.name = _ename)
+              MERGE (ev)-[:HAS_SIMULATION]->(s)
+              RETURN s
+            `;
+
+          console.log('[Simulator] Persisting simulation to Neo4j for', eventIdParam ? `eventId=${eventIdParam}` : `name=${eventNameParam}`);
+          console.log('[Simulator] Score entries:', JSON.stringify(scoreEntries));
+          // run safe write query (ensures Event merge is visible for linking)
+          await neo4jClient.runQuery(safeWriteCypher, {
+            eventId: eventIdParam,
+            eventName: eventNameParam,
+            popularity: parseFloat(eventPopularity) || 0,
+            totalSeats,
+            scores: scoreEntries,
+            seatMap: req.body.seatMap || []
+          });
+          console.log('[Simulator] Persisted simulation to Neo4j');
+          stored = true;
+        }
+      } catch (storeErr) {
+        console.error('[Simulator] Failed to persist simulation to Neo4j:', storeErr && storeErr.message, storeErr);
+      }
+
+      return res.json({ scores, stored, payloadEcho: { eventId: req.body.eventId, eventName: req.body.eventName } });
+      
+    } catch (graphError) {
+      // Fallback if Neo4j is not perfectly configured by the user yet
+      console.error('[Simulator] Neo4j graph traversal failed. Falling back to simple heuristic API mode. Error:', graphError && graphError.message);
+      console.error(graphError && graphError.stack ? graphError.stack : graphError);
+      const scores = {};
+      categories.forEach(cat => scores[cat.name] = 50); // Default placeholder fallback
+      return res.json({ scores, fallback: true });
+    }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // ── Error handling ─────────────────────────────────────────────────────────

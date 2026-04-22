@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import AdminEventForm from './AdminEventForm';
+import EventMapModal from './EventMapModal';
 import Footer from './Footer';
 import { ENDPOINTS } from '../config/api';
 import { useWebSocket } from '../hooks/useWebSocket';
@@ -166,6 +167,10 @@ function OrganizerDashboard() {
     setEditingEvent(null);
     if (refresh) fetchEvents();
   };
+
+  const [showMapModal, setShowMapModal] = useState(false);
+  const [mapEvent, setMapEvent] = useState(null);
+  const openMapForEvent = (event) => { setMapEvent(event); setShowMapModal(true); };
 
   const fmtDate = (d) =>
     new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -355,6 +360,7 @@ function OrganizerDashboard() {
                           </td>
                           <td>
                             <div className="action-buttons">
+                              <button className="view-map-btn" onClick={() => openMapForEvent(event)} title="View Map">🗺️</button>
                               <button className="msg-btn" onClick={() => setMessageModal({ isOpen: true, type: 'attendees', eventId: event._id, eventName: event.name, title: '', message: '' })} title="Message Attendees" style={{ background: '#9b59b6', border: 'none', borderRadius: '4px', padding: '5px', cursor: 'pointer' }}>💬</button>
                               <button className="edit-btn" onClick={() => { setEditingEvent(event); setShowEventForm(true); }} title="Edit">✏️</button>
                               <button className="delete-btn" onClick={() => handleDeleteEvent(event._id)} title="Delete">🗑️</button>
@@ -365,6 +371,7 @@ function OrganizerDashboard() {
                     </tbody>
                   </table>
                 )}
+                {showMapModal && <EventMapModal event={mapEvent} onClose={() => setShowMapModal(false)} />}
               </div>
             )}
           </div>

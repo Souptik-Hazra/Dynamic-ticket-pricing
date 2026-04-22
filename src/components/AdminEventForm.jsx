@@ -3,6 +3,7 @@ import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { ENDPOINTS } from '../config/api';
 import VenueLayoutDesigner from './VenueLayoutDesigner';
+import SeatGridPreview from './SeatGridPreview';
 import './AdminEventForm.css';
 
 function AdminEventForm({ event, onClose }) {
@@ -34,6 +35,10 @@ function AdminEventForm({ event, onClose }) {
     aisleWidth: 'standard',
     securitySpeed: 'normal'
   });
+  const [seatMap, setSeatMap] = useState([]);
+  const [safetyScores, setSafetyScores] = useState({});
+  const [isSafetyMode, setIsSafetyMode] = useState(false);
+  const [activeCategory, setActiveCategory] = useState(null);
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -90,6 +95,9 @@ function AdminEventForm({ event, onClose }) {
       setStagePosition(event.stagePosition || 'bottom');
       if (event.venueMetrics) {
         setVenueMetrics(event.venueMetrics);
+      }
+      if (event.seatMap) {
+        setSeatMap(event.seatMap);
       }
       
       // Set ticket categories if they exist
@@ -226,7 +234,8 @@ function AdminEventForm({ event, onClose }) {
           availableSeats: cat.availableSeats !== undefined ? parseInt(cat.availableSeats) : parseInt(cat.seats),
           bookedSeats: cat.bookedSeats || [],
           color: cat.color || '',
-        }))
+        })),
+        seatMap
       };
 
       if (event) {
@@ -253,30 +262,35 @@ function AdminEventForm({ event, onClose }) {
   };
 
   return (
-    <div className="admin-event-form-overlay bg-white dark:bg-gray-900 text-gray-900 dark:text-white min-h-screen">
+    <div className="admin-event-form-overlay" onClick={(e) => {
+      if (e.target.className === 'admin-event-form-overlay') onClose(false);
+    }}>
       <div className="admin-event-form-container">
         <div className="form-header">
           <h2>{event ? 'Edit Event' : 'Create New Event'}</h2>
-          <button className="close-btn" onClick={() => onClose(false)}>×</button>
+          <button className="close-btn" onClick={() => onClose(false)}>&times;</button>
         </div>
 
         {error && <div className="error-message">{error}</div>}
 
-        <form onSubmit={handleSubmit} className="admin-event-form">
-          <div className="form-group">
-            <label htmlFor="name">Event Name *</label>
-            <input
-              type="text"
-              id="name"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              required
-              disabled={loading}
-            />
-          </div>
+        <form onSubmit={handleSubmit} className="admin-event-split-layout">
+          {/* Left Panel: Form Details */}
+          <div className="admin-event-form-scrollable">
+            <div className="admin-event-form">
+              <div className="form-group">
+                <label htmlFor="name">Event Name *</label>
+                <input
+                  type="text"
+                  id="name"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  required
+                  disabled={loading}
+                />
+              </div>
 
-          <div className="form-group">
+              <div className="form-group">
             <label htmlFor="description">Description *</label>
             <textarea
               id="description"
@@ -468,6 +482,16 @@ function AdminEventForm({ event, onClose }) {
             onCategoryBlockedSeatsChange={handleCategoryBlockedSeatsChange}
             venueMetrics={venueMetrics}
             setVenueMetrics={setVenueMetrics}
+            safetyScores={safetyScores}
+            setSafetyScores={setSafetyScores}
+            isSafetyMode={isSafetyMode}
+            setIsSafetyMode={setIsSafetyMode}
+            eventName={formData.name}
+            eventId={event?._id}
+            eventPopularity={formData.eventPopularity}
+            selectedCategory={ticketCategories.find(c=>c.name===activeCategory) || null}
+            onSelectCategory={(cat) => setActiveCategory(cat?.name || null)}
+            seatMap={seatMap}
           />
 
           <div className="form-group">
@@ -607,18 +631,33 @@ function AdminEventForm({ event, onClose }) {
             )}
           </div>
 
-          <div className="form-actions">
-            <button 
-              type="button" 
-              className="cancel-btn" 
-              onClick={() => onClose(false)}
-              disabled={loading}
-            >
-              Cancel
-            </button>
-            <button type="submit" className="submit-btn" disabled={loading}>
-              {loading ? 'Saving...' : (event ? 'Update Event' : 'Create Event')}
-            </button>
+              <div className="form-actions">
+                <button 
+                  type="button" 
+                  className="cancel-btn" 
+                  onClick={() => onClose(false)}
+                  disabled={loading}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="submit-btn" disabled={loading}>
+                  {loading ? 'Saving...' : (event ? 'Update Event' : 'Create Event')}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Panel: Live Seat Grid Preview Toolkit */}
+          <div className="admin-event-preview-panel">
+            <SeatGridPreview 
+              categories={ticketCategories} 
+              seatMap={seatMap} 
+              onSeatMapChange={setSeatMap} 
+              safetyScores={safetyScores}
+              isSafetyMode={isSafetyMode}
+              activeCategory={activeCategory}
+              setActiveCategory={(name) => setActiveCategory(name)}
+            />
           </div>
         </form>
       </div>

@@ -146,6 +146,8 @@ app.use(proxy(v1('/api/subscription'), SERVICES.subscription));
 app.use(proxy(v1('/api/events'), SERVICES.organizer));
 app.use(proxy(v1('/api/tickets'), SERVICES.organizer));
 app.use(proxy(v1('/api/organizers'), SERVICES.organizer));
+// Simulator endpoints (Neo4j-backed) — forward to Organizer service
+app.use(proxy(v1('/api/simulator'), SERVICES.organizer));
 app.use(proxy(v1('/api/qr'), SERVICES.qr));
 app.use(proxy(v1('/api/scanner'), SERVICES.scanner));
 app.use(proxy(v1('/api/wallet'), SERVICES.wallet));

@@ -16,11 +16,34 @@
 .admin-event-form-container {
   background: white;
   border-radius: 12px;
-  max-width: 800px;
-  width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
+  width: 95%;
+  max-width: 1400px;
+  max-height: 95vh;
+  overflow: hidden;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-event-split-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.admin-event-form-scrollable {
+  flex: 0 0 55%;
+  height: calc(95vh - 85px);
+  overflow-y: auto;
+  border-right: 2px solid #e0e0e0;
+}
+
+.admin-event-preview-panel {
+  flex: 0 0 45%;
+  background: #f8f9fa;
+  padding: 20px;
+  overflow-y: auto;
+  height: calc(95vh - 85px);
 }
 
 .form-header {

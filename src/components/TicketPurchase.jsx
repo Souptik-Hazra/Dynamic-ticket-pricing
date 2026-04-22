@@ -24,7 +24,7 @@ function TicketPurchase({ event, onBack, onSuccess }) {
   const [walletLoading, setWalletLoading]     = useState(false);
   const [selectedSeats, setSelectedSeats]     = useState([]);
 
-  const isSeatSelectionMode = event.venueLayoutType && event.venueLayoutType !== 'none' && selectedCategory;
+  const isSeatSelectionMode = !!selectedCategory; // Active for any category selection
 
   // Fetch dynamic prices for all categories
   useEffect(() => {
@@ -281,15 +281,20 @@ function TicketPurchase({ event, onBack, onSuccess }) {
                 interactive={true}
               />
               
-              {/* Individual Seat Grid Overlay */}
-              {isSeatSelectionMode && (
-                <SeatGrid
-                  category={selectedCategory}
-                  selectedSeats={selectedSeats}
-                  onToggleSeat={handleToggleSeat}
-                  interactive={true}
-                />
-              )}
+            </div>
+          )}
+
+          {/* Independent Seat Grid Overlay (Always available if a category is selected) */}
+          {isSeatSelectionMode && (
+            <div className="venue-map-section" style={{ borderTop: 'none', paddingTop: 0 }}>
+              <SeatGrid
+                category={selectedCategory}
+                selectedSeats={selectedSeats}
+                onToggleSeat={handleToggleSeat}
+                interactive={true}
+                seatMap={event.seatMap}
+                totalCapacity={event.capacity}
+              />
             </div>
           )}
 

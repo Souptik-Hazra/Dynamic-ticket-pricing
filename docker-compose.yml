@@ -16,6 +16,19 @@ services:
     ports:
       - "6379:6379"
 
+  neo4j:
+    image: neo4j:5
+    profiles: ["full"]
+    ports:
+      - "7474:7474" # HTTP Browser
+      - "7687:7687" # BOLT
+    environment:
+      - NEO4J_AUTH=neo4j/password
+      - NEO4J_dbms_memory_heap_initial__size=512m
+      - NEO4J_dbms_memory_heap_max__size=1g
+    volumes:
+      - neo4j_data:/data
+
   rabbitmq:
     image: rabbitmq:3-management
     profiles: ["full"]
@@ -72,10 +85,13 @@ services:
       args: { SERVICE_PATH: organizer-service, PORT: 4013 }
     profiles: ["core", "full"]
     ports: ["4013:4013"]
-    depends_on: [mongodb]
+    depends_on: [mongodb, neo4j]
     environment:
       - PORT=4013
       - MONGODB_URI=mongodb://mongodb:27017/dynamic-ticket-pricing
+      - NEO4J_URI=neo4j://neo4j:7687
+      - NEO4J_USERNAME=neo4j
+      - NEO4J_PASSWORD=password
 
   # ── Dynamic Pricing ML ───────────────────────────────────────────────────
   ml-model:
@@ -199,3 +215,4 @@ services:
 
 volumes:
   mongodb_data:
+  neo4j_data:
