@@ -8,85 +8,114 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { getWsUrl } from '../config/api';
 
-const WS_URL = getWsUrl();
-const RECONNECT_DELAY_MS  = 3000;
+const RECONNECT_BASE_MS = 1000;
+const RECONNECT_MAX_MS = 30000;
 const MAX_RECONNECT_TRIES = 10;
 
 export function useWebSocket() {
-  const wsRef        = useRef(null);
-  const retriesRef   = useRef(0);
-  const timerRef     = useRef(null);
-  const mountedRef   = useRef(true);
+  const wsRef = useRef(null);
+  const retriesRef = useRef(0);
+  const timerRef = useRef(null);
+  const mountedRef = useRef(false);
+  const lastFetchTokenRef = useRef(null);
 
-  const [connected,  setConnected]  = useState(false);
-  const [lastEvent,  setLastEvent]  = useState(null); // { type, ...payload }
+  const [connected, setConnected] = useState(false);
+  const [lastEvent, setLastEvent] = useState(null);
+  const [token, setToken] = useState(() => localStorage.getItem('token'));
 
-  const connect = useCallback(() => {
-    const token = localStorage.getItem('token');
-    if (!token || !mountedRef.current) return;
-
-    const ws = new WebSocket(WS_URL);
-    wsRef.current = ws;
-
-    ws.onopen = () => {
-      retriesRef.current = 0;
-      // Send auth frame immediately on connect
-      ws.send(JSON.stringify({ type: 'auth', token }));
+  // Keep token state in sync with other tabs (storage events)
+  useEffect(() => {
+    const onStorage = (e) => {
+      if (e.key === 'token') setToken(e.newValue);
     };
-
-    ws.onmessage = (e) => {
-      try {
-        const msg = JSON.parse(e.data);
-        if (msg.type === 'auth_success') {
-          if (mountedRef.current) setConnected(true);
-          return;
-        }
-        if (msg.type === 'pong') return; // ignore keepalive
-        if (mountedRef.current) setLastEvent(msg);
-      } catch { /* ignore malformed */ }
-    };
-
-    ws.onclose = () => {
-      if (!mountedRef.current) return;
-      setConnected(false);
-      wsRef.current = null;
-      if (retriesRef.current < MAX_RECONNECT_TRIES) {
-        retriesRef.current += 1;
-        timerRef.current = setTimeout(connect, RECONNECT_DELAY_MS);
-      }
-    };
-
-    ws.onerror = () => ws.close(); // trigger onclose → reconnect
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
   }, []);
 
-  // Keepalive ping every 30 s
+  const connect = useCallback(() => {
+    const WS_URL = getWsUrl();
+    if (!token || !mountedRef.current) return;
+    if (wsRef.current) return; // already connected/connecting
+
+    try {
+      const ws = new WebSocket(WS_URL);
+      wsRef.current = ws;
+
+        ws.onopen = () => {
+          // successful connect — reset retries/backoff
+          retriesRef.current = 0;
+          if (mountedRef.current && token) {
+            try { ws.send(JSON.stringify({ type: 'auth', token })); } catch (err) { /* ignore */ }
+            setConnected(true);
+          }
+        };
+
+      ws.onmessage = (e) => {
+        try {
+          const msg = JSON.parse(e.data);
+          if (msg.type === 'auth_success') {
+            if (mountedRef.current) setConnected(true);
+            return;
+          }
+          if (msg.type === 'pong') return;
+          if (mountedRef.current) setLastEvent(msg);
+        } catch (err) {
+          // ignore malformed
+        }
+      };
+
+        ws.onclose = () => {
+          if (!mountedRef.current) return;
+          setConnected(false);
+          wsRef.current = null;
+          if (retriesRef.current < MAX_RECONNECT_TRIES) {
+            // exponential backoff: base * 2^retries (clamped)
+            const attempt = retriesRef.current + 1;
+            retriesRef.current = attempt;
+            const delay = Math.min(RECONNECT_BASE_MS * Math.pow(2, attempt - 1), RECONNECT_MAX_MS);
+            timerRef.current = setTimeout(() => {
+              if (mountedRef.current) connect();
+            }, delay);
+          }
+        };
+
+      ws.onerror = (err) => {
+        // Close will trigger reconnect logic in onclose
+        try { ws.close(); } catch (e) { /* ignore */ }
+        console.debug('WebSocket error', err);
+      };
+    } catch (err) {
+      console.debug('Failed to construct WebSocket', err);
+    }
+  }, [token]);
+
+  // Keepalive ping every 30s, and manage lifecycle
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    mountedRef.current = true;
+    lastFetchTokenRef.current = token;
     if (!token) {
       setConnected(false);
-      return;
+      return () => { mountedRef.current = false; };
     }
+
+    connect();
 
     const pingTimer = setInterval(() => {
       if (wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({ type: 'ping' }));
+        try { wsRef.current.send(JSON.stringify({ type: 'ping' })); } catch { /* ignore */ }
       }
     }, 30000);
-
-    mountedRef.current = true;
-    connect();
 
     return () => {
       mountedRef.current = false;
       clearInterval(pingTimer);
       clearTimeout(timerRef.current);
       if (wsRef.current) {
-        wsRef.current.onclose = null; // prevent reconnect loop on intentional close
-        wsRef.current.close();
+        try { wsRef.current.onclose = null; wsRef.current.close(); } catch (e) { /* ignore */ }
         wsRef.current = null;
       }
     };
-  }, [connect, localStorage.getItem('token')]); // Re-run if token changes (logout/login)
+  }, [connect, token]);
 
   return { connected, lastEvent };
 }

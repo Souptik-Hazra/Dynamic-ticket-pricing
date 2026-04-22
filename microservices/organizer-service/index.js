@@ -622,7 +622,9 @@ app.post('/api/tickets', jwtMiddleware, requireDB, async (req, res, next) => {
         status: 'confirmed',
         qrToken,
         qrCode,
-        expiresAt: updatedEvent.startDate
+        expiresAt: updatedEvent.endDate
+          ? updatedEvent.endDate
+          : new Date(new Date(updatedEvent.startDate).getTime() + 24 * 60 * 60 * 1000)
       });
       if (s) await ticketDoc.save({ session: s }); else await ticketDoc.save();
       tickets.push(ticketDoc);

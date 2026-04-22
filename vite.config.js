@@ -14,16 +14,17 @@ export default defineConfig({
     port: Number(process.env.VITE_PORT) || 5173,
     strictPort: true, // Fail if port is taken, don't increment
     proxy: {
-      '/api': {
-        target: 'http://localhost:3001',
-        changeOrigin: true,
-        secure: false, // Don't verify SSL for local proxy
-      },
+      // Ensure websocket path is proxied with Upgrade support before the generic /api proxy
       '/api/ws': {
         target: 'http://localhost:3001',
         ws: true,
         changeOrigin: true,
         secure: false,
+      },
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        secure: false, // Don't verify SSL for local proxy
       }
     }
   },

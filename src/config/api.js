@@ -92,8 +92,15 @@ export const buildUrl = (endpoint) => `${API_URL}${endpoint}`;
 
 // Helper - build WebSocket URL via gateway
 export const getWsUrl = () => {
+  // Allow overriding via env var for special cases
+  const envWs = import.meta.env.VITE_WS_URL;
+  if (envWs) return envWs;
+
+  // Prefer connecting to the same origin `/api/ws` so the dev server (Vite)
+  // or the API gateway can correctly handle the websocket Upgrade.
+  // This avoids attempting to open wss://localhost:4010 directly from an
+  // HTTPS page which would fail if the backend doesn't support TLS.
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  // Use same host/port as window to leverage Vite's proxy (5173 -> 3001)
   return `${protocol}//${window.location.host}/api/ws`;
 };
 

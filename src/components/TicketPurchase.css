@@ -952,10 +952,50 @@
 
 .pp-qr-token {
   margin-top: 1rem;
+  background: #0f0f0f;
+  border: 1px solid #2a2a2a;
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.pp-qr-token-label {
+  font-size: 0.6rem;
+  font-weight: 800;
+  color: #555;
+  letter-spacing: 1px;
+  flex-shrink: 0;
+}
+
+.pp-qr-token-value {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.65rem;
-  color: #777;
-  letter-spacing: 0.5px;
+  font-size: 0.62rem;
+  color: #888;
+  word-break: break-all;
+  flex: 1;
+  letter-spacing: 0.3px;
+}
+
+.pp-qr-token-copy {
+  flex-shrink: 0;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  color: #aaa;
+  padding: 3px 10px;
+  border-radius: 5px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pp-qr-token-copy:hover {
+  background: #2ecc71;
+  border-color: #2ecc71;
+  color: #000;
 }
 
 .pp-qr-hint {

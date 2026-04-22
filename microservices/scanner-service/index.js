@@ -27,41 +27,65 @@ connectDB('ScannerService');
 
 // POST /api/scanner/verify — Verify a ticket via QR token
 app.post('/api/scanner/verify', jwtMiddleware, requireDB, async (req, res, next) => {
-  const { token } = req.body;
+  // Trim token and strip any accidental extra query params
+  // e.g. if QR was scanned as full URL: /verify?token=abc123&other=xyz
+  let { token } = req.body;
   if (!token) return res.status(400).json({ error: 'Token is required' });
+  token = token.trim();
+  // If scanner extracted from URL and extra params got included (e.g. "abc123&foo=bar"), strip them
+  if (token.includes('&')) token = token.split('&')[0];
+  if (token.includes('?')) token = token.split('?').pop(); // handle raw URL paste
 
   try {
-    const ticket = await Ticket.findOne({ qrToken: token }).populate('eventId');
-    if (!ticket) return res.status(404).json({ error: 'Invalid Ticket' });
-    if (!ticket.eventId) return res.status(404).json({ error: 'Associated Event not found' });
+    // ── Atomic check-and-mark using findOneAndUpdate to prevent race conditions
+    // Two simultaneous scans of the same ticket must not both succeed.
+    // findOne + save is NOT atomic — use atomic findOneAndUpdate instead.
+    const ticket = await Ticket.findOneAndUpdate(
+      { qrToken: token, isUsed: false, status: 'confirmed' },
+      { $set: { isUsed: true } },
+      { new: true }
+    ).populate('eventId');
 
-    // Access Control: Only the organizer (any with the role), an admin, or designated staff can verify
-    const isAuthorized = 
-      req.user.role === 'admin' || 
-      req.user.role === 'staff' || 
+    // If nothing matched, find out why for a precise error message
+    if (!ticket) {
+      const existing = await Ticket.findOne({ qrToken: token });
+      if (!existing) return res.status(404).json({ error: 'Invalid Ticket' });
+      if (existing.isUsed) return res.status(400).json({ error: 'Already Used' });
+      if (existing.status === 'cancelled') return res.status(400).json({ error: 'Invalid Ticket (Cancelled/Refunded)' });
+      if (existing.status === 'refunded') return res.status(400).json({ error: 'Invalid Ticket (Cancelled/Refunded)' });
+      return res.status(400).json({ error: 'Invalid Ticket' });
+    }
+
+    if (!ticket.eventId) {
+      // Roll back — we marked it used but can't verify it
+      await Ticket.findByIdAndUpdate(ticket._id, { $set: { isUsed: false } });
+      return res.status(404).json({ error: 'Associated Event not found' });
+    }
+
+    // Access Control: admin, staff, or any organizer role
+    const isAuthorized =
+      req.user.role === 'admin' ||
+      req.user.role === 'staff' ||
       req.user.role === 'organizer' ||
       (ticket.eventId.organizerId && ticket.eventId.organizerId.toString() === req.user.id);
 
     if (!isAuthorized) {
+      // Roll back the mark-as-used since this scan is unauthorised
+      await Ticket.findByIdAndUpdate(ticket._id, { $set: { isUsed: false } });
       console.warn(`[ScannerService] Unauthorized scan attempt: user ${req.user.id} (role: ${req.user.role}) for event ${ticket.eventId._id}`);
       return res.status(403).json({ error: 'Not authorized to verify tickets for this event' });
     }
 
-    if (ticket.status === 'cancelled' || ticket.status === 'refunded') {
-      return res.status(400).json({ error: 'Invalid Ticket (Cancelled/Refunded)' });
-    }
-
-    if (ticket.isUsed) {
-      return res.status(400).json({ error: 'Already Used' });
+    // Check event is not cancelled
+    if (ticket.eventId.status === 'cancelled') {
+      await Ticket.findByIdAndUpdate(ticket._id, { $set: { isUsed: false } });
+      return res.status(400).json({ error: 'Event has been cancelled' });
     }
 
     if (ticket.expiresAt && ticket.expiresAt < new Date()) {
+      await Ticket.findByIdAndUpdate(ticket._id, { $set: { isUsed: false } });
       return res.status(400).json({ error: 'Expired' });
     }
-
-    // Mark as used
-    ticket.isUsed = true;
-    await ticket.save();
 
     // ── Live Attendance Analytics ──────────────────────────────────────────
     // Calculate live stats for this event

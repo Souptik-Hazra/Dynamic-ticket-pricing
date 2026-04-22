@@ -558,7 +558,19 @@ function TicketPurchase({ event, onBack, onSuccess }) {
                         <p>Generating Branded QR...</p>
                       </div>
                     )}
-                    <div className="pp-qr-token">{ticket.qrToken.slice(0, 8)}...{ticket.qrToken.slice(-8)}</div>
+                    <div className="pp-qr-token">
+                      <span className="pp-qr-token-label">TOKEN</span>
+                      <span className="pp-qr-token-value">{ticket.qrToken}</span>
+                      <button
+                        className="pp-qr-token-copy"
+                        onClick={() => {
+                          navigator.clipboard.writeText(ticket.qrToken);
+                          const btn = document.getElementById(`copy-btn-${ticket._id}`);
+                          if (btn) { btn.textContent = '✓ Copied'; setTimeout(() => { btn.textContent = 'Copy'; }, 2000); }
+                        }}
+                        id={`copy-btn-${ticket._id}`}
+                      >Copy</button>
+                    </div>
                   </div>
                 ))}
                 <p className="pp-qr-hint">Each person must scan their own unique QR code at the entrance</p>

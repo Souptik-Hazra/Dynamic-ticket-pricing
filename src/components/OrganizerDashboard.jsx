@@ -56,16 +56,46 @@ function OrganizerDashboard() {
   }, [lastEvent]); // eslint-disable-line
 
   useEffect(() => {
-    if (view === 'events'  ? fetchEvents()  : null);
-    if (view === 'tickets' ? fetchTickets() : null);
-    fetchOrganizerWallet();
+    // Fetch view-specific data when the view changes
+    if (view === 'events') fetchEvents();
+    if (view === 'tickets') fetchTickets();
+    if (view === 'stats') fetchStats();
   }, [view]);
 
+  // Wallet fetch: run on mount and when the authenticated user changes.
+  // Throttle to avoid rapid repeated requests (rate-limit protection client-side).
+  const lastWalletFetchRef = React.useRef(0);
+  const WALLET_THROTTLE_MS = 5000;
+
+  useEffect(() => {
+    const now = Date.now();
+    if (now - lastWalletFetchRef.current < WALLET_THROTTLE_MS) return;
+    lastWalletFetchRef.current = now;
+    fetchOrganizerWallet();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
   const fetchOrganizerWallet = async () => {
-    try {
-      const { data } = await api.get(ENDPOINTS.WALLET_BALANCE);
-      setOrganizerWallet(data);
-    } catch (err) { console.error('Organizer wallet error:', err); }
+    // Exponential backoff retries for transient errors (429 / network blips)
+    const maxAttempts = 4;
+    let attempt = 0;
+    let lastErr = null;
+    while (attempt < maxAttempts) {
+      try {
+        const { data } = await api.get(ENDPOINTS.WALLET_BALANCE);
+        setOrganizerWallet(data);
+        return;
+      } catch (err) {
+        lastErr = err;
+        const status = err.response?.status;
+        // If client error other than 429, don't retry
+        if (status && status !== 429) break;
+        attempt += 1;
+        const backoff = Math.min(500 * Math.pow(2, attempt - 1), 5000);
+        await new Promise(r => setTimeout(r, backoff));
+      }
+    }
+    if (lastErr) console.error('Organizer wallet error:', lastErr);
   };
 
   const fetchStats = async () => {

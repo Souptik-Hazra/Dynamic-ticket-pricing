@@ -39,10 +39,10 @@ function AppContent() {
       setView('home');
     }
   }, [isAuthenticated, view]);
-  // Redirect to events page (user) or scanner page (staff) after login
+  // Redirect to events page (user) or scanner page (staff/organizer/admin) after login
   useEffect(() => {
     if (isAuthenticated && view === 'login') {
-      if (user?.role === 'staff') {
+      if (user?.role === 'staff' || user?.role === 'organizer' || user?.role === 'admin') {
         setView('scanner');
       } else {
         setView('events');
@@ -143,6 +143,9 @@ function AppContent() {
               </button>
               <button onClick={() => setView('admin')} className={view === 'admin' ? 'active' : ''}>
                 Admin
+              </button>
+              <button onClick={() => setView('scanner')} className={view === 'scanner' ? 'active' : ''}>
+                🛡️ Scanner
               </button>
             </>
           )}
