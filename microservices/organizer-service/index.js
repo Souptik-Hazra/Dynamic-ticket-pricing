@@ -74,6 +74,7 @@ setInterval(() => {
 const getDynamicPriceFallback = (category, event, cognitive_score = 1.0) => {
   if (!event) return 0;
   const basePrice = category ? (Number(category.price) || 0) : (Number(event.basePrice) || 0);
+  const maxPrice = category ? (Number(category.maxPrice) || basePrice * 3) : basePrice * 3;
   if (basePrice <= 0) return 0;
   const categories = event.ticketCategories || [];
   const totalCap = categories.reduce((s, c) => s + (Number(c.seats) || 0), 0) || Number(event.capacity) || 1;
@@ -84,16 +85,20 @@ const getDynamicPriceFallback = (category, event, cognitive_score = 1.0) => {
   let multiplier = Math.max(0.9, Math.min(2.0, 1 + occupancy * 0.5));
   
   // ── DECPG Bot Penalty Function ──
-  // If humanity score is low, we exponentially increase price to neutralize bot profit
   if (cognitive_score < 0.8) {
     const penalty = Math.pow(1.5, (0.8 - cognitive_score) * 10);
     multiplier *= penalty;
   }
   
-  return Math.round(basePrice * multiplier);
+  const finalPrice = Math.round(basePrice * multiplier);
+  // Strictly clamp between [basePrice, maxPrice]
+  return Math.max(basePrice, Math.min(finalPrice, maxPrice));
 };
 
 async function predictMLPrice(category, event, cognitive_score = 1.0) {
+  const basePrice = category ? category.price : event.basePrice;
+  const maxPrice = category ? (category.maxPrice || basePrice * 3) : basePrice * 3;
+  
   try {
     const now = new Date();
     const start = new Date(event.startDate);
@@ -104,14 +109,18 @@ async function predictMLPrice(category, event, cognitive_score = 1.0) {
     const payload = {
       capacity: totalCap,
       tickets_sold: totalSold,
-      base_price: category ? category.price : event.basePrice,
+      base_price: basePrice,
+      max_price: maxPrice,
       days_until_event: daysUntil,
       event_popularity: event.eventPopularity || 0.5,
-      cognitive_score: cognitive_score
+      cognitive_score: cognitive_score,
+      category: event.category || 'other',
+      is_holiday: event.isHoliday ? 1 : 0
     };
 
     const { data } = await axios.post(`${ML_SERVICE_URL}/predict`, payload, { timeout: 2000 });
-    return Math.round(data.predicted_price);
+    // Note: app.py already clamps, but we apply a safety clamp here too
+    return Math.max(basePrice, Math.min(Math.round(data.predicted_price), maxPrice));
   } catch (err) {
     return getDynamicPriceFallback(category, event, cognitive_score);
   }

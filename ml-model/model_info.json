@@ -1,38 +1,27 @@
 {
-  "modelVersion": "v2.1.20260421",
-  "modelType": "XGBRegressor (XGBoost)",
-  "features": [
-    "capacity",
-    "tickets_sold",
-    "base_price",
-    "days_until_event",
-    "event_duration",
-    "event_popularity",
-    "venue_tier",
-    "artist_tier",
-    "is_holiday",
-    "cat_concert",
-    "cat_sports",
-    "cat_theater",
-    "cat_conference",
-    "cat_festival",
-    "cat_other"
-  ],
-  "numFeatures": 15,
-  "trainScore": 0.999997056359301,
-  "testScore": 0.9829082619756047,
-  "trainMAE": 7.420632099615315,
-  "testMAE": 593.817598031979,
-  "trainRMSE": 10.677057736658204,
-  "testRMSE": 819.5043038680319,
-  "parameters": {
-    "n_estimators": 500,
-    "max_depth": 10,
-    "learning_rate": 0.08,
-    "subsample": 0.9
-  },
-  "metadata": {
-    "trainedAt": "2026-04-21T15:38:43.565598",
-    "currency": "INR"
-  }
+    "model_type": "MCENN (Neural Network)",
+    "trained_at": "2026-04-23T17:29:53.454487",
+    "metrics": {
+        "mae": 818.6262704509065,
+        "r2_score": 0.9394210497508363
+    },
+    "features": [
+        "capacity",
+        "tickets_sold",
+        "base_price",
+        "max_price",
+        "days_until_event",
+        "event_popularity",
+        "venue_tier",
+        "artist_tier",
+        "cognitive_score",
+        "is_holiday",
+        "cat_concert",
+        "cat_sports",
+        "cat_theater",
+        "cat_conference",
+        "cat_festival",
+        "cat_other"
+    ],
+    "num_samples": 10000
 }

@@ -51,25 +51,40 @@ def create_app():
             
         data = request.get_json() or {}
         cognitive_score = float(data.get('cognitive_score', 1.0))
+        base_price = float(data.get('base_price', 500))
+        max_price = float(data.get('max_price', base_price * 3))
+        is_holiday = float(data.get('is_holiday', 0))
+        category = data.get('category', 'other')
+        
+        # One-hot encoding for categories
+        categories = ['concert', 'sports', 'theater', 'conference', 'festival', 'other']
+        cat_features = [1.0 if category == c else 0.0 for c in categories]
         
         features = [
             float(data.get('capacity', 1000)),
             float(data.get('tickets_sold', 0)),
-            float(data.get('base_price', 500)),
+            base_price,
+            max_price,
             float(data.get('days_until_event', 30)),
             float(data.get('event_popularity', 0.5)),
             float(data.get('venue_tier', 2)),
             float(data.get('artist_tier', 3)),
-            cognitive_score
-        ]
+            cognitive_score,
+            is_holiday
+        ] + cat_features
 
         try:
             scaled = app.ml_scaler.transform([features])
             prediction = app.ml_model.predict(scaled)[0][0]
-            logger.info(f"Inference: Market={prediction}, Cognitive={cognitive_score}")
+            
+            # Apply strict safety clamps: [Floor, Ceiling]
+            final_price = max(base_price, min(prediction, max_price))
+            
+            logger.info(f"Inference: Market={prediction}, Final={final_price}, Cognitive={cognitive_score}")
             
             return jsonify({
-                'predicted_price': float(round(prediction, 2)),
+                'predicted_price': float(round(final_price, 2)),
+                'raw_prediction': float(round(prediction, 2)),
                 'currency': 'INR',
                 'cognitive_confidence': cognitive_score,
                 'timestamp': datetime.now().isoformat()
@@ -98,43 +113,28 @@ def create_app():
             # Map the incoming weight data to the model's layers
             # The weights_list is expected to be a list of {name, shape, data}
             new_weights = []
-            model_weights = app.ml_model.get_weights()
-            
-            # Simple mapping: assume the weights_list matches the order and shape of get_weights()
-            # In production, we would use layer names for robust mapping.
-            for i, w_data in enumerate(weights_list):
-                if i < len(model_weights):
-                    arr = np.array(w_data['data']).reshape(model_weights[i].shape)
-                    new_weights.append(arr)
-                else:
-                    logger.warning(f"Extra weights provided at index {i}")
+            for layer in app.ml_model.layers:
+                layer_weights = []
+                # Find matching weights in the list
+                # (Simplified implementation - in production this would be more robust)
+                for w in weights_list:
+                    if w['name'].startswith(layer.name):
+                        layer_weights.append(np.array(w['data']).reshape(w['shape']))
+                
+                if layer_weights:
+                    layer.set_weights(layer_weights)
 
-            if len(new_weights) != len(model_weights):
-                return jsonify({'error': 'Weight count mismatch', 'expected': len(model_weights), 'received': len(new_weights)}), 400
-
-            # Apply to live model
-            app.ml_model.set_weights(new_weights)
-            
-            # Persist to disk
-            save_path = os.path.join(BASE_DIR, f'unified_model_{version}.h5')
-            app.ml_model.save(save_path)
-            # Also update the primary model file
+            # Save the updated model
             app.ml_model.save(os.path.join(BASE_DIR, 'unified_model.h5'))
-
-            logger.info(f"✅ Federated update applied successfully: Version {version}")
-            return jsonify({
-                'success': True,
-                'version': version,
-                'message': f"Model updated and saved to unified_model_{version}.h5"
-            })
-
+            logger.info(f"Federated update applied: Version {version}")
+            
+            return jsonify({'status': 'success', 'version': version}), 200
         except Exception as e:
-            logger.error(f"Failed to apply federated update: {e}")
-            return jsonify({'error': 'Update application failed', 'message': str(e)}), 500
+            logger.error(f"Federated Update Error: {str(e)}")
+            return jsonify({'error': 'Update failed', 'message': str(e)}), 500
 
     return app
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app = create_app()
-    port = int(os.environ.get('ML_PORT', 5000))
-    app.run(host='0.0.0.0', port=port, threaded=True)
+    app.run(host='0.0.0.0', port=5000, debug=False)
