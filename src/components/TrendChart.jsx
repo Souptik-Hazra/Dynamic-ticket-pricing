@@ -21,7 +21,7 @@ const TrendChart = ({ data = [], title = "Sales Volume & Revenue" }) => {
     try {
       const d = new Date(dateStr);
       return d.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
-    } catch (e) { return dateStr; }
+    } catch { return dateStr; }
   };
 
   return (

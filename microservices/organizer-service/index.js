@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
-import connectDB, { requireDB, registerProcessHandlers, tuneExpressServer, startSessionWithFallback } from '../shared/db.js';
+import connectDB, { requireDB } from '../shared/db.js';
 import { errorHandler, notFound } from '../shared/errorHandler.js';
 import jwtMiddleware from '../shared/jwtMiddleware.js';
 import { requestLogger } from '../shared/logger.js';
@@ -19,15 +19,8 @@ import { verifyTemporalProof } from '../shared/temporalAuthServer.js';
 import {
   notify,
   wsNotifyUser,
-  wsTicketSold,
-  wsPriceUpdate,
-  sendEmailTemplate,
-  cacheSet,
-  cacheGet,
   cacheDel,
   cacheDelPattern,
-  cacheLock,
-  cacheUnlock,
   CACHE_KEYS,
 } from '../shared/interservice.js';
 
@@ -78,7 +71,7 @@ const getDynamicPriceFallback = (category, event, cognitive_score = 1.0) => {
   if (basePrice <= 0) return 0;
   const categories = event.ticketCategories || [];
   const totalCap = categories.reduce((s, c) => s + (Number(c.seats) || 0), 0) || Number(event.capacity) || 1;
-  const totalSold = categories.reduce((s, c) => s + (Number(c.seats) || 0) - (Number(c.availableSeats) ?? (Number(c.seats) || 0)), 0);
+  const totalSold = categories.reduce((s, c) => s + (Number(c.seats) || 0) - (Number(c.availableSeats ?? c.seats) || 0), 0);
   const occupancy = Math.max(0, Math.min(1, totalSold / totalCap));
   
   // Base market multiplier
@@ -103,7 +96,7 @@ async function predictMLPrice(category, event, cognitive_score = 1.0) {
     const now = new Date();
     const start = new Date(event.startDate);
     const totalCap = (event.ticketCategories || []).reduce((s, c) => s + (Number(c.seats) || 0), 0) || Number(event.capacity) || 1;
-    const totalSold = (event.ticketCategories || []).reduce((s, c) => s + (Number(c.seats) || 0) - (Number(c.availableSeats) ?? (Number(c.seats) || 0)), 0);
+    const totalSold = (event.ticketCategories || []).reduce((s, c) => s + (Number(c.seats) || 0) - (Number(c.availableSeats ?? c.seats) || 0), 0);
     const daysUntil = Math.max(0, (start - now) / (1000 * 60 * 60 * 24));
 
     const payload = {
@@ -121,7 +114,7 @@ async function predictMLPrice(category, event, cognitive_score = 1.0) {
     const { data } = await axios.post(`${ML_SERVICE_URL}/predict`, payload, { timeout: 2000 });
     // Note: app.py already clamps, but we apply a safety clamp here too
     return Math.max(basePrice, Math.min(Math.round(data.predicted_price), maxPrice));
-  } catch (err) {
+  } catch {
     return getDynamicPriceFallback(category, event, cognitive_score);
   }
 }

@@ -4,24 +4,25 @@ import SeatGrid from './SeatGrid';
 
 export default function EventMapModal({ event, onClose }) {
   const [seatOwners, setSeatOwners] = useState({});
+  const eventId = event?._id;
 
   useEffect(() => {
     let mounted = true;
     async function fetchOwners() {
-      if (!event || !event._id) return;
+      if (!eventId) return;
       try {
-        const res = await fetch(`/api/organizer/events/${event._id}/seat-owners`, { credentials: 'include' });
+        const res = await fetch(`/api/organizer/events/${eventId}/seat-owners`, { credentials: 'include' });
         if (!mounted) return;
         if (!res.ok) return; // silently ignore
         const data = await res.json();
         if (mounted && data && data.seatOwners) setSeatOwners(data.seatOwners);
-      } catch (err) {
+      } catch {
         // ignore for now
       }
     }
     fetchOwners();
     return () => { mounted = false; };
-  }, [event && event._id]);
+  }, [eventId]);
   if (!event) return null;
 
   return (

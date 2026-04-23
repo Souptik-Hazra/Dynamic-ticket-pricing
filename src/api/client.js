@@ -14,10 +14,6 @@ const client = axios.create({
   }
 });
 
-const pendingRequests = new Map();
-
-const getRequestKey = (config) => `${config.method}:${config.url}:${JSON.stringify(config.params)}`;
-
 // ── Network Expert: Browser Logging ──────────────────────────────────────
 const logNetwork = (type, message, traceId, color = '#6366f1') => {
   if (import.meta.env.MODE === 'production') return;

@@ -125,7 +125,7 @@ export default connectDB;
  */
 export const startSessionWithFallback = async () => {
   let session = null;
-  let usingTransactions = false;
+  let usingTransactions;
 
   // If DB not connected, return fallback
   if (mongoose.connection.readyState !== 1) {
@@ -151,14 +151,14 @@ export const startSessionWithFallback = async () => {
       usingTransactions = true;
     } catch (txErr) {
       console.warn('[DB Helper] startTransaction failed, continuing without transactions:', txErr.message);
-      try { session.endSession(); } catch (e) {}
+      try { session.endSession(); } catch { /* ignore cleanup failure */ }
       session = null;
       usingTransactions = false;
     }
   } catch (err) {
     console.warn('[DB Helper] Failed to initialize session helper:', err.message);
     if (session) {
-      try { session.endSession(); } catch (e) {}
+      try { session.endSession(); } catch { /* ignore cleanup failure */ }
     }
     session = null;
     usingTransactions = false;

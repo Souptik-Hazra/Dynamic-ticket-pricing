@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { useAuth } from '../context/AuthContext';
 
 function Signup({ onSwitchToLogin }) {
   const { signup } = useAuth();
-  const { register, handleSubmit, watch, formState: { errors } } = useForm({
+  const { register, handleSubmit, control, formState: { errors } } = useForm({
     defaultValues: {
       role: 'user'
     }
@@ -12,7 +12,7 @@ function Signup({ onSwitchToLogin }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const password = watch("password", "");
+  const password = useWatch({ control, name: 'password', defaultValue: '' });
 
   const onSubmit = async (data) => {
     setError('');

@@ -55,7 +55,7 @@ async function testPriceTamper() {
       try {
         const login = await axios.post(`${AUTH_SERVICE_URL}/api/auth/signin`, { email: testEmail, password: testPassword });
         token = login.data.token;
-      } catch (loginErr) {
+      } catch {
         console.warn('Signup/login for test user failed:', signupErr.message);
       }
     }

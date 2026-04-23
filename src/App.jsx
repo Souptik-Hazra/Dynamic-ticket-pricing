@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate, Navigate, useLocation } from 'react-router-dom';
-import api from './api/client';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import HomePage from './components/HomePage';
@@ -25,7 +24,6 @@ function AppContent() {
   const { data: events = [], isLoading: loading, refetch: fetchEvents } = useEvents();
   const updatePriceMutation = useUpdatePrice();
   const [selectedEvent, setSelectedEvent] = useState(null);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Handle auth redirects
   useEffect(() => {
@@ -37,11 +35,6 @@ function AppContent() {
       }
     }
   }, [isAuthenticated, location.pathname, user, navigate]);
-
-  // Close mobile menu when route changes
-  useEffect(() => {
-    setMobileMenuOpen(false);
-  }, [location.pathname]);
 
   // We no longer need manual fetchEvents and useEffect for it as useEvents handles it
 

@@ -18,6 +18,7 @@ export function useWebSocket() {
   const timerRef = useRef(null);
   const mountedRef = useRef(false);
   const lastFetchTokenRef = useRef(null);
+  const connectRef = useRef(null);
 
   const [connected, setConnected] = useState(false);
   const [lastEvent, setLastEvent] = useState(null);
@@ -45,7 +46,7 @@ export function useWebSocket() {
           // successful connect — reset retries/backoff
           retriesRef.current = 0;
           if (mountedRef.current && token) {
-            try { ws.send(JSON.stringify({ type: 'auth', token })); } catch (err) { /* ignore */ }
+            try { ws.send(JSON.stringify({ type: 'auth', token })); } catch { /* ignore */ }
             setConnected(true);
           }
         };
@@ -59,7 +60,7 @@ export function useWebSocket() {
           }
           if (msg.type === 'pong') return;
           if (mountedRef.current) setLastEvent(msg);
-        } catch (err) {
+        } catch {
           // ignore malformed
         }
       };
@@ -74,14 +75,14 @@ export function useWebSocket() {
             retriesRef.current = attempt;
             const delay = Math.min(RECONNECT_BASE_MS * Math.pow(2, attempt - 1), RECONNECT_MAX_MS);
             timerRef.current = setTimeout(() => {
-              if (mountedRef.current) connect();
+              if (mountedRef.current) connectRef.current?.();
             }, delay);
           }
         };
 
       ws.onerror = (err) => {
         // Close will trigger reconnect logic in onclose
-        try { ws.close(); } catch (e) { /* ignore */ }
+        try { ws.close(); } catch { /* ignore */ }
         console.debug('WebSocket error', err);
       };
     } catch (err) {
@@ -89,13 +90,20 @@ export function useWebSocket() {
     }
   }, [token]);
 
+  useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
+
   // Keepalive ping every 30s, and manage lifecycle
   useEffect(() => {
     mountedRef.current = true;
     lastFetchTokenRef.current = token;
     if (!token) {
-      setConnected(false);
-      return () => { mountedRef.current = false; };
+      const disconnectTimer = setTimeout(() => setConnected(false), 0);
+      return () => {
+        clearTimeout(disconnectTimer);
+        mountedRef.current = false;
+      };
     }
 
     connect();
@@ -111,7 +119,7 @@ export function useWebSocket() {
       clearInterval(pingTimer);
       clearTimeout(timerRef.current);
       if (wsRef.current) {
-        try { wsRef.current.onclose = null; wsRef.current.close(); } catch (e) { /* ignore */ }
+        try { wsRef.current.onclose = null; wsRef.current.close(); } catch { /* ignore */ }
         wsRef.current = null;
       }
     };

@@ -76,7 +76,6 @@ function startBackend(callback) {
   setTimeout(callback, 3000);
 }
 
-const electronAppReady = app.whenReady;
 app.whenReady = () => {
   return new Promise(resolve => {
     checkBackendAndStart(() => {

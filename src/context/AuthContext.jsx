@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api from '../api/client';
 import { ENDPOINTS } from '../config/api';
 
@@ -15,9 +15,15 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const refreshTimeoutRef = useRef(null);
 
+  function performLogout() {
+    if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current);
+    localStorage.removeItem('token');
+    setUser(null);
+  }
+
   // ── Token refresh ─────────────────────────────────────────────────────────
   // JWT is set to 7d — schedule silent refresh at ~day 6 (so user never gets logged out)
-  const scheduleTokenRefresh = useCallback((token) => {
+  function scheduleTokenRefresh(token) {
     if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current);
     if (!token) return;
 
@@ -40,7 +46,7 @@ export const AuthProvider = ({ children }) => {
         performLogout();
       }
     }, SIX_DAYS_MS);
-  }, []); // eslint-disable-line
+  }
 
   // loadUser handles initial mount verification
 
@@ -52,7 +58,7 @@ export const AuthProvider = ({ children }) => {
     };
   }, []); // eslint-disable-line
 
-  const loadUser = async () => {
+  async function loadUser() {
     const token = localStorage.getItem('token');
     if (!token) {
       setUser(null);
@@ -77,7 +83,7 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   // ── Signup ────────────────────────────────────────────────────────────────
   const signup = async (name, email, password, role = 'user') => {
@@ -116,12 +122,6 @@ export const AuthProvider = ({ children }) => {
   };
 
   // ── Logout ────────────────────────────────────────────────────────────────
-  const performLogout = () => {
-    if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current);
-    localStorage.removeItem('token');
-    setUser(null);
-  };
-
   const logout = async () => {
     try {
       // Fire-and-forget logout call (server-side is stateless, just for logs)

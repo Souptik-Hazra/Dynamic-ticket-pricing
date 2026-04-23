@@ -35,7 +35,8 @@ function Notifications() {
   }, []);
 
   useEffect(() => {
-    fetchNotifications();
+    const refreshTimer = setTimeout(fetchNotifications, 0);
+    return () => clearTimeout(refreshTimer);
   }, [fetchNotifications]);
 
   // Mark one notification as read

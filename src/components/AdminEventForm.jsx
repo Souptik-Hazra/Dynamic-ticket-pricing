@@ -41,8 +41,6 @@ function AdminEventForm({ event, onClose }) {
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [imagePreview, setImagePreview] = useState('');
-  const [imageSource, setImageSource] = useState('url'); // 'url' or 'upload'
 
   // Helper function to compute status based on dates
   const computeStatus = (startDate, endDate) => {
@@ -64,63 +62,66 @@ function AdminEventForm({ event, onClose }) {
   };
 
   useEffect(() => {
-    if (event) {
-      // Clear any existing errors when loading edit data
-      setError('');
-      
-      // Format start and end date for datetime-local input
-      const startDate = event.startDate ? new Date(event.startDate).toISOString().slice(0, 16) : '';
-      const endDate = event.endDate ? new Date(event.endDate).toISOString().slice(0, 16) : '';
-      // Auto-compute status based on dates (preserve 'cancelled' status)
-      const autoStatus = event.status === 'cancelled' ? 'cancelled' : computeStatus(startDate, endDate);
-      
-      setFormData({
-        name: event.name,
-        description: event.description,
-        venue: event.venue,
-        startDate,
-        endDate,
-        eventPopularity: event.eventPopularity || 0.5,
-        category: event.category,
-        image: event.image,
-        status: autoStatus,
-        venueTier: event.venueTier || 2,
-        artistTier: event.artistTier || 3,
-        isHoliday: event.isHoliday || false
-      });
+    const syncTimer = setTimeout(() => {
+      if (event) {
+        // Clear any existing errors when loading edit data
+        setError('');
+        
+        // Format start and end date for datetime-local input
+        const startDate = event.startDate ? new Date(event.startDate).toISOString().slice(0, 16) : '';
+        const endDate = event.endDate ? new Date(event.endDate).toISOString().slice(0, 16) : '';
+        // Auto-compute status based on dates (preserve 'cancelled' status)
+        const autoStatus = event.status === 'cancelled' ? 'cancelled' : computeStatus(startDate, endDate);
+        
+        setFormData({
+          name: event.name,
+          description: event.description,
+          venue: event.venue,
+          startDate,
+          endDate,
+          eventPopularity: event.eventPopularity || 0.5,
+          category: event.category,
+          image: event.image,
+          status: autoStatus,
+          venueTier: event.venueTier || 2,
+          artistTier: event.artistTier || 3,
+          isHoliday: event.isHoliday || false
+        });
 
-      // Load venue layout settings
-      setVenueLayoutType(event.venueLayoutType || 'none');
-      setStagePosition(event.stagePosition || 'bottom');
-      if (event.venueMetrics) {
-        setVenueMetrics(event.venueMetrics);
+        // Load venue layout settings
+        setVenueLayoutType(event.venueLayoutType || 'none');
+        setStagePosition(event.stagePosition || 'bottom');
+        if (event.venueMetrics) {
+          setVenueMetrics(event.venueMetrics);
+        }
+        if (event.seatMap) {
+          setSeatMap(event.seatMap);
+        }
+        
+        // Set ticket categories if they exist
+        if (event.ticketCategories && event.ticketCategories.length > 0) {
+          setTicketCategories(event.ticketCategories.map(cat => ({
+            name: cat.name,
+            price: cat.price,
+            maxPrice: cat.maxPrice || cat.price * 2,
+            seats: cat.seats,
+            availableSeats: cat.availableSeats, // Preserve available seats
+            bookedSeats: cat.bookedSeats || [], // Preserve exact ticket ids
+            color: cat.color || '',
+          })));
+        } else if (event.basePrice || event.capacity) {
+          // Handle old events without ticketCategories - create a default one
+          setTicketCategories([{
+            name: 'standard',
+            price: event.basePrice || '',
+            maxPrice: event.basePrice ? event.basePrice * 2 : '',
+            seats: event.capacity || '',
+            availableSeats: event.availableTickets || event.capacity || undefined
+          }]);
+        }
       }
-      if (event.seatMap) {
-        setSeatMap(event.seatMap);
-      }
-      
-      // Set ticket categories if they exist
-      if (event.ticketCategories && event.ticketCategories.length > 0) {
-        setTicketCategories(event.ticketCategories.map(cat => ({
-          name: cat.name,
-          price: cat.price,
-          maxPrice: cat.maxPrice || cat.price * 2,
-          seats: cat.seats,
-          availableSeats: cat.availableSeats, // Preserve available seats
-          bookedSeats: cat.bookedSeats || [], // Preserve exact ticket ids
-          color: cat.color || '',
-        })));
-      } else if (event.basePrice || event.capacity) {
-        // Handle old events without ticketCategories - create a default one
-        setTicketCategories([{
-          name: 'standard',
-          price: event.basePrice || '',
-          maxPrice: event.basePrice ? event.basePrice * 2 : '',
-          seats: event.capacity || '',
-          availableSeats: event.availableTickets || event.capacity || undefined
-        }]);
-      }
-    }
+    }, 0);
+    return () => clearTimeout(syncTimer);
   }, [event]);
 
   // Auto-update status in background every minute
@@ -133,9 +134,6 @@ function AdminEventForm({ event, onClose }) {
         }
       }
     };
-
-    // Check immediately on mount/date changes
-    updateStatusAutomatically();
 
     // Check every minute
     const interval = setInterval(updateStatusAutomatically, 60000);

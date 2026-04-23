@@ -8,7 +8,6 @@ import sharp from 'sharp';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { registerProcessHandlers, tuneExpressServer } from '../shared/db.js';
-import { errorHandler, notFound } from '../shared/errorHandler.js';
 import { requestLogger } from '../shared/logger.js';
 
 dotenv.config();
@@ -112,7 +111,7 @@ app.post('/api/qr/generate', async (req, res) => {
 
     const qrCode = await generateBrandedQR(text, resolvedLogoPath, position);
     res.json({ qrCode });
-  } catch (error) {
+  } catch {
     res.status(500).json({ error: 'Failed to generate QR code' });
   }
 });

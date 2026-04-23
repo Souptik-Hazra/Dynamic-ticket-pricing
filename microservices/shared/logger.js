@@ -43,7 +43,7 @@ export const persistLog = async (logData) => {
     // Only persist errors or critical warnings to avoid DB bloat
     if (logData.level === 'INFO') return;
     
-    await SystemLog.create(logData);
+    await SystemLog.create(maskData(logData));
   } catch (err) {
     // Fail silently in DB persistence to avoid crashing the business flow
     console.warn('[Logger] Database persistence failed:', err.message);

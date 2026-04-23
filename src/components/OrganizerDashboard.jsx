@@ -39,30 +39,36 @@ function OrganizerDashboard() {
 
   // Real-time: refresh stats when a ticket is sold or attendance updates
   useEffect(() => {
-    if (!lastEvent) return;
-    if (lastEvent.type === 'ticket_sold') {
-      if (view === 'stats') fetchStats();
-      fetchOrganizerWallet();
-    }
-    if (lastEvent.type === 'notification') {
-      fetchOrganizerWallet();
-    }
-    if (lastEvent.type === 'attendance_update') {
-      // Update the events list in-place for live progress feedback
-      setEvents(currentEvents => currentEvents.map(ev => {
-        if (ev._id === lastEvent.eventId) {
-          return { ...ev, scannedCount: lastEvent.scannedCount, totalSold: lastEvent.totalSold };
-        }
-        return ev;
-      }));
-    }
+    const eventTimer = setTimeout(() => {
+      if (!lastEvent) return;
+      if (lastEvent.type === 'ticket_sold') {
+        if (view === 'stats') fetchStats();
+        fetchOrganizerWallet();
+      }
+      if (lastEvent.type === 'notification') {
+        fetchOrganizerWallet();
+      }
+      if (lastEvent.type === 'attendance_update') {
+        // Update the events list in-place for live progress feedback
+        setEvents(currentEvents => currentEvents.map(ev => {
+          if (ev._id === lastEvent.eventId) {
+            return { ...ev, scannedCount: lastEvent.scannedCount, totalSold: lastEvent.totalSold };
+          }
+          return ev;
+        }));
+      }
+    }, 0);
+    return () => clearTimeout(eventTimer);
   }, [lastEvent]); // eslint-disable-line
 
   useEffect(() => {
-    // Fetch view-specific data when the view changes
-    if (view === 'events') fetchEvents();
-    if (view === 'tickets') fetchTickets();
-    if (view === 'stats') fetchStats();
+    const viewTimer = setTimeout(() => {
+      // Fetch view-specific data when the view changes
+      if (view === 'events') fetchEvents();
+      if (view === 'tickets') fetchTickets();
+      if (view === 'stats') fetchStats();
+    }, 0);
+    return () => clearTimeout(viewTimer);
   }, [view]);
 
   // Wallet fetch: run on mount and when the authenticated user changes.
@@ -71,14 +77,16 @@ function OrganizerDashboard() {
   const WALLET_THROTTLE_MS = 5000;
 
   useEffect(() => {
-    const now = Date.now();
-    if (now - lastWalletFetchRef.current < WALLET_THROTTLE_MS) return;
-    lastWalletFetchRef.current = now;
-    fetchOrganizerWallet();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const walletTimer = setTimeout(() => {
+      const now = Date.now();
+      if (now - lastWalletFetchRef.current < WALLET_THROTTLE_MS) return;
+      lastWalletFetchRef.current = now;
+      fetchOrganizerWallet();
+    }, 0);
+    return () => clearTimeout(walletTimer);
   }, [user?.id]);
 
-  const fetchOrganizerWallet = async () => {
+  async function fetchOrganizerWallet() {
     // Exponential backoff retries for transient errors (429 / network blips)
     const maxAttempts = 4;
     let attempt = 0;
@@ -101,7 +109,7 @@ function OrganizerDashboard() {
     if (lastErr) console.error('Organizer wallet error:', lastErr);
   };
 
-  const fetchStats = async () => {
+  async function fetchStats() {
     try {
       setLoading(true);
       const { data } = await api.get(ENDPOINTS.ORGANIZER_STATS);
@@ -112,7 +120,7 @@ function OrganizerDashboard() {
     } finally { setLoading(false); }
   };
 
-  const fetchEvents = async () => {
+  async function fetchEvents() {
     try {
       setLoading(true);
       const { data } = await api.get(ENDPOINTS.ORGANIZER_EVENTS);
@@ -123,7 +131,7 @@ function OrganizerDashboard() {
     } finally { setLoading(false); }
   };
 
-  const fetchTickets = async () => {
+  async function fetchTickets() {
     try {
       setLoading(true);
       const { data } = await api.get(ENDPOINTS.ORGANIZER_TICKETS);

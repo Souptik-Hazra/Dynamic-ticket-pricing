@@ -9,10 +9,11 @@ function Analytics() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetchDashboardData();
+    const refreshTimer = setTimeout(fetchDashboardData, 0);
+    return () => clearTimeout(refreshTimer);
   }, []);
 
-  const fetchDashboardData = async () => {
+  async function fetchDashboardData() {
     try {
       setLoading(true);
       setError(null);
@@ -24,7 +25,7 @@ function Analytics() {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   if (loading) {
     return (

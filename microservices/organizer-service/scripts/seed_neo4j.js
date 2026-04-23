@@ -44,7 +44,7 @@ async function seed() {
       ]
     };
 
-    const result = await session.run(demoCypher, params);
+    await session.run(demoCypher, params);
     console.log('Seeded demo graph OK');
   } catch (err) {
     console.error('Seed error:', err.message);

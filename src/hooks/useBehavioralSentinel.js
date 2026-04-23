@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import * as tf from '@tensorflow/tfjs';
 
 /**
@@ -11,9 +11,10 @@ export const useBehavioralSentinel = () => {
   const [entropy, setEntropy] = useState('');
   const [isVerified, setIsVerified] = useState(false);
   const [model, setModel] = useState(null);
+  const [score, setScore] = useState(1.0);
   const movements = useRef([]);
   const clickPattern = useRef([]);
-  const lastEventTime = useRef(Date.now());
+  const lastEventTime = useRef(0);
 
   // Initialize the Edge-AI Model (Residual Temporal Engine)
   useEffect(() => {
@@ -71,7 +72,7 @@ export const useBehavioralSentinel = () => {
    * central Auditor to improve the global model without ever seeing 
    * the user's raw mouse data (Privacy-First AI).
    */
-  const syncFederatedWeights = async () => {
+  const syncFederatedWeights = useCallback(async () => {
     if (!model) return;
     
     try {
@@ -107,9 +108,9 @@ export const useBehavioralSentinel = () => {
     } catch (e) {
       console.error("Federated Sync failed", e);
     }
-  };
+  }, [model]);
 
-  const fineTuneModel = async () => {
+  const fineTuneModel = useCallback(async () => {
     if (!model || movements.current.length < 50) return;
 
     try {
@@ -132,7 +133,7 @@ export const useBehavioralSentinel = () => {
     } catch (e) {
       console.error("Fine-tuning failed", e);
     }
-  };
+  }, [model, syncFederatedWeights]);
 
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -188,7 +189,7 @@ export const useBehavioralSentinel = () => {
       window.removeEventListener('click', handleClick);
       clearInterval(inferenceInterval);
     };
-  }, [model]);
+  }, [model, fineTuneModel]);
 
   /**
    * calculateSpectralDensity
@@ -268,8 +269,6 @@ export const useBehavioralSentinel = () => {
 
     return null;
   };
-
-  const [score, setScore] = useState(1.0);
 
   return { generateHumanityProof, isVerified, entropy, score };
 };

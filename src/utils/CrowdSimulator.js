@@ -139,18 +139,7 @@ export function generateAutoBlockSeats(category, riskScore) {
     }
     return h >>> 0;
   }
-  function mulberry32(a) {
-    return function() {
-      a |= 0;
-      a = a + 0x6D2B79F5 | 0;
-      let t = Math.imul(a ^ a >>> 15, 1 | a);
-      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-      return ((t ^ t >>> 14) >>> 0) / 4294967296;
-    };
-  }
-
   const seed = hashStringToInt(`${category.name}|${totalSeats}|${Math.round(riskScore)}`);
-  const rng = mulberry32(seed);
 
   // Helper to compute (row,col) from seatId like 'C12'
   function parseSeat(id) {

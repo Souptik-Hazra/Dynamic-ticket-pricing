@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { ENDPOINTS } from '../config/api';
 import VenueMap from './VenueMap';
 import SeatGrid from './SeatGrid';
 import { useBehavioral } from '../context/BehavioralContext';
@@ -10,23 +9,20 @@ import { logPricingDecision } from '../utils/pricingAudit';
 
 function TicketPurchase({ event, onBack, onSuccess }) {
   const { user, isAuthenticated } = useAuth();
-  const { generateHumanityProof, isVerified, entropy, score } = useBehavioral();
-  const [temporalProof, setTemporalProof] = useState(null);
+  const { generateHumanityProof, score } = useBehavioral();
   const [verifyingHumanity, setVerifyingHumanity] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState(event.ticketCategories?.[0] || null);
   const [dynamicPrices, setDynamicPrices] = useState({});
   const [formData, setFormData] = useState({
-    customerName: '',
-    customerEmail: '',
+    customerName: user?.name || '',
+    customerEmail: user?.email || '',
     quantity: 1,
     username_real: '' // 🍯 Honeypot field
   });
   const [loading, setLoading] = useState(false);
-  const [priceLoading, setPriceLoading] = useState(true);
   const [purchasedTicket, setPurchasedTicket] = useState(null);
   const [paymentMethod, setPaymentMethod]     = useState('card');
   const [userWallet, setUserWallet]           = useState({ balance: 0 });
-  const [walletLoading, setWalletLoading]     = useState(false);
   const [selectedSeats, setSelectedSeats]     = useState([]);
 
   const isSeatSelectionMode = !!selectedCategory; // Active for any category selection
@@ -35,13 +31,12 @@ function TicketPurchase({ event, onBack, onSuccess }) {
   useEffect(() => {
     const fetchDynamicPrices = async () => {
       try {
-        setPriceLoading(true);
         // Include the Cognitive Score in the pricing request
         const response = await api.get(`/events/${event._id}/dynamic-prices?cognitive_score=${score}`);
         if (response.data.prices) {
           setDynamicPrices(response.data.prices);
         }
-      } catch (error) {
+      } catch {
         console.log('Using base prices fallback');
         // Calculate simple dynamic pricing locally as fallback
         const occupancyRate = event.ticketsSold / event.capacity;
@@ -55,40 +50,42 @@ function TicketPurchase({ event, onBack, onSuccess }) {
           });
         }
         setDynamicPrices(prices);
-      } finally {
-        setPriceLoading(false);
       }
     };
     
     fetchDynamicPrices();
   }, [event, score]);
 
-  // Pre-fill user data if logged in
-  useEffect(() => {
-    if (user) {
-      setFormData(prev => ({
-        ...prev,
-        customerName: user.name || '',
-        customerEmail: user.email || ''
-      }));
-      fetchUserWallet();
-    }
-  }, [user]);
-
-  const fetchUserWallet = async () => {
+  async function fetchUserWallet() {
     try {
-      setWalletLoading(true);
       const { data } = await api.get('/wallet/balance');
       setUserWallet(data);
     } catch (err) { console.error('Checkout wallet error:', err); }
-    finally { setWalletLoading(false); }
-  };
+  }
+
+  // Pre-fill user data if logged in
+  useEffect(() => {
+    const userTimer = setTimeout(() => {
+      if (user) {
+        setFormData(prev => ({
+          ...prev,
+          customerName: user.name || '',
+          customerEmail: user.email || ''
+        }));
+        fetchUserWallet();
+      }
+    }, 0);
+    return () => clearTimeout(userTimer);
+  }, [user]);
 
   // Select first category by default
   useEffect(() => {
-    if (event.ticketCategories && event.ticketCategories.length > 0) {
-      setSelectedCategory(event.ticketCategories[0]);
-    }
+    const categoryTimer = setTimeout(() => {
+      if (event.ticketCategories && event.ticketCategories.length > 0) {
+        setSelectedCategory(event.ticketCategories[0]);
+      }
+    }, 0);
+    return () => clearTimeout(categoryTimer);
   }, [event]);
 
   const handleChange = (e) => {
@@ -125,13 +122,6 @@ function TicketPurchase({ event, onBack, onSuccess }) {
       return dynamicPrices[selectedCategory.name] || selectedCategory.price;
     }
     return event.currentPrice || event.basePrice || 0;
-  };
-
-  const getBasePrice = () => {
-    if (selectedCategory) {
-      return selectedCategory.price;
-    }
-    return event.basePrice || 0;
   };
 
   const getAvailableTickets = () => {
@@ -192,7 +182,6 @@ function TicketPurchase({ event, onBack, onSuccess }) {
 
       // 2. Temporal Speed-Bump (VDF)
       const proof = await solveTemporalPuzzle(humanitySignature);
-      setTemporalProof(proof);
       setVerifyingHumanity(false);
 
       // 3. Pricing Audit Log (Blockchain Transparency)
@@ -260,6 +249,7 @@ function TicketPurchase({ event, onBack, onSuccess }) {
       });
     } catch (error) {
       setLoading(false);
+      setVerifyingHumanity(false);
       console.error('Purchase error:', error);
       const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Purchase failed. Please try again.';
       alert(`❌ ${errorMessage}`);

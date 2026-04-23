@@ -9,8 +9,6 @@ function SeatGridPreview({
   categories = [], 
   seatMap = [], 
   onSeatMapChange,
-  safetyScores = {},
-  isSafetyMode = false,
   activeCategory: activeCategoryProp,
   setActiveCategory: setActiveCategoryProp
 }) {

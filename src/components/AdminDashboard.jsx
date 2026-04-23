@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/client';
-import { useAuth } from '../context/AuthContext';
 import AdminEventForm from './AdminEventForm';
 import EventMapModal from './EventMapModal';
 import { ENDPOINTS } from '../config/api';
 import { useWebSocket } from '../hooks/useWebSocket';
 
 function AdminDashboard() {
-  const { user, logout } = useAuth();
   const { connected, lastEvent } = useWebSocket();
   const [view, setView]   = useState('stats');
   const [stats, setStats] = useState(null);
@@ -47,7 +45,7 @@ function AdminDashboard() {
     fetchAdminWallet();
   }, [view]);
 
-  const fetchPlatformHealth = async () => {
+  async function fetchPlatformHealth() {
     try {
       setHealthData(prev => ({ ...prev, loading: true }));
       const { data } = await api.get(ENDPOINTS.PLATFORM_HEALTH);
@@ -56,16 +54,16 @@ function AdminDashboard() {
       console.error('Health check error:', err);
       setHealthData(prev => ({ ...prev, loading: false }));
     }
-  };
+  }
 
-  const fetchAdminWallet = async () => {
+  async function fetchAdminWallet() {
     try {
       const { data } = await api.get(ENDPOINTS.WALLET_BALANCE);
       setAdminWallet(data);
     } catch (err) { console.error('Admin wallet error:', err); }
-  };
+  }
 
-  const fetchStats = async () => {
+  async function fetchStats() {
     try {
       setLoading(true);
       const { data } = await api.get(ENDPOINTS.ADMIN_STATS);
@@ -74,9 +72,9 @@ function AdminDashboard() {
       console.error('Stats error:', err);
       alert('Failed to fetch statistics');
     } finally { setLoading(false); }
-  };
+  }
 
-  const fetchEvents = async () => {
+  async function fetchEvents() {
     try {
       setLoading(true);
       const { data } = await api.get(ENDPOINTS.ADMIN_EVENTS);
@@ -85,9 +83,9 @@ function AdminDashboard() {
       console.error('Events error:', err);
       alert('Failed to fetch events');
     } finally { setLoading(false); }
-  };
+  }
 
-  const fetchTickets = async () => {
+  async function fetchTickets() {
     try {
       setLoading(true);
       const { data } = await api.get(ENDPOINTS.ADMIN_TICKETS);
@@ -96,10 +94,10 @@ function AdminDashboard() {
       console.error('Tickets error:', err);
       alert('Failed to fetch tickets');
     } finally { setLoading(false); }
-  };
+  }
 
 
-  const fetchCommissions = async () => {
+  async function fetchCommissions() {
     try {
       setLoading(true);
       const { data } = await api.get(ENDPOINTS.ADMIN_COMMISSIONS);
@@ -107,7 +105,7 @@ function AdminDashboard() {
     } catch (err) {
       console.error('Commissions error:', err);
     } finally { setLoading(false); }
-  };
+  }
 
   const handleCompleteEvent = async (eventId) => {
     if (!window.confirm('Mark this event as COMPLETED and process 20% commission? This action is irreversible.')) return;
@@ -123,7 +121,7 @@ function AdminDashboard() {
     } finally { setLoading(false); }
   };
 
-  const fetchUsers = async () => {
+  async function fetchUsers() {
     try {
       setLoading(true);
       const { data } = await api.get(ENDPOINTS.ADMIN_USERS);
@@ -132,7 +130,7 @@ function AdminDashboard() {
       console.error('Users error:', err);
       alert('Failed to fetch users');
     } finally { setLoading(false); }
-  };
+  }
 
   const handleRoleUpdate = async (userId, newRole) => {
     if (!window.confirm(`Are you sure you want to change this user's role to ${newRole.toUpperCase()}?`)) return;

@@ -20,7 +20,7 @@ function generateSeatLayout(totalSeats) {
   return layout;
 }
 
-function SeatGrid({ category, categories = [], selectedSeats = [], onToggleSeat, interactive = true, seatMap = [], totalCapacity = 0, isSafetyMode = false, safetyScores = {} }) {
+function SeatGrid({ category, categories = [], selectedSeats = [], onToggleSeat, interactive = true, seatMap = [], totalCapacity = 0 }) {
   const layout = useMemo(() => {
     if (seatMap && seatMap.length > 0 && totalCapacity > 0) return generateSeatLayout(totalCapacity);
     if (!category || !category.seats) return [];
@@ -43,6 +43,7 @@ function SeatGrid({ category, categories = [], selectedSeats = [], onToggleSeat,
     const bookedSeats = targetCategory.bookedSeats || [];
     const blockedSeats = targetCategory.blockedSeats || [];
     if (bookedSeats.includes(seatId)) return;
+    if (blockedSeats.includes(seatId)) return;
     if (onToggleSeat) onToggleSeat(seatId);
   };
 

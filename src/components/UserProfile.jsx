@@ -24,24 +24,23 @@ const UserProfile = () => {
   const [paymentsLoading, setPaymentsLoading] = useState(false);
   const [refundingId, setRefundingId] = useState(null);
   const [wallet, setWallet] = useState({ balance: 0, transactions: [] });
-  const [walletLoading, setWalletLoading] = useState(false);
 
   const fetchWallet = async () => {
     try {
-      setWalletLoading(true);
       const { data } = await api.get(ENDPOINTS.WALLET_BALANCE);
       setWallet(data);
     } catch (err) {
       console.error("Error fetching wallet:", err);
-    } finally {
-      setWalletLoading(false);
     }
   };
 
   useEffect(() => {
-    if (activeTab === "tickets") fetchTickets();
-    if (activeTab === "payments") fetchPayments();
-    fetchWallet(); // Always fetch wallet balance on mount/refresh
+    const tabTimer = setTimeout(() => {
+      if (activeTab === "tickets") fetchTickets();
+      if (activeTab === "payments") fetchPayments();
+      fetchWallet(); // Always fetch wallet balance on mount/refresh
+    }, 0);
+    return () => clearTimeout(tabTimer);
   }, [activeTab]);
 
   const handleDeposit = async () => {
@@ -49,7 +48,6 @@ const UserProfile = () => {
     if (!amount || isNaN(amount) || parseFloat(amount) <= 0) return;
 
     try {
-      setWalletLoading(true);
       await api.post(ENDPOINTS.WALLET_DEPOSIT,
         { amount: parseFloat(amount) }
       );
@@ -58,8 +56,6 @@ const UserProfile = () => {
     } catch (err) {
       console.error("Deposit error:", err);
       alert(err.response?.data?.error || "Failed to add money");
-    } finally {
-      setWalletLoading(false);
     }
   };
 
@@ -73,7 +69,6 @@ const UserProfile = () => {
     }
 
     try {
-      setWalletLoading(true);
       await api.post(ENDPOINTS.WALLET_WITHDRAW,
         { amount: parseFloat(amount) }
       );
@@ -82,23 +77,24 @@ const UserProfile = () => {
     } catch (err) {
       console.error("Withdrawal error:", err);
       alert(err.response?.data?.error || "Failed to withdraw money");
-    } finally {
-      setWalletLoading(false);
     }
   };
 
   // Real-time: refresh ticket list when a new ticket_sold event arrives
   useEffect(() => {
-    if (lastEvent?.type === 'ticket_sold') {
-      if (activeTab === 'tickets') fetchTickets();
-      fetchWallet();
-    }
-    if (lastEvent?.type === 'notification') {
-      fetchWallet();
-    }
+    const eventTimer = setTimeout(() => {
+      if (lastEvent?.type === 'ticket_sold') {
+        if (activeTab === 'tickets') fetchTickets();
+        fetchWallet();
+      }
+      if (lastEvent?.type === 'notification') {
+        fetchWallet();
+      }
+    }, 0);
+    return () => clearTimeout(eventTimer);
   }, [lastEvent]); // eslint-disable-line
 
-  const fetchTickets = async () => {
+  async function fetchTickets() {
     try {
       setTicketsLoading(true);
       const response = await api.get(ENDPOINTS.USER_TICKETS);
@@ -108,9 +104,9 @@ const UserProfile = () => {
     } finally {
       setTicketsLoading(false);
     }
-  };
+  }
 
-  const fetchPayments = async () => {
+  async function fetchPayments() {
     try {
       setPaymentsLoading(true);
       const { data } = await api.get(ENDPOINTS.PAYMENTS);
@@ -122,8 +118,6 @@ const UserProfile = () => {
         paymentsList = data.payments;
       } else if (Array.isArray(data)) {
         paymentsList = data;
-      } else if (data && data.success && Array.isArray(data.payments)) {
-        paymentsList = data.payments;
       }
 
       setPayments(paymentsList);
@@ -132,7 +126,7 @@ const UserProfile = () => {
     } finally {
       setPaymentsLoading(false);
     }
-  };
+  }
 
   const handleRefund = async (paymentId) => {
     if (!window.confirm("Warning: Organiser/Admin will keep a 15% cancellation fee, and you will receive an 85% refund. Are you convinced now?")) return;
@@ -182,14 +176,6 @@ const UserProfile = () => {
       .join("")
       .toUpperCase()
       .slice(0, 2);
-  };
-
-  const getMemberSince = () => {
-    if (!user?.createdAt) return "Recently";
-    return new Date(user.createdAt).toLocaleDateString("en-US", {
-      month: "long",
-      year: "numeric",
-    });
   };
 
   const handlePrintTicket = (ticket) => {

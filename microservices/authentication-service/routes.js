@@ -113,7 +113,7 @@ router.get('/me', (req, res) => {
       if (!user) return res.status(404).json({ error: 'User not found' });
       res.json({ user: formatUser(user) });
     }).catch((err) => res.status(500).json({ error: err.message }));
-  } catch (err) {
+  } catch {
     res.status(401).json({ error: 'Invalid or expired token' });
   }
 });
@@ -163,7 +163,7 @@ router.post('/refresh', async (req, res) => {
 
     const newToken = generateToken(user);
     res.json({ token: newToken, user: formatUser(user) });
-  } catch (err) {
+  } catch {
     res.status(401).json({ error: 'Token invalid or expired. Please log in again.' });
   }
 });

@@ -9,7 +9,7 @@ import { errorHandler, notFound } from '../shared/errorHandler.js';
 import jwtMiddleware from '../shared/jwtMiddleware.js';
 import Ticket from '../shared/models/Ticket.js';
 import Event from '../shared/models/Event.js';
-import { cacheDelPattern, CACHE_KEYS, notify, wsNotifyUser, creditUserWallet, revertPurchase } from '../shared/interservice.js';
+import { CACHE_KEYS, notify, wsNotifyUser, creditUserWallet, revertPurchase } from '../shared/interservice.js';
 import { requestLogger } from '../shared/logger.js';
 
 dotenv.config();
@@ -59,7 +59,7 @@ app.get('/health', (_req, res) =>
 );
 
 // POST /api/payments
-app.post('/api/payments', jwtMiddleware, requireDB, async (req, res, next) => {
+app.post('/api/payments', jwtMiddleware, requireDB, async (req, res) => {
   try {
     const { ticketId, paymentMethod, cardLast4, upiId } = req.body;
     if (!ticketId)      return res.status(400).json({ error: 'ticketId is required' });

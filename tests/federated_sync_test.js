@@ -75,7 +75,7 @@ async function runFederatedTest() {
       role: "admin"
     });
     token = signupRes.data.token;
-  } catch (err) {
+  } catch {
     // If user exists, try login
     try {
       const loginRes = await axios.post(`${AUTH_SERVICE_URL}/api/auth/login`, {
@@ -83,7 +83,7 @@ async function runFederatedTest() {
         password: "password123"
       });
       token = loginRes.data.token;
-    } catch (e) {
+    } catch {
       console.log("Could not obtain JWT token. Attempting aggregation without it (might fail if jwtMiddleware is strict).");
     }
   }

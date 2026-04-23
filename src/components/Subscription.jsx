@@ -9,6 +9,7 @@ const Subscription = () => {
   const [liveSub,    setLiveSub]    = useState(null);   // fresh from API
   const [subscriptionPlans, setSubscriptionPlans] = useState([]); // Dynamic from backend
   const [message,   setMessage]    = useState({ text: '', isError: false });
+  const [currentTime, setCurrentTime] = useState(null);
 
   // fetchData handles both public and protected endpoints
 
@@ -32,7 +33,17 @@ const Subscription = () => {
       }
     };
     fetchData();
-  }, [user]); // eslint-disable-line
+  }, [user]);  
+
+  useEffect(() => {
+    const updateTime = () => setCurrentTime(Date.now());
+    const initialTimer = setTimeout(updateTime, 0);
+    const interval = setInterval(updateTime, 60000);
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(interval);
+    };
+  }, []);
 
   const currentPlan = liveSub?.plan || user?.subscription?.plan || 'none';
   const isActive    = liveSub?.isActive ?? (user?.subscription?.isActive ?? false);
@@ -61,8 +72,8 @@ const Subscription = () => {
     }
   };
 
-  const daysLeft = endDate
-    ? Math.max(0, Math.ceil((new Date(endDate) - Date.now()) / 86400000))
+  const daysLeft = endDate && currentTime
+    ? Math.max(0, Math.ceil((new Date(endDate) - currentTime) / 86400000))
     : null;
 
   return (

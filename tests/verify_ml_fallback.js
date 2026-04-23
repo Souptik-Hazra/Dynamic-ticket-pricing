@@ -27,7 +27,7 @@ async function testMLFallback() {
     try {
       const normalRes = await axios.get(`${ORGANIZER_SERVICE_URL}/api/events/${eventId}/dynamic-prices`);
       console.log('✅ Normal Response received:', normalRes.data.source);
-    } catch (e) {
+    } catch {
       console.log('⚠️ Normal inference failed (maybe ML service is down), proceeding to fallback verification...');
     }
 

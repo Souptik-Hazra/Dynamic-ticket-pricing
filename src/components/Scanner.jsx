@@ -182,6 +182,33 @@ const Scanner = () => {
   const [sessionCount, setSessionCount] = useState(0);
   const [showResult, setShowResult] = useState(false);
 
+  const speakFeedback = useCallback((text) => {
+    try {
+      if ('speechSynthesis' in window) {
+        const u = new SpeechSynthesisUtterance(text);
+        u.rate = 1.2;
+        window.speechSynthesis.speak(u);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  const playSuccessSound = useCallback(() => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.3);
+    } catch { /* ignore */ }
+  }, []);
+
   const verifyTicket = useCallback(async (token) => {
     setShowResult(false);
     setVerifying(true);
@@ -206,7 +233,7 @@ const Scanner = () => {
     } finally {
       setVerifying(false);
     }
-  }, []);
+  }, [playSuccessSound, speakFeedback]);
 
   const handleReset = useCallback(() => {
     setScanResult(null);
@@ -234,33 +261,6 @@ const Scanner = () => {
     const timer = setTimeout(() => handleReset(), 4000);
     return () => clearTimeout(timer);
   }, [showResult, handleReset]);
-
-  const speakFeedback = (text) => {
-    try {
-      if ('speechSynthesis' in window) {
-        const u = new SpeechSynthesisUtterance(text);
-        u.rate = 1.2;
-        window.speechSynthesis.speak(u);
-      }
-    } catch { /* ignore */ }
-  };
-
-  const playSuccessSound = () => {
-    try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(880, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.1);
-      gain.gain.setValueAtTime(0.1, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.3);
-    } catch { /* ignore */ }
-  };
 
   return (
     <div className="cyber-container animate-fade-up" style={{ padding: '2rem 0', maxWidth: '560px' }}>

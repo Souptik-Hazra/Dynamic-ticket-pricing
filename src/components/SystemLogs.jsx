@@ -12,13 +12,7 @@ const SystemLogs = () => {
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  useEffect(() => {
-    fetchSystemData();
-    const interval = setInterval(fetchSystemData, 30000); // Auto-refresh every 30s
-    return () => clearInterval(interval);
-  }, [refreshKey]);
-
-  const fetchSystemData = async () => {
+  async function fetchSystemData() {
     try {
       setLoading(true);
       const [logsRes, healthRes] = await Promise.all([
@@ -32,7 +26,16 @@ const SystemLogs = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }
+
+  useEffect(() => {
+    const refreshTimer = setTimeout(fetchSystemData, 0);
+    const interval = setInterval(fetchSystemData, 30000); // Auto-refresh every 30s
+    return () => {
+      clearTimeout(refreshTimer);
+      clearInterval(interval);
+    };
+  }, [refreshKey]);
 
   const COLORS = ['#ef4444', '#f59e0b', '#3b82f6', '#10b981', '#8b5cf6'];
 
@@ -43,7 +46,7 @@ const SystemLogs = () => {
           <h1 className="title-main text-gradient" style={{ margin: 0, fontSize: '2.5rem' }}>System Health Monitor</h1>
           <p className="text-dim">Real-time distributed tracing and neural telemetry</p>
         </div>
-        <button className="cyber-btn btn-outline" onClick={() => setRefreshKey(prev => prev + 1)}>
+        <button className="cyber-btn btn-outline" onClick={() => setRefreshKey(prev => prev + 1)} disabled={loading}>
           🔄 System Check
         </button>
       </div>
@@ -148,7 +151,6 @@ const SystemLogs = () => {
           </table>
         </div>
       </div>
-    </div>
     </div>
   );
 };

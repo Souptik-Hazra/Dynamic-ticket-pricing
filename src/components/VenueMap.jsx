@@ -157,7 +157,7 @@ function generateFestivalSections(categories, stagePos) {
   return { sections, stage: { type: 'rect', x: cx - 60, y: stageY, width: 120, height: 35, label: '🎪 STAGE' } };
 }
 
-function generatePremiumConcertSections(categories, stagePos) {
+function generatePremiumConcertSections(categories) {
   const cx = 300, cy = 150, n = categories.length;
   if (n === 0) return { sections: [], stage: null };
   const sections = [];

@@ -1,5 +1,4 @@
 import express from 'express';
-import { tuneExpressServer, registerProcessHandlers } from '../shared/db.js';
 import { requestLogger } from '../shared/logger.js';
 import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
@@ -54,7 +53,7 @@ function heartbeat() {
   this.isAlive = true;
 }
 
-wss.on('connection', (ws, req) => {
+wss.on('connection', (ws, _req) => {
   ws.isAlive = true;
   ws.on('pong', heartbeat);
 

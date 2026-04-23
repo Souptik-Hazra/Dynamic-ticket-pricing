@@ -83,11 +83,13 @@ function VenueLayoutDesigner({
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [isSimulating, setIsSimulating]         = useState(false);
 
-  const { user } = { user: { role: 'admin' } }; // Mocked or get from context if needed
   const isAdmin = true; // For now
 
   React.useEffect(() => {
-    if (selectedCategoryProp) setSelectedCategory(selectedCategoryProp);
+    const categoryTimer = setTimeout(() => {
+      if (selectedCategoryProp) setSelectedCategory(selectedCategoryProp);
+    }, 0);
+    return () => clearTimeout(categoryTimer);
   }, [selectedCategoryProp]);
 
   const toggleSafetyMode = async () => {
@@ -135,7 +137,7 @@ function VenueLayoutDesigner({
     }));
 
   const handleAutoBlock = () => {
-    activeCategories.forEach((cat, idx) => {
+    activeCategories.forEach((cat) => {
       const score = safetyScores[cat.name] || 0;
       if (score >= 60) {
         const suggested = generateAutoBlockSeats(cat, score) || [];

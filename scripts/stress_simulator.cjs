@@ -10,12 +10,6 @@ const stagePositions = ['center','front','left','right'];
 function randInt(min, max) { return Math.floor(Math.random()*(max-min+1))+min; }
 function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
 
-function genSeats(count){
-  const seats = [];
-  for(let i=0;i<count;i++) seats.push(i+1);
-  return seats;
-}
-
 function genPayload(idx){
   const numCats = randInt(1,4);
   const categories = [];

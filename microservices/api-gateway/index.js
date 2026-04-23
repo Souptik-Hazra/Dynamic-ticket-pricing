@@ -31,7 +31,6 @@ if (cluster.isPrimary) {
   });
 } else {
   const app = express();
-  const workerId = cluster.worker.id;
   // console.log(`[OS Expert] 🏗️ Worker ${workerId} [${process.pid}] online`);
   // ── Bot Protection ──────────────────────────────────────────────────────────
   app.use(botShield);

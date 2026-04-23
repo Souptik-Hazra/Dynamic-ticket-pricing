@@ -21,9 +21,12 @@ function AutoPriceUpdater({ eventId, onPriceUpdate, compact = false }) {
   }, [eventId, onPriceUpdate]);
 
   useEffect(() => {
-    fetchDynamicPrice();
+    const initialTimer = setTimeout(fetchDynamicPrice, 0);
     const interval = setInterval(fetchDynamicPrice, 30000);
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(interval);
+    };
   }, [fetchDynamicPrice]);
 
   return (

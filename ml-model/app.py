@@ -1,11 +1,8 @@
 import logging
 from logging.config import dictConfig
 import os
-import sys
-import json
 import joblib
 import numpy as np
-import pandas as pd
 from datetime import datetime
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -30,7 +27,6 @@ def create_app():
 
     # Load Unified Neural Engine
     try:
-        import tensorflow as tf
         from tensorflow import keras
         # Use compile=False to avoid issues with custom metrics during loading
         app.ml_model = keras.models.load_model(os.path.join(BASE_DIR, 'unified_model.h5'), compile=False)
@@ -112,7 +108,6 @@ def create_app():
 
             # Map the incoming weight data to the model's layers
             # The weights_list is expected to be a list of {name, shape, data}
-            new_weights = []
             for layer in app.ml_model.layers:
                 layer_weights = []
                 # Find matching weights in the list
