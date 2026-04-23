@@ -4,6 +4,39 @@ import { Html5QrcodeScanner } from 'html5-qrcode';
 import api from '../api/client';
 import { ENDPOINTS } from '../config/api';
 
+const normalizeTicketToken = (value) => {
+  let token = String(value || '').trim();
+  if (!token) return '';
+
+  try {
+    const parsed = JSON.parse(token);
+    if (parsed && typeof parsed === 'object') {
+      token = String(parsed.token || parsed.qrToken || parsed.ticketToken || token).trim();
+    }
+  } catch {
+    // Plain token or URL payload.
+  }
+
+  try {
+    const url = new URL(token, window.location.origin);
+    const extracted =
+      url.searchParams.get('token') ||
+      url.searchParams.get('qrToken') ||
+      url.searchParams.get('ticketToken');
+    if (extracted) return extracted.trim();
+  } catch {
+    // Not a URL.
+  }
+
+  if (token.includes('token=')) {
+    const params = new URLSearchParams(token.startsWith('?') ? token.slice(1) : token);
+    const extracted = params.get('token') || params.get('qrToken') || params.get('ticketToken');
+    if (extracted) return extracted.trim();
+  }
+
+  return token.split('&')[0].trim();
+};
+
 // Inner scanner — only mounted when camera mode is active
 const ScannerCore = ({ onScanSuccess, onPermissionError }) => {
   const scannerRef = useRef(null);
@@ -30,18 +63,7 @@ const ScannerCore = ({ onScanSuccess, onPermissionError }) => {
       (result) => {
         if (calledbackRef.current) return;
         calledbackRef.current = true;
-        // Safely extract token whether result is a full URL or a bare token
-        let token = result.trim();
-        try {
-          // If it looks like a URL, parse it properly (handles extra params like &utm=xyz)
-          if (token.startsWith('http://') || token.startsWith('https://') || token.includes('?')) {
-            const url = new URL(token.includes('://') ? token : `https://x.com/${token}`);
-            const extracted = url.searchParams.get('token');
-            if (extracted) token = extracted;
-          }
-        } catch {
-          // Not a URL — use raw value (bare token pasted manually)
-        }
+        const token = normalizeTicketToken(result);
         if (window.navigator.vibrate) window.navigator.vibrate(100);
         scanner.clear().catch(() => {});
         onScanSuccess(token);
@@ -112,7 +134,7 @@ const ManualEntry = ({ onSubmit, onSwitchToCamera }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const trimmed = token.trim();
+    const trimmed = normalizeTicketToken(token);
     if (!trimmed) return;
     onSubmit(trimmed);
     setToken('');
@@ -210,13 +232,14 @@ const Scanner = () => {
   }, []);
 
   const verifyTicket = useCallback(async (token) => {
+    const normalizedToken = normalizeTicketToken(token);
     setShowResult(false);
     setVerifying(true);
     setError(null);
     setScanResult(null);
 
     try {
-      const response = await api.post(ENDPOINTS.SCANNER_VERIFY, { token });
+      const response = await api.post(ENDPOINTS.SCANNER_VERIFY, { token: normalizedToken });
       setScanResult(response.data);
       setSessionCount(prev => prev + 1);
       setShowResult(true);

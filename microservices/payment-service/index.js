@@ -9,6 +9,7 @@ import { errorHandler, notFound } from '../shared/errorHandler.js';
 import jwtMiddleware from '../shared/jwtMiddleware.js';
 import Ticket from '../shared/models/Ticket.js';
 import Event from '../shared/models/Event.js';
+import Wallet from '../shared/models/Wallet.js';
 import { CACHE_KEYS, notify, wsNotifyUser, creditUserWallet, revertPurchase } from '../shared/interservice.js';
 import { requestLogger } from '../shared/logger.js';
 
@@ -69,19 +70,53 @@ app.post('/api/payments', jwtMiddleware, requireDB, async (req, res) => {
     if (!validMethods.includes(paymentMethod))
       return res.status(400).json({ error: `paymentMethod must be one of: ${validMethods.join(', ')}` });
 
-    // 1. Fetch ticket with populated event
-    const ticket = await Ticket.findById(ticketId).populate('eventId');
-    if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
+    const paymentTicketIds = Array.isArray(req.body.metadata?.ticketIds) && req.body.metadata.ticketIds.length > 0
+      ? req.body.metadata.ticketIds
+      : [ticketId];
+
+    // 1. Fetch tickets with populated event
+    const tickets = await Ticket.find({ _id: { $in: paymentTicketIds } }).populate('eventId');
+    if (tickets.length !== paymentTicketIds.length) {
+      return res.status(404).json({ error: 'One or more tickets were not found' });
+    }
+    const ticket = tickets[0];
     
-    // 2. Validate ownership and status
-    if (ticket.userId.toString() !== req.user.id)
-      return res.status(403).json({ error: 'This ticket does not belong to you' });
+    // 2. Validate ownership, event consistency and status
+    if (tickets.some(t => t.userId.toString() !== req.user.id))
+      return res.status(403).json({ error: 'One or more tickets do not belong to you' });
     
-    if (ticket.status !== 'confirmed')
-      return res.status(400).json({ error: `Ticket status is '${ticket.status}' — cannot process payment` });
+    const invalidTicket = tickets.find(t => t.status !== 'confirmed');
+    if (invalidTicket)
+      return res.status(400).json({ error: `Ticket status is '${invalidTicket.status}' - cannot process payment` });
 
     if (!ticket.eventId) {
       return res.status(400).json({ error: 'Event information missing from ticket' });
+    }
+
+    const eventId = String(ticket.eventId._id || ticket.eventId);
+    if (tickets.some(t => String(t.eventId?._id || t.eventId) !== eventId)) {
+      return res.status(400).json({ error: 'All tickets in one payment must belong to the same event' });
+    }
+
+    const payableAmount = tickets.reduce((sum, t) => sum + Number(t.totalAmount || 0), 0);
+    if (payableAmount <= 0) return res.status(400).json({ error: 'Invalid ticket amount' });
+
+    if (paymentMethod === 'wallet') {
+      const wallet = await Wallet.findOneAndUpdate(
+        { userId: req.user.id, balance: { $gte: payableAmount } },
+        {
+          $inc: { balance: -payableAmount },
+          $push: {
+            transactions: {
+              amount: payableAmount,
+              type: 'debit',
+              description: `Ticket purchase: ${ticket.bookingReference}`,
+            },
+          },
+        },
+        { new: true }
+      );
+      if (!wallet) return res.status(400).json({ error: 'Insufficient wallet balance' });
     }
 
     // 3. Create Payment with explicit ObjectIds to prevent TypeErrors
@@ -89,11 +124,11 @@ app.post('/api/payments', jwtMiddleware, requireDB, async (req, res) => {
       ticketId: new mongoose.Types.ObjectId(ticket._id),
       eventId:  new mongoose.Types.ObjectId(ticket.eventId._id || ticket.eventId),
       userId:   new mongoose.Types.ObjectId(req.user.id),
-      amount:   Number(req.body.amount) || Number(ticket.totalAmount),
+      amount:   payableAmount,
       bookingReference: req.body.bookingReference || ticket.bookingReference,
       paymentMethod,
       status:   'completed',
-      metadata: { ...req.body.metadata, cardLast4, upiId },
+      metadata: { ...req.body.metadata, ticketIds: paymentTicketIds, cardLast4, upiId },
     });
 
     // 4. Update Event Revenue & Credit Organizer Wallet
@@ -239,16 +274,23 @@ app.post('/api/payments/:id/refund', jwtMiddleware, requireDB, async (req, res, 
     payment.status = 'refunded';
     await payment.save();
     
-    // Update ticket and get details for reversal
-    const ticket = await Ticket.findByIdAndUpdate(payment.ticketId, { status: 'refunded' }, { new: true });
+    // Update all tickets covered by this payment, not just the lead ticket.
+    const refundTicketIds = Array.isArray(payment.metadata?.ticketIds) && payment.metadata.ticketIds.length > 0
+      ? payment.metadata.ticketIds
+      : [payment.ticketId];
+    const tickets = await Ticket.find({ _id: { $in: refundTicketIds } });
+    await Ticket.updateMany({ _id: { $in: refundTicketIds } }, { status: 'refunded', isUsed: false });
+    const ticket = tickets[0];
     
     let refundAmount = 0;
     if (ticket) {
       // 85% REFUND POLICY: User gets 85%, Organizer loses 85% (keeps 15% as fee)
       refundAmount = Math.round(payment.amount * 0.85);
+      const refundedQuantity = tickets.reduce((sum, t) => sum + (Number(t.quantity) || 1), 0);
+      const seatNumbers = tickets.map(t => t.seatNumber).filter(Boolean);
 
       // ── Inter-service: revert 85% revenue in Organizer Service
-      revertPurchase(ticket.eventId, ticket.categoryName, ticket.quantity, refundAmount);
+      revertPurchase(ticket.eventId, ticket.categoryName, refundedQuantity, refundAmount, seatNumbers);
 
       // ── Inter-service: Credit User Wallet with 85%
       creditUserWallet(payment.userId, refundAmount, `Refund (85% payout) for ${ticket.eventId?.name || 'ticket'}`);

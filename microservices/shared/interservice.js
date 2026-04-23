@@ -86,9 +86,9 @@ export const notify = (userId, type, title, message, meta = {}) =>
  * Revert a ticket purchase (used when a refund is processed).
  * Return seats to inventory and subtract revenue.
  */
-export const revertPurchase = (eventId, categoryName, quantity, amount) =>
+export const revertPurchase = (eventId, categoryName, quantity, amount, seatNumbers = []) =>
   fireAndForget(
-    () => axios.post(`${SERVICES.organizer}/api/tickets/revert`, { eventId, categoryName, quantity, amount }, { timeout: 5000, httpAgent, httpsAgent }),
+    () => axios.post(`${SERVICES.organizer}/api/tickets/revert`, { eventId, categoryName, quantity, amount, seatNumbers }, { timeout: 5000, httpAgent, httpsAgent }),
     `revertPurchase(${eventId})`
   );
 

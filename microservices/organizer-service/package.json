@@ -17,6 +17,7 @@
         "helmet": "^7.1.0",
         "jsonwebtoken": "*",
         "mongoose": "*",
-        "neo4j-driver": "^6.0.1"
+        "neo4j-driver": "^6.0.1",
+        "qrcode": "^1.5.4"
     }
 }

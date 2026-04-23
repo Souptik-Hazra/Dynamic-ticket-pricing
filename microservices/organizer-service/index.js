@@ -10,6 +10,7 @@ import { requestLogger } from '../shared/logger.js';
 import crypto from 'crypto';
 import axios from 'axios';
 import mongoose from 'mongoose';
+import QRCode from 'qrcode';
 import Event from '../shared/models/Event.js';
 import Ticket from '../shared/models/Ticket.js';
 import User from '../shared/models/User.js';
@@ -32,6 +33,22 @@ const PRICE_ABS_TOLERANCE = Number(process.env.PRICE_ABS_TOLERANCE) || 1.0; // a
 const PRICE_REL_TOLERANCE = Number(process.env.PRICE_REL_TOLERANCE) || 0.02; // relative (fraction)
 
 console.log(`Price validation tolerances — abs: ${PRICE_ABS_TOLERANCE}, rel: ${PRICE_REL_TOLERANCE}`);
+
+const createTicketQrToken = () => crypto.randomBytes(32).toString('base64url');
+
+const createBookingReference = () => {
+  const ts = Date.now().toString(36).toUpperCase();
+  const rand = crypto.randomBytes(3).toString('hex').toUpperCase();
+  return `FF-${ts}-${rand}`;
+};
+
+const createTicketQrCode = (token) =>
+  QRCode.toDataURL(token, {
+    errorCorrectionLevel: 'M',
+    margin: 2,
+    width: 360,
+    color: { dark: '#000000', light: '#ffffff' },
+  });
 
 const app = express();
 app.use(compression());
@@ -126,6 +143,14 @@ app.get('/api/events', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+app.get('/api/events/:id', async (req, res, next) => {
+  try {
+    const event = await Event.findById(req.params.id);
+    if (!event) return res.status(404).json({ error: 'Event not found' });
+    res.json(event);
+  } catch (err) { next(err); }
+});
+
 app.get('/api/events/:id/dynamic-prices', async (req, res, next) => {
   try {
     const event = await Event.findById(req.params.id);
@@ -144,7 +169,20 @@ app.get('/api/events/:id/dynamic-prices', async (req, res, next) => {
 });
 
 app.post('/api/tickets', jwtMiddleware, requireDB, async (req, res, next) => {
-  const { eventId, categoryId, categoryName, quantity, pricePerTicket, sessionId, humanityProof, temporalProof, cognitive_score } = req.body;
+  const {
+    eventId,
+    categoryId,
+    categoryName,
+    quantity,
+    selectedSeats = [],
+    customerName,
+    customerEmail,
+    pricePerTicket,
+    sessionId,
+    humanityProof,
+    temporalProof,
+    cognitive_score
+  } = req.body;
 
   // 1. Verify Temporal Speed-Bump (VDF)
   if (!humanityProof || !temporalProof || !verifyTemporalProof(humanityProof, temporalProof)) {
@@ -166,6 +204,29 @@ app.post('/api/tickets', jwtMiddleware, requireDB, async (req, res, next) => {
       if (categoryId && c._id) return String(c._id) === String(categoryId);
       return c.name === categoryName;
     }) || null;
+
+    if (event.ticketCategories?.length && !cat) {
+      return res.status(400).json({ error: 'Invalid ticket category' });
+    }
+
+    const requestedQuantity = Math.max(1, Number(quantity) || 1);
+    const seats = [...new Set(Array.isArray(selectedSeats) ? selectedSeats.filter(Boolean) : [])];
+    const ticketCount = seats.length > 0 ? seats.length : requestedQuantity;
+
+    if (ticketCount < 1 || ticketCount > 15) {
+      return res.status(400).json({ error: 'Ticket quantity must be between 1 and 15' });
+    }
+
+    if (cat && seats.length > 0) {
+      const mappedSeatCategories = new Map((event.seatMap || []).map(s => [s.seatId, s.categoryName]));
+      const invalidSeat = seats.find((seatId) => {
+        const mappedCategory = mappedSeatCategories.get(seatId);
+        return mappedCategory && mappedCategory !== cat.name;
+      });
+      if (invalidSeat) {
+        return res.status(400).json({ error: `Seat ${invalidSeat} does not belong to ${cat.name}` });
+      }
+    }
 
     // Server-side price recomputation to prevent client-side tampering
     const clientPrice = Number(pricePerTicket) || 0;
@@ -204,12 +265,119 @@ app.post('/api/tickets', jwtMiddleware, requireDB, async (req, res, next) => {
       console.warn('PriceLog save failed', logErr && logErr.message);
     }
 
-    const ticket = await Ticket.create({
-      eventId, userId: req.user.id, categoryId: cat?._id, categoryName, quantity,
-      pricePerTicket: finalPrice, totalAmount: finalPrice * quantity, status: 'confirmed'
-    });
+    let inventoryFilter;
+    let inventoryUpdate;
 
-    res.status(201).json({ success: true, tickets: [ticket] });
+    if (cat) {
+      inventoryFilter = {
+        _id: event._id,
+        status: { $ne: 'cancelled' },
+        ticketCategories: {
+          $elemMatch: {
+            _id: cat._id,
+            availableSeats: { $gte: ticketCount },
+            bookedSeats: { $nin: seats },
+            blockedSeats: { $nin: seats },
+          },
+        },
+      };
+      inventoryUpdate = {
+        $inc: {
+          'ticketCategories.$.availableSeats': -ticketCount,
+          availableTickets: -ticketCount,
+          ticketsSold: ticketCount,
+        },
+      };
+      if (seats.length > 0) {
+        inventoryUpdate.$addToSet = { 'ticketCategories.$.bookedSeats': { $each: seats } };
+      }
+    } else {
+      inventoryFilter = {
+        _id: event._id,
+        status: { $ne: 'cancelled' },
+        availableTickets: { $gte: ticketCount },
+      };
+      inventoryUpdate = {
+        $inc: {
+          availableTickets: -ticketCount,
+          ticketsSold: ticketCount,
+        },
+      };
+    }
+
+    const inventoryResult = await Event.findOneAndUpdate(inventoryFilter, inventoryUpdate, { new: true });
+    if (!inventoryResult) {
+      return res.status(400).json({ error: 'Tickets sold out or selected seats are no longer available' });
+    }
+
+    cacheDel(CACHE_KEYS.EVENT_DETAIL(event._id));
+    cacheDelPattern(CACHE_KEYS.EVENT_LIST_ALL);
+
+    const ticketsToCreate = [];
+    const buyer = (!customerName || !customerEmail)
+      ? await User.findById(req.user.id).select('name email')
+      : null;
+    const buyerName = customerName || buyer?.name || 'Guest';
+    const buyerEmail = customerEmail || buyer?.email || req.user.email;
+
+    for (let i = 0; i < ticketCount; i++) {
+      const qrToken = createTicketQrToken();
+      const qrCode = await createTicketQrCode(qrToken);
+
+      ticketsToCreate.push({
+        eventId,
+        userId: req.user.id,
+        categoryId: cat?._id,
+        categoryName: cat?.name || categoryName || 'standard',
+        seatNumber: seats[i],
+        customerName: buyerName,
+        customerEmail: buyerEmail,
+        quantity: 1,
+        pricePerTicket: finalPrice,
+        totalAmount: finalPrice,
+        status: 'confirmed',
+        bookingReference: createBookingReference(),
+        qrToken,
+        qrCode,
+      });
+    }
+
+    let tickets;
+    try {
+      tickets = await Ticket.insertMany(ticketsToCreate);
+    } catch (insertErr) {
+      if (cat) {
+        const rollback = {
+          $inc: {
+            'ticketCategories.$.availableSeats': ticketCount,
+            availableTickets: ticketCount,
+            ticketsSold: -ticketCount,
+          },
+        };
+        if (seats.length > 0) {
+          rollback.$pull = { 'ticketCategories.$.bookedSeats': { $in: seats } };
+        }
+        await Event.updateOne({ _id: event._id, 'ticketCategories._id': cat._id }, rollback);
+      } else {
+        await Event.updateOne(
+          { _id: event._id },
+          { $inc: { availableTickets: ticketCount, ticketsSold: -ticketCount } }
+        );
+      }
+      throw insertErr;
+    }
+
+    res.status(201).json({ success: true, tickets });
+  } catch (err) { next(err); }
+});
+
+app.get('/api/tickets', jwtMiddleware, requireDB, async (req, res, next) => {
+  try {
+    const query = req.user.role === 'admin' ? {} : { userId: req.user.id };
+    const tickets = await Ticket.find(query)
+      .populate('eventId', 'name venue startDate endDate category image')
+      .sort({ purchaseDate: -1 });
+    res.json(tickets);
   } catch (err) { next(err); }
 });
 
@@ -595,7 +763,7 @@ app.post('/api/organizers/message-admin', jwtMiddleware, requireDB, async (req, 
  */
 app.post('/api/tickets/revert', requireDB, async (req, res, next) => {
   try {
-    const { eventId, categoryName, quantity, amount } = req.body;
+    const { eventId, categoryName, quantity, amount, seatNumbers = [] } = req.body;
     if (!eventId || !categoryName || !quantity) {
       return res.status(400).json({ error: 'Missing required reversal data' });
     }
@@ -606,7 +774,13 @@ app.post('/api/tickets/revert', requireDB, async (req, res, next) => {
     // 1. Update inventory
     const category = event.ticketCategories.find(c => c.name === categoryName.toLowerCase());
     if (category) {
-      category.availableSeats += quantity;
+      category.availableSeats = Math.min(category.seats, (category.availableSeats || 0) + quantity);
+      if (Array.isArray(seatNumbers) && seatNumbers.length > 0) {
+        category.bookedSeats = (category.bookedSeats || []).filter(seat => !seatNumbers.includes(seat));
+      }
+    } else {
+      event.availableTickets = Math.min(event.capacity, (event.availableTickets || 0) + quantity);
+      event.ticketsSold = Math.max(0, (event.ticketsSold || 0) - quantity);
     }
 
     // 2. Adjust revenue

@@ -25,16 +25,45 @@ app.use(requestLogger('ScannerService'));
 
 connectDB('ScannerService');
 
+function normalizeTicketToken(value) {
+  let token = String(value || '').trim();
+  if (!token) return '';
+
+  try {
+    const parsed = JSON.parse(token);
+    if (parsed && typeof parsed === 'object') {
+      token = String(parsed.token || parsed.qrToken || parsed.ticketToken || token).trim();
+    }
+  } catch {
+    // Plain token or URL payload.
+  }
+
+  try {
+    const url = new URL(token, 'https://scanner.local');
+    const extracted =
+      url.searchParams.get('token') ||
+      url.searchParams.get('qrToken') ||
+      url.searchParams.get('ticketToken');
+    if (extracted) return extracted.trim();
+  } catch {
+    // Not a URL.
+  }
+
+  if (token.includes('token=')) {
+    const params = new URLSearchParams(token.startsWith('?') ? token.slice(1) : token);
+    const extracted = params.get('token') || params.get('qrToken') || params.get('ticketToken');
+    if (extracted) return extracted.trim();
+  }
+
+  return token.split('&')[0].trim();
+}
+
 // POST /api/scanner/verify — Verify a ticket via QR token
 app.post('/api/scanner/verify', jwtMiddleware, requireDB, async (req, res, next) => {
-  // Trim token and strip any accidental extra query params
-  // e.g. if QR was scanned as full URL: /verify?token=abc123&other=xyz
   let { token } = req.body;
   if (!token) return res.status(400).json({ error: 'Token is required' });
-  token = token.trim();
-  // If scanner extracted from URL and extra params got included (e.g. "abc123&foo=bar"), strip them
-  if (token.includes('&')) token = token.split('&')[0];
-  if (token.includes('?')) token = token.split('?').pop(); // handle raw URL paste
+  token = normalizeTicketToken(token);
+  if (!token) return res.status(400).json({ error: 'Token is required' });
 
   try {
     // ── Atomic check-and-mark using findOneAndUpdate to prevent race conditions
