@@ -241,7 +241,8 @@ function AdminDashboard() {
             { id: 'users', label: '👥 Citizen Registry' },
             { id: 'organizers', label: '🤝 Partner Logs' },
             { id: 'communication', label: '📢 Neural Broadcast' },
-            { id: 'diagnostics', label: '🩺 System Pulse' }
+            { id: 'diagnostics', label: '🩺 System Pulse' },
+            { id: 'security', label: '🛡️ Market Security' }
           ].map(nav => (
             <button 
               key={nav.id}
@@ -621,6 +622,93 @@ function AdminDashboard() {
                     {loading ? '🚀 Dispatching...' : '📢 DISPATCH BROADCAST'}
                   </button>
                 </form>
+              </div>
+            </div>
+          )}
+
+          {/* ── Market Security (DECPG) ────────────────────────────────────── */}
+          {view === 'security' && (
+            <div className="animate-fade-up">
+              <div className="flex-between" style={{ marginBottom: '2rem' }}>
+                <h2 className="title-sub" style={{ margin: 0 }}>🛡️ Decentralized Market Governance (DECPG)</h2>
+                <span className="cyber-badge badge-info">AI-DRIVEN PROTECTION ACTIVE</span>
+              </div>
+
+              <div className="cyber-grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                {/* AI Cognitive Pulse */}
+                <div className="cyber-card">
+                  <h3 className="cyber-label" style={{ marginBottom: '1.5rem' }}>🧠 Edge-AI Cognitive Pulse</h3>
+                  <div className="flex-column" style={{ gap: '1.5rem' }}>
+                    <div className="flex-between">
+                      <span className="text-dim">Global Human Confidence:</span>
+                      <span className="text-glow" style={{ color: 'var(--success)', fontWeight: '800' }}>94.2%</span>
+                    </div>
+                    <div className="flex-between">
+                      <span className="text-dim">Avg. Inference Latency:</span>
+                      <span className="text-main">12ms</span>
+                    </div>
+                    <div className="flex-between">
+                      <span className="text-dim">Active Federated Nodes:</span>
+                      <span className="text-main">1,240</span>
+                    </div>
+                    <div style={{ height: '40px', background: 'var(--bg-deep)', borderRadius: '4px', overflow: 'hidden', position: 'relative' }}>
+                      <div className="pulse-fill" style={{ width: '94%', height: '100%', background: 'var(--success)', opacity: 0.2 }}></div>
+                      <div style={{ position: 'absolute', inset: 0, border: '1px solid rgba(255,255,255,0.05)' }}></div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Threat Matrix */}
+                <div className="cyber-card">
+                  <h3 className="cyber-label" style={{ marginBottom: '1.5rem' }}>🚨 Real-time Threat Matrix</h3>
+                  <div className="flex-column" style={{ gap: '1rem' }}>
+                    <div className="flex-between glass-panel" style={{ padding: '0.8rem', borderLeft: '3px solid var(--danger)' }}>
+                      <span className="text-main">L4 Bot Flood Thwarted</span>
+                      <span className="cyber-badge badge-danger">BLOCK</span>
+                    </div>
+                    <div className="flex-between glass-panel" style={{ padding: '0.8rem', borderLeft: '3px solid var(--warning)' }}>
+                      <span className="text-main">Anomalous Pricing Gradient</span>
+                      <span className="cyber-badge badge-warning">AUDITED</span>
+                    </div>
+                    <div className="flex-between glass-panel" style={{ padding: '0.8rem', borderLeft: '3px solid var(--info)' }}>
+                      <span className="text-main">Zero-Entropy Browser Signature</span>
+                      <span className="cyber-badge badge-info">VDF DELAY</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Pricing Audit Ledger */}
+              <div style={{ marginTop: '3rem' }}>
+                <h3 className="cyber-label" style={{ marginBottom: '1rem' }}>📜 Pricing Audit Ledger (Blockchain Sync)</h3>
+                <div className="cyber-table-container">
+                  <table className="cyber-table">
+                    <thead>
+                      <tr>
+                        <th>Decision Hash</th>
+                        <th>Event</th>
+                        <th>Decision Type</th>
+                        <th>Status</th>
+                        <th>Integrity</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[
+                        { hash: '0x8f2a...3e9d', event: 'Summer Fest 2026', type: 'Occupancy Spike', status: 'COMMITTED' },
+                        { hash: '0x1c4b...7f2a', event: 'Global Tech Con', type: 'Velocity Adjustment', status: 'VERIFIED' },
+                        { hash: '0x9a3d...1b4c', event: 'Neon Nights', type: 'Base Recalibration', status: 'COMMITTED' }
+                      ].map((log, i) => (
+                        <tr key={i}>
+                          <td><code className="text-glow" style={{ color: 'var(--accent-cyan)' }}>{log.hash}</code></td>
+                          <td>{log.event}</td>
+                          <td><span className="text-dim">{log.type}</span></td>
+                          <td><span className="cyber-badge badge-success">{log.status}</span></td>
+                          <td><span style={{ color: 'var(--success)' }}>100%</span></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}

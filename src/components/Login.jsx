@@ -1,33 +1,20 @@
 import React, { useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useAuth } from '../context/AuthContext';
 
 function Login({ onSwitchToSignup }) {
   const { signin } = useAuth();
-  const [formData, setFormData] = useState({
-    email: '',
-    password: ''
-  });
+  const { register, handleSubmit, formState: { errors } } = useForm();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-    setError('');
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const onSubmit = async (data) => {
     setError('');
     setLoading(true);
 
-    const result = await signin(formData.email, formData.password);
+    const result = await signin(data.email, data.password);
 
-    if (result.success) {
-      // Navigation will be handled by App.jsx based on auth state
-    } else {
+    if (!result.success) {
       setError(result.error);
     }
 
@@ -48,20 +35,24 @@ function Login({ onSwitchToSignup }) {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="flex-column" style={{ gap: '1.5rem' }}>
+        <form onSubmit={handleSubmit(onSubmit)} className="flex-column" style={{ gap: '1.5rem' }}>
           <div className="cyber-form-group">
             <label className="cyber-label" htmlFor="email">Email Address</label>
             <input
               type="email"
               id="email"
-              name="email"
-              className="cyber-input"
-              value={formData.email}
-              onChange={handleChange}
+              className={`cyber-input ${errors.email ? 'error' : ''}`}
+              {...register('email', { 
+                required: 'Email is required',
+                pattern: {
+                  value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                  message: "Invalid email address"
+                }
+              })}
               placeholder="neural@identity.io"
-              required
               disabled={loading}
             />
+            {errors.email && <span className="text-danger" style={{ fontSize: '0.75rem' }}>{errors.email.message}</span>}
           </div>
 
           <div className="cyber-form-group">
@@ -69,15 +60,15 @@ function Login({ onSwitchToSignup }) {
             <input
               type="password"
               id="password"
-              name="password"
-              className="cyber-input"
-              value={formData.password}
-              onChange={handleChange}
+              className={`cyber-input ${errors.password ? 'error' : ''}`}
+              {...register('password', { 
+                required: 'Password is required',
+                minLength: { value: 6, message: 'Password must be at least 6 characters' }
+              })}
               placeholder="••••••••"
-              required
               disabled={loading}
-              minLength="6"
             />
+            {errors.password && <span className="text-danger" style={{ fontSize: '0.75rem' }}>{errors.password.message}</span>}
           </div>
 
           <button type="submit" className="cyber-btn btn-glow" style={{ width: '100%', padding: '1.2rem', marginTop: '1rem' }} disabled={loading}>

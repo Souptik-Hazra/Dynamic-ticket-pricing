@@ -1,48 +1,26 @@
 import React, { useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useAuth } from '../context/AuthContext';
 
 function Signup({ onSwitchToLogin }) {
   const { signup } = useAuth();
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    role: 'user'
+  const { register, handleSubmit, watch, formState: { errors } } = useForm({
+    defaultValues: {
+      role: 'user'
+    }
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+  const password = watch("password", "");
+
+  const onSubmit = async (data) => {
     setError('');
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-
-    // Validation
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters');
-      return;
-    }
-
     setLoading(true);
 
-    const result = await signup(formData.name, formData.email, formData.password, formData.role);
+    const result = await signup(data.name, data.email, data.password, data.role);
 
-    if (result.success) {
-      // Navigation will be handled by App.jsx based on auth state
-    } else {
+    if (!result.success) {
       setError(result.error);
     }
 
@@ -63,33 +41,35 @@ function Signup({ onSwitchToLogin }) {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="flex-column" style={{ gap: '1.2rem' }}>
+        <form onSubmit={handleSubmit(onSubmit)} className="flex-column" style={{ gap: '1.2rem' }}>
           <div className="cyber-form-group">
             <label className="cyber-label">Full Name</label>
             <input
               type="text"
-              name="name"
-              className="cyber-input"
-              value={formData.name}
-              onChange={handleChange}
+              className={`cyber-input ${errors.name ? 'error' : ''}`}
+              {...register('name', { required: 'Full name is required' })}
               placeholder="e.g., Alex Reed"
-              required
               disabled={loading}
             />
+            {errors.name && <span className="text-danger" style={{ fontSize: '0.75rem' }}>{errors.name.message}</span>}
           </div>
 
           <div className="cyber-form-group">
             <label className="cyber-label">Email Address</label>
             <input
               type="email"
-              name="email"
-              className="cyber-input"
-              value={formData.email}
-              onChange={handleChange}
+              className={`cyber-input ${errors.email ? 'error' : ''}`}
+              {...register('email', { 
+                required: 'Email is required',
+                pattern: {
+                  value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                  message: "Invalid email address"
+                }
+              })}
               placeholder="neural@identity.io"
-              required
               disabled={loading}
             />
+            {errors.email && <span className="text-danger" style={{ fontSize: '0.75rem' }}>{errors.email.message}</span>}
           </div>
 
           <div className="cyber-grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
@@ -97,40 +77,37 @@ function Signup({ onSwitchToLogin }) {
               <label className="cyber-label">Access Protocol</label>
               <input
                 type="password"
-                name="password"
-                className="cyber-input"
-                value={formData.password}
-                onChange={handleChange}
+                className={`cyber-input ${errors.password ? 'error' : ''}`}
+                {...register('password', { 
+                  required: 'Password is required',
+                  minLength: { value: 6, message: 'Min 6 characters' }
+                })}
                 placeholder="••••••••"
-                required
                 disabled={loading}
-                minLength="6"
               />
+              {errors.password && <span className="text-danger" style={{ fontSize: '0.75rem' }}>{errors.password.message}</span>}
             </div>
             <div className="cyber-form-group">
               <label className="cyber-label">Verify Protocol</label>
               <input
                 type="password"
-                name="confirmPassword"
-                className="cyber-input"
-                value={formData.confirmPassword}
-                onChange={handleChange}
+                className={`cyber-input ${errors.confirmPassword ? 'error' : ''}`}
+                {...register('confirmPassword', { 
+                  required: 'Please confirm your password',
+                  validate: value => value === password || 'Passwords do not match'
+                })}
                 placeholder="••••••••"
-                required
                 disabled={loading}
-                minLength="6"
               />
+              {errors.confirmPassword && <span className="text-danger" style={{ fontSize: '0.75rem' }}>{errors.confirmPassword.message}</span>}
             </div>
           </div>
 
           <div className="cyber-form-group">
             <label className="cyber-label">Sector Assignment (Role)</label>
             <select
-              name="role"
               className="cyber-input"
-              value={formData.role}
-              onChange={handleChange}
-              required
+              {...register('role', { required: true })}
               disabled={loading}
             >
               <option value="user">🎟️ CITIZEN (Buy Tickets)</option>

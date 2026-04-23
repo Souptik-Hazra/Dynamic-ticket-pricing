@@ -1,74 +1,53 @@
-# Deployment Enablement Plan – Dynamic Ticket Pricing System
+# 🚢 Deployment Plan: Federated AI Grid
 
-This plan outlines the steps and deliverables required to make your project production-ready and deployable using industry standards.
+This project requires a multi-stage deployment to synchronize the ML inference and Federated Aggregation layers.
 
----
+## 1. Environment Configuration
+Ensure the following variables are set in your `.env`:
+- `ML_SERVICE_URL`: URL of the Python Neural Engine (default: `http://localhost:5000`).
+- `ML_PORT`: Port for the ML API.
+- `ALLOWED_ORIGINS`: Domains allowed to sync federated weights.
 
-## 1. Containerization
-- [ ] Write a Dockerfile for each microservice (Node.js, Python, etc.)
-    - Use multi-stage builds for smaller images
-    - Set non-root user, expose ports, define ENTRYPOINT/CMD
-- [ ] Add .dockerignore files to exclude node_modules, logs, etc.
+## 2. ML Engine Initialization
+Before launching the services, the **Unified Neural Engine** must be trained:
+```bash
+cd ml-model
+python unified_model.py  # Generates unified_model.h5 and unified_scaler.pkl
+```
 
-## 2. Orchestration
-- [ ] Create a `docker-compose.yml` for local development and integration testing
-    - Define all services, networks, and volumes
-    - Set environment variables via .env files
-    - Add healthcheck sections for critical services
-- [ ] (Optional) Write Kubernetes manifests for production
-    - Deployment, Service, ConfigMap, Secret, Ingress, etc.
-    - Define resource requests/limits, liveness/readiness probes
+## 3. Microservices Orchestration
+The services should be started in this order:
+1.  **Shared Database (MongoDB/Redis)**
+2.  **ML Service (Python/Flask)**: Must be up for price calculations.
+3.  **Organizer Service**: Acts as the Federated Aggregator.
+4.  **Auth & Analytics Services**
+5.  **Frontend (Vite)**: Deploys the Edge-AI Sentinel.
 
-## 3. Environment & Secrets Management
-- [ ] Create `.env.example` files for each service
-    - Document all required environment variables
-- [ ] Use secret management (Kubernetes Secrets, Docker secrets, or cloud provider tools) in production
+## 4. Federated Node Warm-up
+Upon initial deployment, the Federated Global Model is in "Cold Start" mode. 
+- The system will rely on pre-trained "Human DNA" weights until the first 1,000 Edge-Nodes complete their first **Cognitive Sync**.
+- The **Gradient Auditor** should be monitored during this phase to ensure the Z-Score baseline calibrates correctly.
 
-## 4. Database & Cache Initialization
-- [ ] Add scripts for MongoDB index creation and migrations
-- [ ] Ensure Redis/MongoDB are started before dependent services (use depends_on in Compose or init containers in K8s)
+## 5. Security Hardening
+- Enable **VDF Temporal Proofs** on all high-demand ticket categories.
+- Ensure the `organizer-service` has sufficient CPU for weight auditing under high-concurrency sync events.
 
-## 5. Health Checks & Monitoring
-- [ ] Implement `/health` endpoints in all services
-- [ ] Add liveness/readiness probes in Compose/K8s
-- [ ] Integrate logging to stdout/stderr for container logs
-- [ ] Set up centralized logging (ELK/EFK, cloud logging)
-- [ ] Add monitoring (Prometheus/Grafana or cloud equivalent)
+## 6. Docker Deployment (Containerized AI)
+For production environments, it is recommended to run the ML Service in a container to isolate the TensorFlow environment.
 
-## 6. CI/CD Pipeline
-- [ ] Write scripts for build, test, and deployment (GitHub Actions, GitLab CI, etc.)
-- [ ] Automate linting, testing, and image builds
-- [ ] Automate deployment to staging and production
-- [ ] Add rollback and migration scripts
+### Build the Image
+```bash
+cd ml-model
+docker build -t mcenn-neural-engine .
+```
 
-## 7. Security Hardening
-- [ ] Enforce HTTPS (TLS termination at gateway or ingress)
-- [ ] Use strong secrets, never commit real .env files
-- [ ] Set up CORS, Helmet, and rate limiting in all APIs
-- [ ] Run containers as non-root, set resource limits
-- [ ] Regularly scan images for vulnerabilities
+### Run the Container
+```bash
+docker run -d \
+  -p 5000:5000 \
+  --name mcenn-inference \
+  -e ML_PORT=5000 \
+  mcenn-neural-engine
+```
 
-## 8. Documentation
-- [ ] Document all deployment steps in a DEPLOYMENT.md
-- [ ] Update README with local and production deployment instructions
-- [ ] Document all environment variables and secrets
-- [ ] Add architecture and deployment diagrams
-
-## 9. Testing & Staging
-- [ ] Set up a staging environment mirroring production
-- [ ] Run load, integration, and security tests before production rollout
-
----
-
-## Deliverables
-- Dockerfiles and .dockerignore for all services
-- docker-compose.yml and/or Kubernetes manifests
-- .env.example files
-- Health check endpoints and monitoring setup
-- CI/CD pipeline scripts
-- Deployment and rollback documentation
-- Architecture and deployment diagrams
-
----
-
-*This plan ensures your project is ready for robust, automated, and secure deployment in any environment.*
+**Note**: If you have a GPU, use `tensorflow/tensorflow:2.15.0-gpu` and the `--gpus all` flag for 10x faster inference.

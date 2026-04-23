@@ -1,164 +1,62 @@
-# Low Level Design (LLD) – Dynamic Ticket Pricing System
+# 📐 Low-Level Design: DECPG & MCENN Specification
 
-## 1. Introduction
-This Low Level Design (LLD) document provides a detailed, industry-standard blueprint for the Dynamic Ticket Pricing System. It covers service responsibilities, API contracts, data models, error handling, security, deployment, and extensibility, ensuring maintainability and scalability.
-
----
-
-## 2. Microservices Architecture
-
-### 2.1 Service Responsibilities
-| Service                | Responsibilities                                                                                 |
-|------------------------|-------------------------------------------------------------------------------------------------|
-| API Gateway            | Routing, authentication, rate limiting, CORS, request logging                                     |
-| Admin Service          | Admin dashboard, event management, fraud analytics, reporting                                     |
-| Authentication Service | User registration, login, JWT issuance/refresh, password reset                                    |
-| User Service           | User profile, order history, user CRUD                                                            |
-| Organizer Service      | Event creation, management, organizer dashboard                                                   |
-| Payment Service        | Payment initiation, callback handling, integration with Stripe/PayPal, transaction logging        |
-| Cache Service          | Redis-based caching, distributed locks, atomic inventory, session management                      |
-| Email Service          | Transactional emails, SMTP/third-party integration                                                |
-| Notification Service   | In-app and push notifications, notification preferences                                           |
-| WebSocket Service      | Real-time updates (ticket sold, price change), client subscriptions                               |
-| QR Service             | QR code generation, validation, ticket check-in                                                   |
-| Scanner Service        | Ticket scanning, entry validation                                                                 |
-| Analytics Service      | Data aggregation, reporting, ML feature extraction                                                |
-| Subscription Service   | User subscriptions, recurring payments, plan management                                           |
-| Wallet Service         | User wallet, credits/debits, refunds, balance checks                                              |
-
-### 2.2 Shared Libraries
-- **Models**: Mongoose schemas for User, Event, Ticket, etc.
-- **Interservice**: HTTP clients for inter-service communication.
-- **Error Handler**: Centralized error formatting and logging.
-- **JWT Middleware**: Auth token verification.
+This document provides a technical deep-dive into the mathematical and architectural components of the **Decentralized Edge-Cognitive Pricing Governance** system.
 
 ---
 
-## 3. API Contracts
+## 1. Edge-AI: Residual Temporal Engine
+The system utilizes a 1D-CNN (Convolutional Neural Network) architecture optimized for temporal signal analysis of human-computer interaction (HCI).
 
-### 3.1 Example: Ticket Purchase Flow
-- **POST /api/tickets/purchase**
-  - Request: `{ userId, eventId, ticketType, quantity, paymentMethod }`
-  - Response: `{ success, orderId, ticketDetails, price, message }`
-  - Errors: `400 Bad Request`, `402 Payment Required`, `409 Conflict (oversell)`, `500 Internal Server Error`
+### Architecture
+- **Input Tensor**: `[50, 3]` (representing 50 samples of `[dx, dy, dt]`).
+- **Residual Block**: 
+    - `Layer_A`: Conv1D (Kernel=3, Filters=16, Padding='same')
+    - `Layer_B`: Conv1D (Kernel=5, Filters=16, Padding='same')
+    - `Fusion`: $Output = ReLU(Layer\_A + Layer\_B)$
+- **Inference Cycle**: 2000ms.
+- **Goal**: Identification of non-linear jitter and velocity curvature characteristic of mammalian muscle movement.
 
-### 3.2 Example: Dynamic Pricing
-- **GET /api/events/:eventId/price**
-  - Response: `{ eventId, recommendedPrice, basePrice, demandFactor, timestamp }`
+## 2. Federated Aggregation & Neural Auditing
+The platform implements a "Privacy-Preserving Federated Update" protocol.
 
-### 3.3 Example: Error Logging
-- **POST /api/logger/error**
-  - Request: `{ service, endpoint, errorType, stack, userId, requestId, timestamp, context }`
-  - Response: `{ success, logId }`
+### Weight Export
+Local weights $W_{local}$ are extracted via `tf.Model.getWeights()`. The data is serialized into a JSON-compatible format containing:
+- `Layer Name`
+- `Shape`
+- `Flattened Data Array`
 
----
+### Neural Audit Logic (Centralized)
+Incoming weights are passed through a **Statistical Gate**:
+1. **Magnitude Audit**: $Avg(|W_{node}|) < \tau$ (where $\tau = 5.0$). Prevents exploding gradient attacks.
+2. **Finiteness Audit**: Rejection of any update containing $NaN$ or $Inf$.
+3. **Z-Score Audit**: Rejection of updates that deviate by $> 3\sigma$ from the historical federated mean.
 
-## 4. Data Models
+## 3. MCENN: Neural Pricing Fusion
+The pricing engine replaces traditional heuristics with a Deep Learning Multi-Layer Perceptron (MLP).
 
-### 4.1 User (MongoDB)
-```js
-{
-  _id: ObjectId,
-  name: String,
-  email: String,
-  password: String (hashed),
-  role: 'user' | 'admin' | 'organizer',
-  isActive: Boolean,
-  createdAt: Date,
-  updatedAt: Date
-}
-```
+### Input Feature Vector $F$
+$F = [C, S, B, D, P, T_v, T_a, \alpha]$
+- $C$: Venue Capacity
+- $S$: Tickets Sold
+- $B$: Base Price
+- $D$: Days until Event
+- $P$: Event Popularity (0-1)
+- $T_v, T_a$: Venue/Artist Tiering
+- $\alpha$: **Cognitive Confidence Score** (The behavioral entropy weight)
 
-### 4.2 Event
-```js
-{
-  _id: ObjectId,
-  name: String,
-  organizerId: ObjectId,
-  basePrice: Number,
-  dynamicRules: Object,
-  ticketsAvailable: Number,
-  startDate: Date,
-  endDate: Date,
-  status: 'active' | 'inactive',
-  createdAt: Date,
-  updatedAt: Date
-}
-```
-
-### 4.3 Ticket
-```js
-{
-  _id: ObjectId,
-  eventId: ObjectId,
-  userId: ObjectId,
-  price: Number,
-  status: 'purchased' | 'cancelled' | 'used',
-  purchaseDate: Date,
-  qrCode: String,
-  ...
-}
-```
+### The Bot Penalty Function (Baked-in)
+During training, the "Bot Fine" is enforced via a non-linear penalty function:
+$Price = EconomicValue * \Phi(\alpha)$
+Where $\Phi(\alpha) = 1$ if $\alpha > 0.8$, and $\Phi(\alpha)$ increases exponentially as $\alpha \to 0$.
 
 ---
 
-## 5. Error Handling & Logging
-- All services use a shared error handler.
-- Errors are logged locally and sent to a centralized logger-service via HTTP or message queue.
-- Log schema includes: timestamp, service, endpoint, error type, stack trace, user/session, requestId, context.
-- Alerts are triggered for critical errors or error clusters.
+## 4. Cryptographic Temporal Auth (VDF)
+To prevent "Flash Bot" attacks, a Verifiable Delay Function (VDF) inspired "Temporal Puzzle" is enforced.
+- **Logic**: $h = SHA256(Entropy + Timestamp)$ iterated $N$ times.
+- **Properties**: Sequential, non-parallelizable, verifiable in $O(1)$.
 
----
-
-## 6. Security
-- JWT for authentication, short-lived and refresh tokens.
-- Passwords hashed with bcrypt (cost factor ≥ 10).
-- CORS and Helmet for HTTP security.
-- Rate limiting at API Gateway and Authentication Service.
-- Sensitive data encrypted in transit (TLS) and at rest (MongoDB, backups).
-- Role-based access control (RBAC) for admin/organizer endpoints.
-- Input validation and sanitization on all APIs.
-
----
-
-## 7. Deployment & Operations
-- Each service is containerized (Docker), with health checks and resource limits.
-- Orchestrated via Docker Compose (dev) or Kubernetes (prod).
-- Environment variables for secrets/configuration (never hardcoded).
-- Centralized logging (ELK/EFK stack or cloud logging).
-- Monitoring with Prometheus/Grafana, alerting on error rates and latency.
-- CI/CD pipeline for automated testing, linting, and deployment.
-
----
-
-## 8. Observability
-- Health endpoints (`/health`) in all services.
-- Distributed tracing (e.g., OpenTelemetry) with correlation IDs.
-- Real-time dashboards for errors, performance, and business metrics.
-
----
-
-## 9. Extensibility & Maintainability
-- New services can be added with minimal changes to API Gateway and shared libraries.
-- ML model retraining and deployment is decoupled from main app.
-- Code follows consistent style (ESLint, Prettier), with high test coverage.
-- API documentation via Swagger/OpenAPI.
-
----
-
-## 10. Diagrams
-- See PlantUML/ for component, sequence, and state diagrams.
-- Example diagrams: Service interaction, ticket purchase sequence, error propagation.
-
----
-
-## 11. Open Items & Risks
-- Finalize payment/email provider integration.
-- Add logger-service for error graphing and analytics.
-- Expand test coverage and documentation.
-- Load testing and performance optimization.
-- Data retention and archival policies.
-
----
-
-*This LLD is a living document and should be updated as the system evolves.*
+## 5. Federated Brain Aggregator (Service)
+Implemented in the `organizer-service`, the aggregator acts as the central coordinator for the decentralized nodes.
+- **Endpoint**: `/api/security/federated-sync`
+- **Responsibility**: Validation, Auditing, and Global Model Synthesis.

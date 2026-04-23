@@ -4,9 +4,15 @@ import { useAuth } from '../context/AuthContext';
 import { ENDPOINTS } from '../config/api';
 import VenueMap from './VenueMap';
 import SeatGrid from './SeatGrid';
+import { useBehavioral } from '../context/BehavioralContext';
+import { solveTemporalPuzzle } from '../utils/temporalAuth';
+import { logPricingDecision } from '../utils/pricingAudit';
 
 function TicketPurchase({ event, onBack, onSuccess }) {
   const { user, isAuthenticated } = useAuth();
+  const { generateHumanityProof, isVerified, entropy, score } = useBehavioral();
+  const [temporalProof, setTemporalProof] = useState(null);
+  const [verifyingHumanity, setVerifyingHumanity] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [dynamicPrices, setDynamicPrices] = useState({});
   const [formData, setFormData] = useState({
@@ -30,12 +36,13 @@ function TicketPurchase({ event, onBack, onSuccess }) {
     const fetchDynamicPrices = async () => {
       try {
         setPriceLoading(true);
-        const response = await api.get(`/events/${event._id}/dynamic-prices`);
+        // Include the Cognitive Score in the pricing request
+        const response = await api.get(`/events/${event._id}/dynamic-prices?cognitive_score=${score}`);
         if (response.data.prices) {
           setDynamicPrices(response.data.prices);
         }
       } catch (error) {
-        console.log('Using base prices');
+        console.log('Using base prices fallback');
         // Calculate simple dynamic pricing locally as fallback
         const occupancyRate = event.ticketsSold / event.capacity;
         let multiplier = 1 + (occupancyRate * 0.5);
@@ -54,7 +61,7 @@ function TicketPurchase({ event, onBack, onSuccess }) {
     };
     
     fetchDynamicPrices();
-  }, [event]);
+  }, [event, score]);
 
   // Pre-fill user data if logged in
   useEffect(() => {
@@ -170,8 +177,33 @@ function TicketPurchase({ event, onBack, onSuccess }) {
     }
 
     setLoading(true);
+    setVerifyingHumanity(true);
 
     try {
+      // 0. Fetch Security Nonce (Anti-Replay)
+      const nonceRes = await api.get('/security/nonce');
+      const { nonce, sessionId } = nonceRes.data;
+
+      // 1. Edge-AI Humanity Check (Context-Locked Cognitive Gate)
+      const humanitySignature = await generateHumanityProof(nonce);
+      if (!humanitySignature) {
+        throw new Error('Inhuman behavior detected or spectral density check failed.');
+      }
+
+      // 2. Temporal Speed-Bump (VDF)
+      const proof = await solveTemporalPuzzle(humanitySignature);
+      setTemporalProof(proof);
+      setVerifyingHumanity(false);
+
+      // 3. Pricing Audit Log (Blockchain Transparency)
+      await logPricingDecision({
+        eventId: event._id,
+        price: getPrice(),
+        qty: currentQty,
+        humanitySignature,
+        sessionId
+      });
+
       const response = await api.post(
         '/tickets',
         {
@@ -181,7 +213,11 @@ function TicketPurchase({ event, onBack, onSuccess }) {
           ...formData,
           quantity: currentQty,
           selectedSeats: isSeatSelectionMode ? selectedSeats : [],
-          pricePerTicket: getPrice()
+          pricePerTicket: getPrice(),
+          cognitive_score: score,
+          sessionId,
+          humanityProof: humanitySignature,
+          temporalProof: proof.proof // Send the actual VDF result
         }
       );
 
@@ -439,6 +475,22 @@ function TicketPurchase({ event, onBack, onSuccess }) {
           </div>
         </div>
       </div>
+      
+      {/* DECPG Verification Overlay */}
+      {verifyingHumanity && (
+        <div className="flex-center" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 2000, backdropFilter: 'blur(10px)' }}>
+          <div className="flex-column flex-center cyber-card animate-pulse" style={{ padding: '3rem', border: '2px solid var(--accent-cyan)' }}>
+            <div className="spinner" style={{ width: '60px', height: '60px', marginBottom: '2rem', borderTopColor: 'var(--accent-cyan)' }}></div>
+            <h2 className="title-sub text-gradient" style={{ fontSize: '1.8rem', marginBottom: '1rem' }}>🛡️ Verifying Humanity</h2>
+            <p className="text-main" style={{ textAlign: 'center', maxWidth: '300px' }}>
+              Our Edge-Cognitive AI is analyzing your behavioral signature to neutralize bots...
+            </p>
+            <div className="text-dim" style={{ marginTop: '2rem', fontSize: '0.8rem' }}>
+              Solving Non-Parallelizable Temporal Puzzle (VDF)
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Ticket Modal Overlay */}
       {purchasedTicket && (

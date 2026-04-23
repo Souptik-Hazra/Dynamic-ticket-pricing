@@ -6,201 +6,135 @@ import json
 import joblib
 import numpy as np
 import pandas as pd
-import requests
 from datetime import datetime
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
 
-# ── 1. EXPERT LOGGING CONFIGURATION ──────────────────────────────────────────
+# 1. Expert Logging
 dictConfig({
     'version': 1,
-    'formatters': {
-        'default': {
-            'format': '[%(asctime)s] %(levelname)s in %(module)s: %(message)s',
-        }
-    },
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-            'stream': 'ext://sys.stdout',
-            'formatter': 'default'
-        }
-    },
-    'root': {
-        'level': 'INFO',
-        'handlers': ['console']
-    }
+    'formatters': {'default': {'format': '[%(asctime)s] %(levelname)s in %(module)s: %(message)s'}},
+    'handlers': {'console': {'class': 'logging.StreamHandler', 'stream': 'ext://sys.stdout', 'formatter': 'default'}},
+    'root': {'level': 'INFO', 'handlers': ['console']}
 })
-
 logger = logging.getLogger(__name__)
 
-# ── 2. GLOBAL SETUP ─────────────────────────────────────────────────────────
-
-# Force UTF-8 output on Windows
-if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
-    try:
-        sys.stdout.reconfigure(encoding='utf-8')
-        sys.stderr.reconfigure(encoding='utf-8')
-    except AttributeError:
-        import io
-        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-
-# Load environment variables
+# 2. Global Setup
 load_dotenv(os.path.join(os.path.dirname(__file__), '../.env'))
-
-# Constants
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(BASE_DIR, 'model.pkl')
-SCALER_PATH = os.path.join(BASE_DIR, 'scaler.pkl')
-MODEL_INFO_PATH = os.path.join(BASE_DIR, 'model_info.json')
-
-# ── 3. DATA INTEGRITY HELPERS ───────────────────────────────────────────────
-
-def validate_ml_features(data):
-    """
-    Expert Validator: Ensures all 15 required features are present and valid.
-    Returns (cleaned_data, error_message)
-    """
-    required_numeric = [
-        ('capacity', 1000), ('tickets_sold', 0), ('base_price', 500),
-        ('days_until_event', 30), ('event_duration', 1), ('event_popularity', 0.5),
-        ('venue_tier', 2), ('artist_tier', 3), ('is_holiday', 0)
-    ]
-    
-    cleaned = {}
-    try:
-        for feat, default in required_numeric:
-            val = data.get(feat, default)
-            cleaned[feat] = float(val) if val is not None else float(default)
-            
-        cleaned['category'] = str(data.get('category', 'other')).lower()
-        return cleaned, None
-    except (ValueError, TypeError) as e:
-        return None, f"Invalid numeric input for feature: {str(e)}"
-
-# ── 4. APP FACTORY ──────────────────────────────────────────────────────────
 
 def create_app():
     app = Flask(__name__)
     CORS(app)
 
-    # Load artifacts on startup
+    # Load Unified Neural Engine
     try:
-        app.ml_model = joblib.load(MODEL_PATH)
-        app.ml_scaler = joblib.load(SCALER_PATH)
-        logger.info("⚡ ML Model and Scaler loaded successfully!")
+        import tensorflow as tf
+        from tensorflow import keras
+        # Use compile=False to avoid issues with custom metrics during loading
+        app.ml_model = keras.models.load_model(os.path.join(BASE_DIR, 'unified_model.h5'), compile=False)
+        app.ml_scaler = joblib.load(os.path.join(BASE_DIR, 'unified_scaler.pkl'))
+        logger.info("Unified Neural Engine (MCENN) loaded successfully (Inference Only)!")
     except Exception as e:
-        logger.error(f"❌ Critical error loading model artifacts: {e}")
+        logger.error(f"Critical error loading Unified model: {e}")
         app.ml_model = None
-        app.ml_scaler = None
 
-    # ── Hooks ──
-    @app.before_request
-    def log_request():
-        trace_id = request.headers.get('X-Request-ID', 'no-trace')
-        logger.info(f"📥 [{trace_id}] {request.method} {request.path}")
-
-    @app.after_request
-    def log_response(response):
-        trace_id = request.headers.get('X-Request-ID', 'no-trace')
-        logger.info(f"📤 [{trace_id}] {response.status_code}")
-        return response
-
-    # ── Routes ──
     @app.route('/health', methods=['GET'])
     def health_check():
-        return jsonify({
-            'status': 'healthy',
-            'model_loaded': app.ml_model is not None,
-            'timestamp': datetime.now().isoformat()
-        }), 200
+        return jsonify({'status': 'healthy', 'model_loaded': app.ml_model is not None}), 200
 
     @app.route('/predict', methods=['POST'])
     def predict_price():
         if not app.ml_model:
-            return jsonify({'error': 'Prediction engine offline'}), 503
+            return jsonify({'error': 'Unified Prediction engine offline'}), 503
             
         data = request.get_json() or {}
-        cleaned, err = validate_ml_features(data)
+        cognitive_score = float(data.get('cognitive_score', 1.0))
         
-        if err:
-            return jsonify({'error': 'Field Validation Failed', 'message': err}), 400
+        features = [
+            float(data.get('capacity', 1000)),
+            float(data.get('tickets_sold', 0)),
+            float(data.get('base_price', 500)),
+            float(data.get('days_until_event', 30)),
+            float(data.get('event_popularity', 0.5)),
+            float(data.get('venue_tier', 2)),
+            float(data.get('artist_tier', 3)),
+            cognitive_score
+        ]
 
         try:
-            # Build feature vector (9 numeric + 6 categorical)
-            features = [
-                cleaned['capacity'], cleaned['tickets_sold'], cleaned['base_price'],
-                cleaned['days_until_event'], cleaned['event_duration'],
-                cleaned['event_popularity'], cleaned['venue_tier'], 
-                cleaned['artist_tier'], cleaned['is_holiday']
-            ]
-            
-            categories = ['concert', 'sports', 'theater', 'conference', 'festival', 'other']
-            for cat in categories:
-                features.append(1 if cleaned['category'] == cat else 0)
-            
-            # Map column names for pandas (required by some scikit-learn versions)
-            cols = [
-                'capacity', 'tickets_sold', 'base_price', 'days_until_event', 'event_duration',
-                'event_popularity', 'venue_tier', 'artist_tier', 'is_holiday'
-            ]
-            for cat in categories:
-                cols.append(f'cat_{cat}')
-                
-            df_features = pd.DataFrame([features], columns=cols)
-            
-            # Inference pipeline
-            scaled = app.ml_scaler.transform(df_features)
-            pred = app.ml_model.predict(scaled)[0]
-            
-            # Apply Production Safety Caps
-            base_price = cleaned['base_price']
-            final_price = max(base_price * 0.8, min(pred, base_price * 2.5))
+            scaled = app.ml_scaler.transform([features])
+            prediction = app.ml_model.predict(scaled)[0][0]
+            logger.info(f"Inference: Market={prediction}, Cognitive={cognitive_score}")
             
             return jsonify({
-                'predicted_price': float(round(final_price, 2)),
+                'predicted_price': float(round(prediction, 2)),
                 'currency': 'INR',
+                'cognitive_confidence': cognitive_score,
                 'timestamp': datetime.now().isoformat()
             })
         except Exception as e:
-            logger.error(f"Inference crash: {str(e)}")
-            return jsonify({'error': 'Runtime Error', 'message': str(e)}), 500
+            logger.error(f"MCENN Runtime Error: {str(e)}")
+            return jsonify({'error': 'Neural Inference Error', 'message': str(e)}), 500
 
-    @app.route('/batch-predict', methods=['POST'])
-    def batch_predict():
-        data = request.get_json() or {}
-        scenarios = data.get('scenarios', [])
-        
-        if not scenarios:
-            return jsonify({'error': 'No scenarios provided'}), 400
-            
-        results = []
-        for s in scenarios:
-            cleaned, err = validate_ml_features(s)
-            if err:
-                results.append({'id': s.get('id', 'unknown'), 'error': err})
-                continue
-            
-            # Fast-path prediction (Simplified for brevity in batch)
-            try:
-                # [Optimization: Real implementation would vectorise this entire loop]
-                results.append({
-                    'id': s.get('id', 'unknown'),
-                    'predicted_price': float(round(cleaned['base_price'] * 1.1, 2)) # Mock batch for brevity
-                })
-            except Exception:
-                results.append({'id': s.get('id', 'unknown'), 'error': 'Inference failed'})
+    @app.route('/admin/apply-update', methods=['POST'])
+    def apply_federated_update():
+        """
+        Receives aggregated model weights and updates the live unified model.
+        Persists the updated model to disk as a new version.
+        """
+        if not app.ml_model:
+            return jsonify({'error': 'Model not loaded'}), 503
 
-        return jsonify({'predictions': results})
+        try:
+            data = request.get_json()
+            weights_list = data.get('weights')
+            version = data.get('version', 'unknown')
+
+            if not weights_list:
+                return jsonify({'error': 'No weights provided'}), 400
+
+            # Map the incoming weight data to the model's layers
+            # The weights_list is expected to be a list of {name, shape, data}
+            new_weights = []
+            model_weights = app.ml_model.get_weights()
+            
+            # Simple mapping: assume the weights_list matches the order and shape of get_weights()
+            # In production, we would use layer names for robust mapping.
+            for i, w_data in enumerate(weights_list):
+                if i < len(model_weights):
+                    arr = np.array(w_data['data']).reshape(model_weights[i].shape)
+                    new_weights.append(arr)
+                else:
+                    logger.warning(f"Extra weights provided at index {i}")
+
+            if len(new_weights) != len(model_weights):
+                return jsonify({'error': 'Weight count mismatch', 'expected': len(model_weights), 'received': len(new_weights)}), 400
+
+            # Apply to live model
+            app.ml_model.set_weights(new_weights)
+            
+            # Persist to disk
+            save_path = os.path.join(BASE_DIR, f'unified_model_{version}.h5')
+            app.ml_model.save(save_path)
+            # Also update the primary model file
+            app.ml_model.save(os.path.join(BASE_DIR, 'unified_model.h5'))
+
+            logger.info(f"✅ Federated update applied successfully: Version {version}")
+            return jsonify({
+                'success': True,
+                'version': version,
+                'message': f"Model updated and saved to unified_model_{version}.h5"
+            })
+
+        except Exception as e:
+            logger.error(f"Failed to apply federated update: {e}")
+            return jsonify({'error': 'Update application failed', 'message': str(e)}), 500
 
     return app
-
-# ── 5. RUNNER ───────────────────────────────────────────────────────────────
 
 if __name__ == '__main__':
     app = create_app()
     port = int(os.environ.get('ML_PORT', 5000))
-    # Expert Note: In production, use Waitress or Gunicorn. 
-    # Threaded=True allows overlapping I/O for better throughput on multi-core OS.
     app.run(host='0.0.0.0', port=port, threaded=True)

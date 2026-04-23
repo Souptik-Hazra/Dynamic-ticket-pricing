@@ -1,35 +1,33 @@
-# Use a specific Python version
-FROM python:3.11-slim
+# 🧠 MCENN Neural Engine Dockerfile
+FROM tensorflow/tensorflow:2.15.0
 
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
-
-# Set work directory
+# Set working directory
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
+# Install system dependencies for HDF5 and Scikit-Learn
+RUN apt-get update && apt-get install -y \
+    libhdf5-dev \
+    python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy requirements and install
+# (Note: we use a direct install for speed, or you can create a requirements.txt)
+RUN pip install --no-cache-dir \
+    flask \
+    flask-cors \
+    pandas \
+    scikit-learn \
+    joblib \
+    python-dotenv
 
-# Copy project
-COPY . .
+# Copy the Neural Engine code and pre-trained artifacts
+COPY app.py .
+COPY unified_model.py .
+COPY unified_model.h5 .
+COPY unified_scaler.pkl .
 
-# Expose port (5000 is default for flask in this project)
+# Expose the ML Inference Port
 EXPOSE 5000
 
-# Run as non-privileged user for security
-RUN useradd -m mluser && chown -R mluser /app
-USER mluser
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=5s \
-  CMD curl --fail http://localhost:5000/health || exit 1
-
-# Use Gunicorn as production-grade server with resource-conscious worker lifecycle
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--threads", "4", "--max-requests", "1000", "--max-requests-jitter", "50", "app:app"]
+# Run the Neural Engine
+CMD ["python", "app.py"]

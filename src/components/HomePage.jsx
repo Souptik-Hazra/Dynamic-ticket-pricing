@@ -1,28 +1,10 @@
-
-import { useState, useEffect } from 'react';
-import api from '../api/client';
-import { API_URL } from '../config/api';
+import { useState } from 'react';
+import { useEvents } from '../hooks/useEvents';
 
 const HomePage = ({ onNavigate }) => {
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { data: events = [], isLoading: loading } = useEvents();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
-
-  useEffect(() => {
-    fetchEvents();
-  }, []);
-
-  const fetchEvents = async () => {
-    try {
-      const response = await api.get('/events');
-      setEvents(response.data);
-    } catch (error) {
-      console.error('Error fetching events:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const categories = ['all', 'concert', 'sports', 'theater', 'conference', 'festival'];
 

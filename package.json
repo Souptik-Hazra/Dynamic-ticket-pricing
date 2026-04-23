@@ -33,10 +33,13 @@
     "start:wallet-service": "node microservices/wallet-service/index.js",
     "start:all": "npm run kill:ports && concurrently --names \"frontend,api-gateway,auth,user,admin,payment,cache,email,notification,websocket,analytics,subscription,organizer,qr,scanner,wallet,ml\" \"npm run dev\" \"npm run start:api-gateway\" \"npm run start:authentication-service\" \"npm run start:user-service\" \"npm run start:admin-service\" \"npm run start:payment-service\" \"npm run start:cache-service\" \"npm run start:email-service\" \"npm run start:notification-service\" \"npm run start:websocket-service\" \"npm run start:analytics-service\" \"npm run start:subscription-service\" \"npm run start:organizer-service\" \"npm run start:qr-service\" \"npm run start:scanner-service\" \"npm run start:wallet-service\" \"npm run start:ml\" --kill-others-on-fail",
     "start:ml": "cd ml-model && python app.py",
+    "test:price-tamper": "node tests/price_tamper_test.js",
     "install:all": "npm install && cd microservices/api-gateway && npm install && cd ../authentication-service && npm install && cd ../user-service && npm install && cd ../admin-service && npm install && cd ../payment-service && npm install && cd ../cache-service && npm install && cd ../email-service && npm install && cd ../notification-service && npm install && cd ../websocket-service && npm install && cd ../analytics-service && npm install && cd ../subscription-service && npm install && cd ../organizer-service && npm install && cd ../qr-service && npm install && cd ../scanner-service && npm install && cd ../wallet-service && npm install && cd ../../..",
     "kill:ports": "powershell -Command \"$ports = @(5173, 3001, 5000) + (4001..4016); foreach ($p in $ports) { try { $conn = Get-NetTCPConnection -LocalPort $p -ErrorAction SilentlyContinue; if ($conn) { $conn | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue } } } catch {} }; exit 0\""
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.99.2",
+    "@tensorflow/tfjs": "^4.22.0",
     "amqplib": "^1.0.3",
     "axios": "^1.15.2",
     "bcryptjs": "^3.0.3",
@@ -51,9 +54,11 @@
     "nodemailer": "^8.0.5",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
+    "react-hook-form": "^7.73.1",
     "react-router-dom": "^7.14.2",
     "recharts": "^3.8.1",
-    "ws": "^8.20.0"
+    "ws": "^8.20.0",
+    "zustand": "^5.0.12"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

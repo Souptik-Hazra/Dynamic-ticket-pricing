@@ -1,106 +1,57 @@
-# 🎫 FanFever: Dynamic Ticket Pricing System
+# 🎭 Cyber-Luxe: Decentralized Edge-Cognitive Pricing Governance (DECPG)
 
-A high-performance, **Microservices-based** event ticketing platform with intelligent dynamic pricing powered by **Machine Learning (XGBoost)**. Built for the Indian market with ₹ (Rupee) currency support.
+Welcome to the future of ethical entertainment markets. This platform is not just a ticketing app; it is a **Federated Defense Network** designed to protect fans from scalper bots using state-of-the-art Edge-AI and Neural Economic Fusion.
 
----
+## 🧠 The DECPG Framework (Patent-Pending)
 
-## 🏗️ Architecture: Distributed Microservices
+The platform operates on a proprietary framework called **Decentralized Edge-Cognitive Pricing Governance (DECPG)**. This system shifts the power of security from a central server to the individual user's browser, creating a distributed barrier against automation.
 
-Unlike monolithic systems, FanFever is built as a distributed network of **17 independent services** orchestrated through a central **API Gateway**.
+### 🛡️ Core Pillars
 
-### Core Infrastructure
-- **API Gateway (Port 3001)**: The single entry point. Provides routing, rate limiting, and unified CORS.
-- **Shared Library**: Centralized database models and inter-service HTTP clients (fire-and-forget).
-- **Redis Cache (Port 4005)**: Handles distributed locking and high-frequency data caching.
-- **WebSocket Service (Port 4010)**: Real-time "Ticket Sold" and "Price Change" broadcasts.
+#### 1. Edge-AI Behavioral Sentinel
+*   **Technology**: 1D-CNN (Convolutional Neural Network) with Residual Skip-Connections.
+*   **Role**: Analyzes micro-jitter and spatial-temporal mouse gestures in real-time within the user's browser (TensorFlow.js).
+*   **Benefit**: Neutralizes sophisticated headless browsers and scripted bots that bypass traditional Captchas.
 
-### Business Services
-- **Auth (4001)** / **User (4002)**: Secure JWT-based identity management.
-- **Admin (4003)**: Total platform management and statistic aggregation.
-- **Organizer (4013)**: Event creation, price management, and ticket logic.
-- **Payment (4004)** / **Wallet (4016)**: Secure transaction handling and internal credit balancing.
-- **Subscription (4012)**: Tiered membership management (Weekly, Monthly, Annual).
-- **Analytics (4011)** / **Notification (4009)** / **Scanner (4015)**: Ancillary support services.
+#### 2. Federated Intelligence Sync
+*   **Technology**: Privacy-Preserving Weight Aggregation.
+*   **Role**: Periodically syncs locally learned "Human DNA" weights with a central aggregator.
+*   **Benefit**: The global model evolves instantly to recognize new bot patterns without ever seeing raw user data.
 
----
+#### 3. MCENN: Multi-Cognitive Economic Neural Network
+*   **Technology**: Deep Learning MLP (TensorFlow).
+*   **Role**: A unified pricing engine that fuses real-time occupancy data with "Cognitive Confidence" scores.
+*   **Benefit**: Suspicious traffic is automatically penalized with an "Economic Surcharge," making bot-scalping mathematically unprofitable.
 
-## 🧠 ML-Powered Dynamic Pricing
-
-The system features a custom-trained **XGBoost** model that adjusts ticket prices in real-time based on high-fidelity database signals.
-
-### **The 15-Field Predictor**
-The model strictly relies on raw database fields, eliminating brittle heuristics:
-1.  `capacity`: Venue size.
-2.  `tickets_sold`: Real-time occupancy.
-3.  `base_price`: Starting price point.
-4.  `days_until_event`: Time pressure.
-5.  `event_duration`: Duration in days.
-6.  `event_popularity`: (0.0 to 1.0).
-7.  `venue_tier`: (1 to 5).
-8.  `artist_tier`: (1 to 5).
-9.  `is_holiday`: Boolean flag.
-10-15. `category`: One-hot encoded (Concert, Sports, Theater, etc.).
+#### 4. Temporal Speed-Bump (VDF)
+*   **Technology**: Non-Parallelizable Cryptographic Puzzles.
+*   **Role**: Forces a delay on low-entropy traffic that cannot be bypassed with multiple CPU cores.
+*   **Benefit**: Ensures that "Human Speed" is the only valid speed for high-demand ticket releases.
 
 ---
 
-## 📁 Project Structure
+## 🚀 Technical Architecture
 
-```bash
-Dynamic-ticket-pricing/
-├── microservices/             # Node.js distributed services
-│   ├── api-gateway/          # Central Proxy (Port 3001)
-│   ├── shared/                # Shared Mongoose models & API clients
-│   ├── authentication-service # Port 4001
-│   ├── organizer-service      # Port 4013 (Events & Prices)
-│   └── ... (14 other services)
-│
-├── ml-model/                  # Python/Flask Analytics Service
-│   ├── app.py                # Prediction API (Port 5000)
-│   ├── model.pkl             # Trained XGBoost artifact
-│   └── scaler.pkl            # Feature normalization
-│
-├── src/                       # React Frontend (Vite)
-│   ├── components/            # Modularized, CSS-scoped components
-│   ├── context/               # Global Auth & State
-│   └── config/api.js          # Centralized route registry
-└── restart-all.bat            # One-click system orchestrator
-```
+### Microservices Grid (Node.js/Express)
+*   **Auth Service**: Secure HttpOnly sessions and silent rotation.
+*   **Organizer Service**: Federated Brain Aggregator and Neo4j Graph Simulator.
+*   **ML Service**: Neural Pricing Inference (Python/Flask/TF).
+*   **Analytics Service**: Real-time business intelligence and threat matrix visualization.
+
+### Frontend (React/Vite)
+*   **Cyber-Luxe UI**: A premium, high-fidelity design system utilizing glassmorphism and midnight-obsidian aesthetics.
+*   **TensorFlow Edge**: Real-time browser-side inference engine.
 
 ---
 
-## 🚀 Quick Start
+## 🛠️ Getting Started
 
-### 1. Unified Startup
-Ensure **MongoDB** and **Redis** are running, then execute the orchestrator:
-```bash
-./restart-all.bat
-```
-This will launch the Gateway (3001), the Python ML API (5000), and all supporting microservices in individual windows.
-
-### 2. Frontend Launch
-In a separate terminal:
-```bash
-npm run dev
-```
+1.  **Clone the Repo**
+2.  **Install Dependencies**: `npm install`
+3.  **Launch the Grid**: `npm run start:all`
+4.  **Admin Login**: Access the **🛡️ Market Security** tab to view the live Federated Pulse.
 
 ---
 
-## 🛠️ Tech Stack
-
-- **Frontend**: React 19, Vite, Context API, Vanilla CSS (Modular).
-- **Backend**: Node.js, Express, MongoDB/Mongoose.
-- **Machine Learning**: Python 3.13, Flask, XGBoost, Scikit-learn.
-- **Performance**: Redis (Distributed Caching & Locking).
-- **Communication**: Inter-service Axios (Internal) & API Gateway Proxy (External).
-
----
-
-## 👨‍💻 Key Design Principles
-
-1.  **Modular CSS**: Styles are scoped to components (e.g., `Navigation.css`) to prevent global leakage.
-2.  **Graceful Degradation**: Core booking logic operates even if ancillary services (like Analytics) are temporarily down.
-3.  **Atomic Inventory**: Distributed locks on Redis prevent overselling seats during high-demand bursts.
-4.  **Dynamic Pricing Source of Truth**: Pricing is dynamically calculated on the backend; the frontend merely renders the real-time adjustments.
-
----
-**FanFeverTickets** — *The Future of Intelligent Event Ticketing in India.* 🇮🇳
+## ⚖️ License
+Proprietary implementation of the DECPG Framework. All rights reserved.

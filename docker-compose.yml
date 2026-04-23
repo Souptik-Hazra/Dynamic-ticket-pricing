@@ -1,218 +1,126 @@
 version: '3.8'
 
 services:
-  # ── Infrastructure ────────────────────────────────────────────────────────
+  # ── Infrastructure ─────────────────────────────────────────────────────────
   mongodb:
     image: mongo:latest
-    profiles: ["core", "full"]
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongodb_data:/data/db
+    container_name: cyber_mongodb
+    ports: ["27017:27017"]
+    volumes: [mongo_data:/data/db]
 
   redis:
     image: redis:alpine
-    profiles: ["core", "full"]
-    ports:
-      - "6379:6379"
+    container_name: cyber_redis
+    ports: ["6379:6379"]
 
   neo4j:
-    image: neo4j:5
-    profiles: ["full"]
-    ports:
-      - "7474:7474" # HTTP Browser
-      - "7687:7687" # BOLT
-    environment:
-      - NEO4J_AUTH=neo4j/password
-      - NEO4J_dbms_memory_heap_initial__size=512m
-      - NEO4J_dbms_memory_heap_max__size=1g
-    volumes:
-      - neo4j_data:/data
+    image: neo4j:latest
+    container_name: cyber_neo4j
+    ports: ["7474:7474", "7687:7687"]
+    environment: [NEO4J_AUTH=neo4j/password]
+    volumes: [neo4j_data:/data]
 
-  rabbitmq:
-    image: rabbitmq:3-management
-    profiles: ["full"]
-    ports:
-      - "5672:5672"
-      - "15672:15672"
+  # ── AI Layer ───────────────────────────────────────────────────────────────
+  ml-engine:
+    build: { context: ./ml-model, dockerfile: Dockerfile }
+    container_name: cyber_ml_engine
+    ports: ["5000:5000"]
+    environment: [ML_PORT=5000]
 
-  # ── Core Microservices ────────────────────────────────────────────────────
+  # ── Gateway & Auth ─────────────────────────────────────────────────────────
   api-gateway:
-    build:
-      context: ./microservices
-      dockerfile: Dockerfile.node
-      args: { SERVICE_PATH: api-gateway, PORT: 3001 }
-    profiles: ["core", "full"]
-    ports: ["3001:3001"]
+    build: { context: ./microservices, dockerfile: Dockerfile.node, args: { SERVICE_PATH: api-gateway, PORT: 4000 } }
+    container_name: cyber_gateway
+    ports: ["4000:4000"]
+    env_file: .env
     depends_on: [mongodb, redis]
-    environment:
-      - PORT=3001
-      - MONGODB_URI=mongodb://mongodb:27017/dynamic-ticket-pricing
-      - REDIS_URL=redis://redis:6379
-      - AUTH_SERVICE_URL=http://authentication-service:4001
-      - USER_SERVICE_URL=http://user-service:4002
-      - ORGANIZER_SERVICE_URL=http://organizer-service:4013
 
-  authentication-service:
-    build:
-      context: ./microservices
-      dockerfile: Dockerfile.node
-      args: { SERVICE_PATH: authentication-service, PORT: 4001 }
-    profiles: ["core", "full"]
-    ports: ["4001:4001"]
+  auth-service:
+    build: { context: ./microservices, dockerfile: Dockerfile.node, args: { SERVICE_PATH: authentication-service, PORT: 4001 } }
+    container_name: cyber_auth
+    env_file: .env
     depends_on: [mongodb]
-    environment:
-      - PORT=4001
-      - MONGODB_URI=mongodb://mongodb:27017/dynamic-ticket-pricing
-      - JWT_SECRET=SouptikHazraSecretKey
 
   user-service:
-    build:
-      context: ./microservices
-      dockerfile: Dockerfile.node
-      args: { SERVICE_PATH: user-service, PORT: 4002 }
-    profiles: ["core", "full"]
-    ports: ["4002:4002"]
-    depends_on: [mongodb]
-    environment:
-      - PORT=4002
-      - MONGODB_URI=mongodb://mongodb:27017/dynamic-ticket-pricing
+    build: { context: ./microservices, dockerfile: Dockerfile.node, args: { SERVICE_PATH: user-service, PORT: 4003 } }
+    container_name: cyber_user
+    env_file: .env
 
+  # ── Core Business Logic ────────────────────────────────────────────────────
   organizer-service:
-    build:
-      context: ./microservices
-      dockerfile: Dockerfile.node
-      args: { SERVICE_PATH: organizer-service, PORT: 4013 }
-    profiles: ["core", "full"]
+    build: { context: ./microservices, dockerfile: Dockerfile.node, args: { SERVICE_PATH: organizer-service, PORT: 4013 } }
+    container_name: cyber_organizer
     ports: ["4013:4013"]
-    depends_on: [mongodb, neo4j]
-    environment:
-      - PORT=4013
-      - MONGODB_URI=mongodb://mongodb:27017/dynamic-ticket-pricing
-      - NEO4J_URI=neo4j://neo4j:7687
-      - NEO4J_USERNAME=neo4j
-      - NEO4J_PASSWORD=password
-
-  # ── Dynamic Pricing ML ───────────────────────────────────────────────────
-  ml-model:
-    build: { context: ./ml-model }
-    profiles: ["ml", "full"]
-    ports: ["5000:5000"]
-    depends_on: [mongodb]
-    environment:
-      - MONGODB_URI=mongodb://mongodb:27017/dynamic-ticket-pricing
-
-  # ── Secondary & Support Services (Included in 'full') ──────────────────────
-  admin-service:
-    build:
-      context: ./microservices
-      dockerfile: Dockerfile.node
-      args: { SERVICE_PATH: admin-service, PORT: 4003 }
-    profiles: ["full"]
-    ports: ["4003:4003"]
-    environment: [ "PORT=4003", "MONGODB_URI=mongodb://mongodb:27017/dynamic-ticket-pricing" ]
+    env_file: .env
+    depends_on: [mongodb, neo4j, ml-engine]
 
   payment-service:
-    build:
-      context: ./microservices
-      dockerfile: Dockerfile.node
-      args: { SERVICE_PATH: payment-service, PORT: 4004 }
-    profiles: ["full"]
-    ports: ["4004:4004"]
-    environment: [ "PORT=4004", "MONGODB_URI=mongodb://mongodb:27017/dynamic-ticket-pricing" ]
-
-  cache-service:
-    build:
-      context: ./microservices
-      dockerfile: Dockerfile.node
-      args: { SERVICE_PATH: cache-service, PORT: 4005 }
-    profiles: ["full"]
-    ports: ["4005:4005"]
-    environment: [ "PORT=4005", "REDIS_URL=redis://redis:6379" ]
-
-  email-service:
-    build:
-      context: ./microservices
-      dockerfile: Dockerfile.node
-      args: { SERVICE_PATH: email-service, PORT: 4007 }
-    profiles: ["full"]
-    ports: ["4007:4007"]
-    environment: [ "PORT=4007" ]
-
-  notification-service:
-    build:
-      context: ./microservices
-      dockerfile: Dockerfile.node
-      args: { SERVICE_PATH: notification-service, PORT: 4009 }
-    profiles: ["full"]
-    ports: ["4009:4009"]
-    environment: [ "PORT=4009" ]
-
-  websocket-service:
-    build:
-      context: ./microservices
-      dockerfile: Dockerfile.node
-      args: { SERVICE_PATH: websocket-service, PORT: 4010 }
-    profiles: ["full"]
-    ports: ["4010:4010"]
-    environment: [ "PORT=4010" ]
-
-  analytics-service:
-    build:
-      context: ./microservices
-      dockerfile: Dockerfile.node
-      args: { SERVICE_PATH: analytics-service, PORT: 4011 }
-    profiles: ["full"]
-    ports: ["4011:4011"]
-    environment: [ "PORT=4011", "MONGODB_URI=mongodb://mongodb:27017/dynamic-ticket-pricing" ]
-
-  subscription-service:
-    build:
-      context: ./microservices
-      dockerfile: Dockerfile.node
-      args: { SERVICE_PATH: subscription-service, PORT: 4012 }
-    profiles: ["full"]
-    ports: ["4012:4012"]
-    environment: [ "PORT=4012" ]
-
-  qr-service:
-    build:
-      context: ./microservices
-      dockerfile: Dockerfile.node
-      args: { SERVICE_PATH: qr-service, PORT: 4014 }
-    profiles: ["full"]
-    ports: ["4014:4014"]
-    environment: [ "PORT=4014" ]
-
-  scanner-service:
-    build:
-      context: ./microservices
-      dockerfile: Dockerfile.node
-      args: { SERVICE_PATH: scanner-service, PORT: 4015 }
-    profiles: ["full"]
-    ports: ["4015:4015"]
-    environment: [ "PORT=4015" ]
+    build: { context: ./microservices, dockerfile: Dockerfile.node, args: { SERVICE_PATH: payment-service, PORT: 4004 } }
+    container_name: cyber_payment
+    env_file: .env
+    depends_on: [mongodb]
 
   wallet-service:
-    build:
-      context: ./microservices
-      dockerfile: Dockerfile.node
-      args: { SERVICE_PATH: wallet-service, PORT: 4016 }
-    profiles: ["full"]
-    ports: ["4016:4016"]
-    environment: [ "PORT=4016", "MONGODB_URI=mongodb://mongodb:27017/dynamic-ticket-pricing" ]
+    build: { context: ./microservices, dockerfile: Dockerfile.node, args: { SERVICE_PATH: wallet-service, PORT: 4011 } }
+    container_name: cyber_wallet
+    env_file: .env
+    depends_on: [mongodb]
 
-  # ── Frontend ────────────────────────────────────────────────────────────
+  # ── Security & Validation ──────────────────────────────────────────────────
+  qr-service:
+    build: { context: ./microservices, dockerfile: Dockerfile.node, args: { SERVICE_PATH: qr-service, PORT: 4014 } }
+    container_name: cyber_qr
+    env_file: .env
+
+  scanner-service:
+    build: { context: ./microservices, dockerfile: Dockerfile.node, args: { SERVICE_PATH: scanner-service, PORT: 4015 } }
+    container_name: cyber_scanner
+    env_file: .env
+
+  # ── Communication & Sync ───────────────────────────────────────────────────
+  notification-service:
+    build: { context: ./microservices, dockerfile: Dockerfile.node, args: { SERVICE_PATH: notification-service, PORT: 4008 } }
+    container_name: cyber_notifications
+    env_file: .env
+
+  websocket-service:
+    build: { context: ./microservices, dockerfile: Dockerfile.node, args: { SERVICE_PATH: websocket-service, PORT: 4009 } }
+    container_name: cyber_websockets
+    ports: ["4009:4009"]
+    env_file: .env
+
+  # ── Management & BI ────────────────────────────────────────────────────────
+  analytics-service:
+    build: { context: ./microservices, dockerfile: Dockerfile.node, args: { SERVICE_PATH: analytics-service, PORT: 4010 } }
+    container_name: cyber_analytics
+    env_file: .env
+    depends_on: [mongodb]
+
+  admin-service:
+    build: { context: ./microservices, dockerfile: Dockerfile.node, args: { SERVICE_PATH: admin-service, PORT: 4002 } }
+    container_name: cyber_admin
+    env_file: .env
+
+  # ── Specialized Utilities ──────────────────────────────────────────────────
+  subscription-service:
+    build: { context: ./microservices, dockerfile: Dockerfile.node, args: { SERVICE_PATH: subscription-service, PORT: 4016 } }
+    container_name: cyber_subscriptions
+    env_file: .env
+
+  cache-service:
+    build: { context: ./microservices, dockerfile: Dockerfile.node, args: { SERVICE_PATH: cache-service, PORT: 4006 } }
+    container_name: cyber_cache
+    env_file: .env
+    depends_on: [redis]
+
+  # ── Frontend ───────────────────────────────────────────────────────────────
   frontend:
-    build:
-      context: .
-      dockerfile: Dockerfile.frontend
-    profiles: ["core", "full"]
-    ports: ["5173:80"]
+    build: { context: ., dockerfile: Dockerfile.frontend }
+    container_name: cyber_frontend
+    ports: ["5173:5173"]
+    environment: [VITE_API_URL=http://localhost:4000]
     depends_on: [api-gateway]
-    environment:
-      - VITE_API_URL=http://api-gateway:3001/api
 
 volumes:
-  mongodb_data:
+  mongo_data:
   neo4j_data:
