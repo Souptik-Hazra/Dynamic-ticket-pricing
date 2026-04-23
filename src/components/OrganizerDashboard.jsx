@@ -178,8 +178,8 @@ function OrganizerDashboard() {
     new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
   return (
-    <div className="cyber-container animate-fade-up" style={{ padding: '2rem 0' }}>
-      <header className="flex-between" style={{ marginBottom: '3rem' }}>
+    <div className="cyber-container animate-fade-up" style={{ padding: '1.5rem 0' }}>
+      <header className="flex-between" style={{ marginBottom: '2.5rem' }}>
         <div>
           <h1 className="title-main text-gradient" style={{ margin: 0 }}>🎭 Organizer Hub</h1>
           <p className="text-muted">Event Intelligence & Management</p>
@@ -189,7 +189,7 @@ function OrganizerDashboard() {
                 title={connected ? 'Live updates connected' : 'Offline'}>
               {connected ? '● Live WebSocket' : '● Offline'}
             </span>
-            <div className="glass-panel" style={{ padding: '0.8rem 1.5rem', borderRadius: '12px' }}>
+            <div className="glass-panel" style={{ padding: '0.6rem 1.25rem', borderRadius: '12px' }}>
               <span className="cyber-label" style={{ fontSize: '0.7rem', display: 'block' }}>Net Revenue</span>
               <span className="text-glow" style={{ fontSize: '1.2rem', fontWeight: '900', color: 'var(--success)' }}>
                 ₹{organizerWallet.balance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
@@ -236,12 +236,12 @@ function OrganizerDashboard() {
             <h2 className="title-sub">Neural Performance Metrics</h2>
             <div className="cyber-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
               <div className="cyber-card cyber-stat-card flex-center" style={{ borderLeftColor: 'var(--accent-cyan)' }}>
-                <span className="cyber-label">Active Events</span>
-                <p className="text-glow" style={{ fontSize: '1.8rem', fontWeight: '900' }}>{stats.totalEvents}</p>
+                <span className="cyber-label" style={{ fontSize: '0.65rem' }}>Active Events</span>
+                <p className="text-glow" style={{ fontSize: '1.5rem', fontWeight: '900' }}>{stats.totalEvents}</p>
               </div>
               <div className="cyber-card cyber-stat-card flex-center" style={{ borderLeftColor: 'var(--accent-indigo)' }}>
-                <span className="cyber-label">Total Tickets Sold</span>
-                <p className="text-glow" style={{ fontSize: '1.8rem', fontWeight: '900' }}>{stats.totalTickets}</p>
+                <span className="cyber-label" style={{ fontSize: '0.65rem' }}>Total Tickets Sold</span>
+                <p className="text-glow" style={{ fontSize: '1.5rem', fontWeight: '900' }}>{stats.totalTickets}</p>
               </div>
               <div className="cyber-card cyber-stat-card flex-center" style={{ borderLeftColor: 'var(--success)' }}>
                 <span className="cyber-label">Gross Revenue</span>

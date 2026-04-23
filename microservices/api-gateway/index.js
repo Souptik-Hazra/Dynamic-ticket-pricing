@@ -18,7 +18,7 @@ const numCPUs = os.cpus().length;
 
 if (cluster.isPrimary) {
   console.log(`[OS Expert] 🚀 API Gateway Master [${process.pid}] starting...`);
-  console.log(`[OS Expert] 🏁 Spawning ${numCPUs} workers for multi-core scaling...`);
+  // console.log(`[OS Expert] 🏁 Spawning ${numCPUs} workers for multi-core scaling...`);
 
   // Fork workers.
   for (let i = 0; i < numCPUs; i++) {
@@ -32,7 +32,7 @@ if (cluster.isPrimary) {
 } else {
   const app = express();
   const workerId = cluster.worker.id;
-  console.log(`[OS Expert] 🏗️ Worker ${workerId} [${process.pid}] online`);
+  // console.log(`[OS Expert] 🏗️ Worker ${workerId} [${process.pid}] online`);
   // ── Bot Protection ──────────────────────────────────────────────────────────
   app.use(botShield);
   // Increase listener limit for the 14+ proxied microservices
@@ -146,6 +146,7 @@ if (cluster.isPrimary) {
   app.use(proxy(v1('/api/events'), SERVICES.organizer));
   app.use(proxy(v1('/api/tickets'), SERVICES.organizer));
   app.use(proxy(v1('/api/organizers'), SERVICES.organizer));
+  app.use(proxy(v1('/api/security'), SERVICES.organizer));
   // Simulator endpoints (Neo4j-backed) — forward to Organizer service
   app.use(proxy(v1('/api/simulator'), SERVICES.organizer));
   app.use(proxy(v1('/api/qr'), SERVICES.qr));

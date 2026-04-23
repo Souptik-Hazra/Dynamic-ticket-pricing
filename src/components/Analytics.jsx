@@ -66,8 +66,8 @@ function Analytics() {
   const getMaxRevenue = (arr) => Math.max(...arr.map(i => i.revenue || 0), 1);
 
   return (
-    <div className="cyber-container animate-fade-up" style={{ padding: '3rem 0' }}>
-      <header className="flex-between" style={{ marginBottom: '3.5rem' }}>
+    <div className="cyber-container animate-fade-up" style={{ padding: '2rem 0' }}>
+      <header className="flex-between" style={{ marginBottom: '2.5rem' }}>
         <div>
           <h1 className="title-main text-gradient" style={{ margin: 0 }}>🧠 NEURAL BI ANALYTICS</h1>
           <p className="text-muted">High-fidelity market intelligence and performance telemetry.</p>

@@ -439,6 +439,209 @@ app.post('/api/federated/aggregate', jwtMiddleware, requireDB, async (req, res, 
   }
 });
 
+// ── Standard Health Check ──────────────────────────────────────────────────
+app.get('/health', (_req, res) =>
+  res.json({ status: 'ok', service: 'organizer-service', ts: new Date().toISOString() })
+);
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ORGANIZER MANAGEMENT ROUTES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * GET /api/organizers/stats
+ * Dashboard summary for a specific organizer
+ */
+app.get('/api/organizers/stats', jwtMiddleware, requireDB, async (req, res, next) => {
+  try {
+    const organizerId = req.user.id;
+    const [eventsCount, ticketsAgg] = await Promise.all([
+      Event.countDocuments({ organizerId }),
+      Ticket.aggregate([
+        { 
+          $lookup: {
+            from: 'events',
+            localField: 'eventId',
+            foreignField: '_id',
+            as: 'event'
+          }
+        },
+        { $unwind: '$event' },
+        { $match: { 'event.organizerId': new mongoose.Types.ObjectId(organizerId), status: 'confirmed' } },
+        { $group: { _id: null, totalRevenue: { $sum: '$totalAmount' }, totalTickets: { $sum: '$quantity' } } }
+      ])
+    ]);
+
+    const { totalRevenue = 0, totalTickets = 0 } = ticketsAgg[0] || {};
+    
+    res.json({
+      stats: {
+        totalEvents: eventsCount,
+        totalTickets,
+        totalRevenue
+      }
+    });
+  } catch (err) { next(err); }
+});
+
+/**
+ * GET /api/organizers/events
+ * List all events owned by this organizer
+ */
+app.get('/api/organizers/events', jwtMiddleware, requireDB, async (req, res, next) => {
+  try {
+    const events = await Event.find({ organizerId: req.user.id }).sort({ startDate: 1 });
+    res.json({ events });
+  } catch (err) { next(err); }
+});
+
+app.get('/api/organizers/events/:id', jwtMiddleware, requireDB, async (req, res, next) => {
+  try {
+    const event = await Event.findOne({ _id: req.params.id, organizerId: req.user.id });
+    if (!event) return res.status(404).json({ error: 'Event not found' });
+    res.json({ event });
+  } catch (err) { next(err); }
+});
+
+app.put('/api/organizers/events/:id', jwtMiddleware, requireDB, async (req, res, next) => {
+  try {
+    const event = await Event.findOneAndUpdate(
+      { _id: req.params.id, organizerId: req.user.id },
+      req.body,
+      { new: true, runValidators: true }
+    );
+    if (!event) return res.status(404).json({ error: 'Event not found' });
+    
+    cacheDel(CACHE_KEYS.EVENT_DETAIL(event._id));
+    cacheDelPattern(CACHE_KEYS.EVENT_LIST_ALL);
+    
+    res.json({ event });
+  } catch (err) { next(err); }
+});
+
+/**
+ * GET /api/organizers/tickets
+ * List all ticket sales for this organizer's events
+ */
+app.get('/api/organizers/tickets', jwtMiddleware, requireDB, async (req, res, next) => {
+  try {
+    const tickets = await Ticket.aggregate([
+      { 
+        $lookup: {
+          from: 'events',
+          localField: 'eventId',
+          foreignField: '_id',
+          as: 'event'
+        }
+      },
+      { $unwind: '$event' },
+      { $match: { 'event.organizerId': new mongoose.Types.ObjectId(req.user.id) } },
+      { $sort: { purchaseDate: -1 } },
+      { $limit: 200 },
+      {
+        $project: {
+          _id: 1,
+          bookingReference: 1,
+          customerName: 1,
+          customerEmail: 1,
+          eventName: '$event.name',
+          categoryName: 1,
+          quantity: 1,
+          totalAmount: 1,
+          status: 1,
+          purchaseDate: 1
+        }
+      }
+    ]);
+    res.json({ tickets });
+  } catch (err) { next(err); }
+});
+
+/**
+ * POST /api/organizers/broadcast
+ * Send notification to all attendees of a specific event
+ */
+app.post('/api/organizers/broadcast', jwtMiddleware, requireDB, async (req, res, next) => {
+  try {
+    const { eventId, title, message } = req.body;
+    const event = await Event.findOne({ _id: eventId, organizerId: req.user.id });
+    if (!event) return res.status(404).json({ error: 'Event not found or unauthorized' });
+
+    const tickets = await Ticket.find({ eventId, status: 'confirmed' }).select('userId');
+    const userIds = [...new Set(tickets.map(t => t.userId))];
+
+    userIds.forEach(uid => {
+      notify(uid, 'message', `📢 ${event.name}: ${title}`, message);
+      wsNotifyUser(uid, 'message', `Organizer Broadcast`, title);
+    });
+
+    res.json({ success: true, count: userIds.length });
+  } catch (err) { next(err); }
+});
+
+/**
+ * POST /api/organizers/message-admin
+ * Send a support/management message to platform admins
+ */
+app.post('/api/organizers/message-admin', jwtMiddleware, requireDB, async (req, res, next) => {
+  try {
+    const { title, message } = req.body;
+    const admins = await User.find({ role: 'admin' }).select('_id');
+    
+    admins.forEach(admin => {
+      notify(admin._id, 'alert', `📩 Partner Message: ${req.user.name}`, `${title}: ${message}`);
+    });
+
+    res.json({ success: true });
+  } catch (err) { next(err); }
+});
+
+/**
+ * POST /api/tickets/revert
+ * Internal: Reverse a purchase (refund).
+ */
+app.post('/api/tickets/revert', requireDB, async (req, res, next) => {
+  try {
+    const { eventId, categoryName, quantity, amount } = req.body;
+    if (!eventId || !categoryName || !quantity) {
+      return res.status(400).json({ error: 'Missing required reversal data' });
+    }
+
+    const event = await Event.findById(eventId);
+    if (!event) return res.status(404).json({ error: 'Event not found' });
+
+    // 1. Update inventory
+    const category = event.ticketCategories.find(c => c.name === categoryName.toLowerCase());
+    if (category) {
+      category.availableSeats += quantity;
+    }
+
+    // 2. Adjust revenue
+    event.totalRevenue = Math.max(0, (event.totalRevenue || 0) - amount);
+    event.commissionCollected = Math.max(0, (event.commissionCollected || 0) - Math.round(amount * 0.20));
+
+    await event.save();
+
+    // 3. Invalidate caches
+    cacheDel(CACHE_KEYS.EVENT_DETAIL(eventId));
+    cacheDelPattern(CACHE_KEYS.EVENT_LIST_ALL);
+
+    res.json({ success: true, message: 'Purchase reverted successfully' });
+  } catch (err) { next(err); }
+});
+
+/**
+ * 🧪 Simulator Endpoints (Placeholder)
+ * These will eventually handle high-volume load testing and bot simulation.
+ */
+app.post('/api/simulator/start', requireDB, (req, res) => {
+  res.json({ success: true, message: 'Simulation started (Placeholder)' });
+});
+
+app.get('/api/simulator/status', (req, res) => {
+  res.json({ running: false, progress: 0 });
+});
+
 app.use(notFound);
 app.use(errorHandler);
 

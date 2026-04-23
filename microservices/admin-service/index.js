@@ -40,11 +40,6 @@ const adminOnly = (req, res, next) => {
 };
 const auth = [jwtMiddleware, requireDB, adminOnly];
 
-// ── Health ─────────────────────────────────────────────────────────────────
-app.get('/health', (_req, res) =>
-  res.json({ status: 'ok', service: 'admin-service', ts: new Date().toISOString() })
-);
-
 /* ═══════════════════════════════════════════════════════════════════════════
    STATS
 ═══════════════════════════════════════════════════════════════════════════ */

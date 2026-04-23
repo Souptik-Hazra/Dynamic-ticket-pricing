@@ -54,19 +54,19 @@ export const requestLogger = (serviceName) => (req, res, next) => {
   const start = Date.now();
   const traceId = req.headers['x-request-id'] || `req-${Math.random().toString(36).substring(2, 9)}`;
   
-  // Store traceId in AsyncLocalStorage so downstream interservice calls can find it
+  // Store traceId in AsyncLocalStorage
   traceStorage.run({ traceId }, () => {
-    // 1. Log Incoming Request
-    console.log(`[${serviceName}] 📥 [${traceId}] ${req.method} ${req.originalUrl}`);
-    
-    // 2. Wrap res.end to log outgoing response
     const originalEnd = res.end;
     res.end = function(chunk, encoding) {
       const duration = Date.now() - start;
       const statusCode = res.statusCode;
       const color = statusCode >= 400 ? '❌' : '✅';
       
-      console.log(`[${serviceName}] ${color} [${traceId}] ${statusCode} | ${duration}ms`);
+      // Skip logging for successful health checks to keep terminal clean
+      const isHealthCheck = req.originalUrl.includes('/health');
+      if (!isHealthCheck || statusCode >= 400) {
+        console.log(`[${serviceName}] ${color} [${traceId}] ${req.method} ${req.originalUrl} | ${statusCode} | ${duration}ms`);
+      }
       
       // Auto-persist errors or slow requests
       if (statusCode >= 400 || duration > 2000) {

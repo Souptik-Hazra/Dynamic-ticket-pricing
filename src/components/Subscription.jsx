@@ -66,8 +66,8 @@ const Subscription = () => {
     : null;
 
   return (
-    <div className="cyber-container animate-fade-up" style={{ padding: '4rem 0' }}>
-      <div className="flex-column" style={{ textAlign: 'center', marginBottom: '4rem' }}>
+    <div className="cyber-container animate-fade-up" style={{ padding: '2rem 0' }}>
+      <div className="flex-column" style={{ textAlign: 'center', marginBottom: '3rem' }}>
         <h1 className="title-main text-gradient">Membership Protocols</h1>
         <p className="text-muted">Elevate your access level to the platform ecosystem.</p>
       </div>
@@ -78,7 +78,7 @@ const Subscription = () => {
           <div className="text-glow animate-pulse">Synchronizing neural link...</div>
         </div>
       ) : (
-        <div className="cyber-card" style={{ marginBottom: '3rem', borderLeft: isActive && currentPlan !== 'none' ? '4px solid var(--success)' : '1px solid var(--border-dim)' }}>
+        <div className="cyber-card" style={{ marginBottom: '2rem', borderLeft: isActive && currentPlan !== 'none' ? '4px solid var(--success)' : '1px solid var(--border-dim)' }}>
           <div className="flex-between">
             <div className="flex-center" style={{ gap: '1rem' }}>
               <span className="cyber-label">Current Sector Access:</span>
@@ -108,7 +108,7 @@ const Subscription = () => {
           <div key={plan.id} className="cyber-card flex-column" style={{ gap: '1.5rem', borderTop: currentPlan === plan.id && isActive ? '4px solid var(--success)' : '1px solid var(--border-dim)' }}>
             <div className="flex-column" style={{ textAlign: 'center', gap: '0.5rem' }}>
               <h3 className="text-main" style={{ fontSize: '1.5rem', fontWeight: '900', margin: 0 }}>{plan.title}</h3>
-              <div className="text-gradient" style={{ fontSize: '2.5rem', fontWeight: '950' }}>{plan.price}</div>
+              <div className="text-gradient" style={{ fontSize: '2rem', fontWeight: '950' }}>{plan.price}</div>
               <div className="cyber-label" style={{ fontSize: '0.7rem' }}>{plan.duration}</div>
             </div>
             <div className="flex-column" style={{ gap: '0.8rem', flexGrow: 1 }}>

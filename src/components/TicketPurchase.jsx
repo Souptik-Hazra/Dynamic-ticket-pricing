@@ -301,7 +301,7 @@ function TicketPurchase({ event, onBack, onSuccess }) {
               <div className="cyber-badge badge-info" style={{ width: 'fit-content' }}>🎭 {event.category}</div>
             </div>
 
-            <div className="glass-panel" style={{ marginTop: '2rem', padding: '1.5rem' }}>
+            <div className="glass-panel" style={{ marginTop: '1.5rem', padding: '1.25rem' }}>
               <h4 className="cyber-label" style={{ marginBottom: '1rem' }}>📋 Order Summary</h4>
               <div className="flex-column" style={{ gap: '0.8rem' }}>
                 {selectedCategory && (
@@ -376,7 +376,7 @@ function TicketPurchase({ event, onBack, onSuccess }) {
                     key={category._id || category.name}
                     className={`cyber-card flex-column flex-center ${selectedCategory?.name === category.name ? 'selected' : ''}`}
                     style={{ 
-                      padding: '1.5rem', 
+                      padding: '1.25rem', 
                       cursor: 'pointer',
                       background: selectedCategory?.name === category.name ? 'rgba(102, 126, 234, 0.1)' : 'rgba(255, 255, 255, 0.02)',
                       borderColor: selectedCategory?.name === category.name ? 'var(--accent-indigo)' : 'var(--border-dim)',
@@ -463,7 +463,7 @@ function TicketPurchase({ event, onBack, onSuccess }) {
               <button 
                 type="submit" 
                 className="cyber-btn btn-glow" 
-                style={{ padding: '1.5rem', fontSize: '1.2rem' }}
+                style={{ padding: '1.25rem', fontSize: '1.1rem' }}
                 disabled={loading || getAvailableTickets() === 0 || !isAuthenticated || (paymentMethod === 'wallet' && userWallet.balance < calculateTotal())}
               >
                 {loading ? 'PROCESSING...' : 
@@ -479,7 +479,7 @@ function TicketPurchase({ event, onBack, onSuccess }) {
       {/* DECPG Verification Overlay */}
       {verifyingHumanity && (
         <div className="flex-center" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 2000, backdropFilter: 'blur(10px)' }}>
-          <div className="flex-column flex-center cyber-card animate-pulse" style={{ padding: '3rem', border: '2px solid var(--accent-cyan)' }}>
+          <div className="flex-column flex-center cyber-card animate-pulse" style={{ padding: '2rem', border: '2px solid var(--accent-cyan)' }}>
             <div className="spinner" style={{ width: '60px', height: '60px', marginBottom: '2rem', borderTopColor: 'var(--accent-cyan)' }}></div>
             <h2 className="title-sub text-gradient" style={{ fontSize: '1.8rem', marginBottom: '1rem' }}>🛡️ Verifying Humanity</h2>
             <p className="text-main" style={{ textAlign: 'center', maxWidth: '300px' }}>

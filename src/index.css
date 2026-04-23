@@ -105,9 +105,9 @@ body {
 /* ── Layout Utilities ───────────────────────────────────────────────────── */
 .cyber-container {
   width: 100%;
-  max-width: 1400px;
+  max-width: 1280px;
   margin: 0 auto;
-  padding: 0 2rem;
+  padding: 0 1.5rem;
 }
 
 .cyber-section {
@@ -133,8 +133,8 @@ body {
 
 .cyber-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
 }
 
 /* ── Components ────────────────────────────────────────────────────────── */
@@ -144,8 +144,8 @@ body {
   background: rgba(10, 17, 40, 0.6);
   backdrop-filter: var(--blur-mid);
   border: 1px solid var(--border-dim);
-  border-radius: var(--radius-lg);
-  padding: 1.5rem;
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
   transition: all var(--transition-normal);
   position: relative;
   overflow: hidden;
@@ -180,9 +180,9 @@ body {
   background: var(--bg-surface);
   border: 1px solid var(--border-dim);
   border-radius: var(--radius-lg);
-  max-width: 1200px;
+  max-width: 1000px;
   width: 100%;
-  max-height: 90vh;
+  max-height: 85vh;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -190,7 +190,7 @@ body {
 }
 
 .modal-header {
-  padding: 1.5rem 2rem;
+  padding: 1.25rem 1.5rem;
   border-bottom: 1px solid var(--border-dim);
   display: flex;
   justify-content: space-between;
@@ -198,7 +198,7 @@ body {
 }
 
 .modal-content {
-  padding: 2rem;
+  padding: 1.5rem;
   overflow-y: auto;
   flex: 1;
 }
@@ -259,7 +259,7 @@ body {
 
 /* Buttons */
 .cyber-btn {
-  padding: 0.8rem 1.8rem;
+  padding: 0.7rem 1.5rem;
   border-radius: var(--radius-md);
   font-weight: 700;
   cursor: pointer;
@@ -468,10 +468,10 @@ body {
 }
 
 .title-main {
-  font-size: 3.5rem;
+  font-size: 3rem;
   font-weight: 900;
   line-height: 1.1;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.25rem;
 }
 
 .title-sub {
@@ -668,24 +668,24 @@ body {
 
 /* ── Responsive ────────────────────────────────────────────────────────── */
 @media (max-width: 1024px) {
-  .cyber-grid { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
-  .title-main { font-size: 3.5rem; }
+  .cyber-grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  .title-main { font-size: 2.75rem; }
 }
 
 @media (max-width: 768px) {
   .title-main {
-    font-size: 2.75rem;
+    font-size: 2.25rem;
   }
 
   .cyber-container {
-    padding: 0 1.5rem;
+    padding: 0 1rem;
   }
 
   .cyber-section {
-    padding: 4rem 0;
+    padding: 3rem 0;
   }
 
-  .cyber-card { padding: 2rem; }
+  .cyber-card { padding: 1.25rem; }
   .cyber-tabs { gap: 0.25rem; }
-  .cyber-tab { padding: 0.6rem 1rem; font-size: 0.75rem; }
+  .cyber-tab { padding: 0.5rem 0.8rem; font-size: 0.7rem; }
 }

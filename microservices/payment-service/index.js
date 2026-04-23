@@ -9,7 +9,7 @@ import { errorHandler, notFound } from '../shared/errorHandler.js';
 import jwtMiddleware from '../shared/jwtMiddleware.js';
 import Ticket from '../shared/models/Ticket.js';
 import Event from '../shared/models/Event.js';
-import { cacheDelPattern, CACHE_KEYS, notify, wsNotifyUser } from '../shared/interservice.js';
+import { cacheDelPattern, CACHE_KEYS, notify, wsNotifyUser, creditUserWallet, revertPurchase } from '../shared/interservice.js';
 import { requestLogger } from '../shared/logger.js';
 
 dotenv.config();

@@ -211,8 +211,8 @@ function AdminDashboard() {
   });
 
   return (
-    <div className="cyber-container animate-fade-up" style={{ padding: '2rem 0' }}>
-      <header className="flex-between" style={{ marginBottom: '3rem' }}>
+    <div className="cyber-container animate-fade-up" style={{ padding: '1.5rem 0' }}>
+      <header className="flex-between" style={{ marginBottom: '2.5rem' }}>
         <div>
           <h1 className="title-main text-gradient" style={{ margin: 0 }}>🎫 Admin Dashboard</h1>
           <p className="text-muted">Platform Control Center</p>
@@ -222,7 +222,7 @@ function AdminDashboard() {
                 title={connected ? 'Live updates connected' : 'Offline'}>
             {connected ? '● Live WebSocket' : '● Offline'}
           </span>
-          <div className="glass-panel" style={{ padding: '0.8rem 1.5rem', borderRadius: '12px' }}>
+          <div className="glass-panel" style={{ padding: '0.6rem 1.25rem', borderRadius: '12px' }}>
             <span className="cyber-label" style={{ fontSize: '0.7rem', display: 'block' }}>Platform Balance</span>
             <span className="text-glow" style={{ fontSize: '1.2rem', fontWeight: '900', color: 'var(--success)' }}>
               ₹{adminWallet.balance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
@@ -276,8 +276,8 @@ function AdminDashboard() {
                 {Object.entries(healthData.services).map(([name, data]) => {
                   const isHealthy = ['online', 'ok', 'healthy'].includes(data.status.toLowerCase());
                   return (
-                    <div key={name} className="cyber-card" style={{ borderLeft: `4px solid ${isHealthy ? 'var(--success)' : 'var(--danger)'}` }}>
-                      <div className="flex-between" style={{ marginBottom: '1.5rem' }}>
+                    <div key={name} className="cyber-card" style={{ borderLeft: `4px solid ${isHealthy ? 'var(--success)' : 'var(--danger)'}`, padding: '1rem' }}>
+                      <div className="flex-between" style={{ marginBottom: '1.25rem' }}>
                         <span className="cyber-label" style={{ fontSize: '0.75rem' }}>{name.replace(/([A-Z])/g, ' $1').toUpperCase()}</span>
                         <span className={`cyber-badge ${isHealthy ? 'badge-success' : 'badge-danger'}`}>{data.status.toUpperCase()}</span>
                       </div>
@@ -313,18 +313,18 @@ function AdminDashboard() {
           {view === 'stats' && stats && (
             <div className="animate-fade-up">
               <h2 className="title-sub">System-Wide Intelligence</h2>
-              <div className="cyber-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
+              <div className="cyber-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
                 <div className="cyber-card cyber-stat-card flex-center" style={{ borderLeftColor: 'var(--accent-cyan)' }}>
-                  <span className="cyber-label">Total Events</span>
-                  <p className="text-glow" style={{ fontSize: '1.8rem', fontWeight: '900' }}>{stats.totalEvents}</p>
+                  <span className="cyber-label" style={{ fontSize: '0.65rem' }}>Total Events</span>
+                  <p className="text-glow" style={{ fontSize: '1.5rem', fontWeight: '900' }}>{stats.totalEvents}</p>
                 </div>
                 <div className="cyber-card cyber-stat-card flex-center" style={{ borderLeftColor: 'var(--accent-purple)' }}>
-                  <span className="cyber-label">Global Users</span>
-                  <p className="text-glow" style={{ fontSize: '1.8rem', fontWeight: '900' }}>{stats.totalUsers}</p>
+                  <span className="cyber-label" style={{ fontSize: '0.65rem' }}>Global Users</span>
+                  <p className="text-glow" style={{ fontSize: '1.5rem', fontWeight: '900' }}>{stats.totalUsers}</p>
                 </div>
                 <div className="cyber-card cyber-stat-card flex-center" style={{ borderLeftColor: 'var(--accent-pink)' }}>
-                  <span className="cyber-label">Total Tickets Sold</span>
-                  <p className="text-glow" style={{ fontSize: '1.8rem', fontWeight: '900' }}>{stats.totalTickets}</p>
+                  <span className="cyber-label" style={{ fontSize: '0.65rem' }}>Total Tickets Sold</span>
+                  <p className="text-glow" style={{ fontSize: '1.5rem', fontWeight: '900' }}>{stats.totalTickets}</p>
                 </div>
                 <div className="cyber-card cyber-stat-card flex-center" style={{ borderLeftColor: 'var(--success)' }}>
                   <span className="cyber-label">Gross Revenue</span>
@@ -713,10 +713,100 @@ function AdminDashboard() {
             </div>
           )}
 
+          {/* ── Ticket Ledger ─────────────────────────────────────────────────── */}
+          {view === 'tickets' && (
+            <div className="animate-fade-up">
+              <div className="flex-between" style={{ marginBottom: '2rem' }}>
+                <h2 className="title-sub" style={{ margin: 0 }}>🎟️ Global Ticket Ledger</h2>
+                <button className="cyber-btn btn-outline" onClick={fetchTickets}>🔄 Sync Data</button>
+              </div>
+              <div className="cyber-table-container">
+                <table className="cyber-table">
+                  <thead>
+                    <tr>
+                      <th>Reference</th>
+                      <th>Patron</th>
+                      <th>Production</th>
+                      <th>Qty</th>
+                      <th>Magnitude</th>
+                      <th>State</th>
+                      <th>Timestamp</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tickets.map((t) => (
+                      <tr key={t._id}>
+                        <td><code>{t.bookingReference}</code></td>
+                        <td>
+                          <div className="flex-column">
+                            <span className="text-main" style={{ fontWeight: '700' }}>{t.buyerName}</span>
+                            <span className="text-dim" style={{ fontSize: '0.7rem' }}>{t.buyerEmail}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="text-main">{t.eventName}</div>
+                          <div className="text-dim" style={{ fontSize: '0.7rem' }}>{t.categoryName}</div>
+                        </td>
+                        <td>×{t.quantity}</td>
+                        <td className="text-glow" style={{ color: 'var(--success)' }}>₹{t.totalAmount?.toLocaleString()}</td>
+                        <td><span className={`cyber-badge badge-${t.status}`}>{t.status.toUpperCase()}</span></td>
+                        <td><span className="text-dim" style={{ fontSize: '0.8rem' }}>{fmtDate(t.purchaseDate)}</span></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* ── Partner Logs / Commissions ────────────────────────────────────── */}
+          {view === 'organizers' && (
+            <div className="animate-fade-up">
+              <div className="flex-between" style={{ marginBottom: '2rem' }}>
+                <h2 className="title-sub" style={{ margin: 0 }}>🤝 Partner Revenue Logs</h2>
+                <button className="cyber-btn btn-outline" onClick={fetchCommissions}>🔄 Refresh Ledger</button>
+              </div>
+              <div className="cyber-table-container">
+                <table className="cyber-table">
+                  <thead>
+                    <tr>
+                      <th>Partner</th>
+                      <th>Production</th>
+                      <th>Gross Revenue</th>
+                      <th>Commission (20%)</th>
+                      <th>State</th>
+                      <th>Payout Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {commissions.map((c) => (
+                      <tr key={c._id}>
+                        <td>
+                          <div className="flex-column">
+                            <span className="text-main" style={{ fontWeight: '700' }}>{c.organizerId?.name}</span>
+                            <span className="text-dim" style={{ fontSize: '0.7rem' }}>{c.organizerId?.email}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="text-main">{c.eventId?.name}</div>
+                          <div className="text-dim" style={{ fontSize: '0.7rem' }}>{c.eventId?.venue}</div>
+                        </td>
+                        <td>₹{c.totalRevenue?.toLocaleString()}</td>
+                        <td className="text-glow" style={{ color: 'var(--accent-cyan)' }}>₹{c.commissionAmount?.toLocaleString()}</td>
+                        <td><span className={`cyber-badge badge-${c.status}`}>{c.status.toUpperCase()}</span></td>
+                        <td><span className="text-dim" style={{ fontSize: '0.8rem' }}>{fmtDate(c.payoutDate)}</span></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           {/* Fallback or default */}
-          {(!view || view === 'organizers' || view === 'tickets') && (
+          {!view && (
             <div className="flex-center" style={{ padding: '5rem', border: '1px dashed var(--border-dim)', borderRadius: '20px' }}>
-              <p className="text-dim">Module under optimization. Please select another module.</p>
+              <p className="text-dim">Terminal Ready. Select a module from the sidebar.</p>
             </div>
           )}
 

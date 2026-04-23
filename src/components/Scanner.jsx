@@ -263,15 +263,15 @@ const Scanner = () => {
   };
 
   return (
-    <div className="cyber-container animate-fade-up" style={{ padding: '4rem 0', maxWidth: '600px' }}>
-      <header className="flex-between" style={{ marginBottom: '3rem' }}>
+    <div className="cyber-container animate-fade-up" style={{ padding: '2rem 0', maxWidth: '560px' }}>
+      <header className="flex-between" style={{ marginBottom: '2.5rem' }}>
         <div>
           <h1 className="title-main text-gradient" style={{ margin: 0, fontSize: '2rem' }}>SENTINEL SCANNER</h1>
           <div className="cyber-badge badge-success" style={{ fontSize: '0.6rem', marginTop: '0.5rem' }}>PROTOCOL: EVENT_ACCESS_VALIDATION</div>
         </div>
       </header>
 
-      <div className="cyber-card" style={{ padding: '2rem', minHeight: '400px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+      <div className="cyber-card" style={{ padding: '1.5rem', minHeight: '380px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
         {showResult && scanResult && (
           <div className="animate-fade-up flex-column" style={{ alignItems: 'center', gap: '2rem', textAlign: 'center' }}>
             <div className="flex-center" style={{ width: '80px', height: '80px', background: 'rgba(0, 230, 118, 0.1)', borderRadius: '50%', border: '2px solid var(--success)', fontSize: '2.5rem', color: 'var(--success)', boxShadow: '0 0 20px rgba(0, 230, 118, 0.3)' }}>✓</div>

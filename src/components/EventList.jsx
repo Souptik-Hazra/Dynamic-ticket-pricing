@@ -59,8 +59,8 @@ const isPurchasable = (event) => {
 // ── Component ─────────────────────────────────────────────────────────────
 function EventList({ events, onSelectEvent, onRefresh }) {
   return (
-    <div className="cyber-container animate-fade-up" style={{ padding: '4rem 0' }}>
-      <header className="flex-between" style={{ marginBottom: '3rem' }}>
+    <div className="cyber-container animate-fade-up" style={{ padding: '2.5rem 0' }}>
+      <header className="flex-between" style={{ marginBottom: '2.5rem' }}>
         <div>
           <h1 className="title-main text-gradient" style={{ margin: 0 }}>LIVE PRODUCTIONS</h1>
           <p className="text-muted">Experience the next generation of entertainment.</p>
@@ -98,12 +98,12 @@ function EventList({ events, onSelectEvent, onRefresh }) {
               </div>
 
               {/* Event Content */}
-              <div style={{ padding: '1.5rem' }} className="flex-column">
+              <div style={{ padding: '1.25rem' }} className="flex-column">
                 <p className="text-muted" style={{ fontSize: '0.9rem', marginBottom: '1.5rem', height: '3em', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
                   {event.description}
                 </p>
 
-                <div className="flex-column" style={{ gap: '0.8rem', marginBottom: '2rem' }}>
+                <div className="flex-column" style={{ gap: '0.6rem', marginBottom: '1.5rem' }}>
                   <div className="flex-center" style={{ justifyContent: 'flex-start', gap: '0.8rem', fontSize: '0.85rem' }}>
                     <span className="text-dim">📍</span>
                     <span className="text-main">{event.venue}</span>
@@ -122,7 +122,7 @@ function EventList({ events, onSelectEvent, onRefresh }) {
                 </div>
 
                 {/* Occupancy Indicator */}
-                <div className="flex-column" style={{ gap: '0.5rem', marginBottom: '2rem' }}>
+                <div className="flex-column" style={{ gap: '0.4rem', marginBottom: '1.5rem' }}>
                   <div className="flex-between" style={{ fontSize: '0.7rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '1px' }}>
                     <span className="text-muted">Sector Saturation</span>
                     <span className="text-glow" style={{ color: 'var(--accent-cyan)' }}>{getOccupancyPct(event)}%</span>

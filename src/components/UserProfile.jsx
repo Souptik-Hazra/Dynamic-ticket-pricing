@@ -200,9 +200,9 @@ const UserProfile = () => {
   };
 
   return (
-    <div className="cyber-container animate-fade-up" style={{ padding: '2rem 0' }}>
+    <div className="cyber-container animate-fade-up" style={{ padding: '1.5rem 0' }}>
       {/* Header Profile Section */}
-      <header className="flex-between" style={{ marginBottom: '3rem', alignItems: 'flex-start' }}>
+      <header className="flex-between" style={{ marginBottom: '2.5rem', alignItems: 'flex-start' }}>
         <div className="flex-center" style={{ justifyContent: 'flex-start', gap: '2rem' }}>
           <div className="cyber-avatar">
             {getInitials(user?.name)}
@@ -219,10 +219,10 @@ const UserProfile = () => {
           </div>
         </div>
 
-        <div className="cyber-card" style={{ padding: '1rem 2rem', minWidth: '250px' }}>
+        <div className="cyber-card" style={{ padding: '0.75rem 1.5rem', minWidth: '220px' }}>
           <span className="cyber-label" style={{ fontSize: '0.7rem', display: 'block', marginBottom: '0.5rem' }}>Neural Wallet Balance</span>
           <div className="flex-between">
-            <span className="text-glow" style={{ fontSize: '1.5rem', fontWeight: '900', color: 'var(--success)' }}>
+            <span className="text-glow" style={{ fontSize: '1.25rem', fontWeight: '900', color: 'var(--success)' }}>
               ₹{wallet.balance?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
             </span>
             <div className="flex-center" style={{ gap: '0.5rem' }}>
@@ -289,7 +289,7 @@ const UserProfile = () => {
                 <input className="cyber-input" type="password" name="password" value={form.password} onChange={handleChange} placeholder="Leave blank to maintain current" />
               </div>
 
-              <button type="submit" className="cyber-btn btn-primary" style={{ padding: '1.2rem', marginTop: '1rem' }} disabled={loading}>
+              <button type="submit" className="cyber-btn btn-primary" style={{ padding: '1rem', marginTop: '1rem' }} disabled={loading}>
                 {loading ? 'SYNCHRONIZING...' : 'UPDATE PROFILE'}
               </button>
             </form>

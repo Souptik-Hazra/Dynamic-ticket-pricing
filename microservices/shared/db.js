@@ -15,6 +15,7 @@ mongoose.connection.on('error',        (err) => console.error('[MongoDB] Connect
  * The service starts regardless — health endpoint still responds.
  */
 const connectDB = async (serviceName = 'Service') => {
+  if (mongoose.connection.readyState === 1) return; // Already connected
   try {
     await mongoose.connect(SHARED_DB_URI, {
       serverSelectionTimeoutMS: 10000,   // fail fast at startup if Mongo is down
@@ -107,7 +108,7 @@ export const tuneExpressServer = (server) => {
   // Nginx default is 65s. We set Node higher (70s) to avoid race conditions.
   server.keepAliveTimeout = 70000;
   server.headersTimeout   = 71000;
-  console.log('[OS/Network] Server keep-alive timeouts tuned (70s/71s)');
+  // console.log('[OS/Network] Server keep-alive timeouts tuned (70s/71s)');
 };
 
 export default connectDB;

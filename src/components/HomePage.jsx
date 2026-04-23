@@ -26,10 +26,10 @@ const HomePage = ({ onNavigate }) => {
   return (
     <div className="home-page">
       {/* Hero Section */}
-      <section className="hero-section cyber-section animate-fade-up" style={{ padding: '3rem 0' }}>
+      <section className="hero-section cyber-section animate-fade-up" style={{ padding: '2.5rem 0' }}>
         <div className="cyber-container flex-column flex-center" style={{ textAlign: 'center' }}>
           <div className="hero-content flex-column flex-center">
-            <h1 className="title-main text-gradient" style={{ fontSize: '3.5rem', marginBottom: '1rem' }}>The Future of Event Ticketing</h1>
+            <h1 className="title-main text-gradient" style={{ fontSize: '3rem', marginBottom: '0.75rem' }}>The Future of Event Ticketing</h1>
             <p className="title-sub">Experience AI-powered dynamic pricing for the most exclusive events.</p>
 
             <div className="hero-search">
@@ -105,10 +105,10 @@ const HomePage = ({ onNavigate }) => {
                     </div>
                   </div>
 
-                  <div style={{ padding: '2rem' }}>
+                  <div style={{ padding: '1.25rem' }}>
                     <h3 className="text-main" style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>{event.name}</h3>
                     <p className="text-muted" style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>📍 {event.venue}</p>
-                    <p className="text-dim" style={{ fontSize: '0.95rem', marginBottom: '1.5rem', lineBreak: 'anywhere' }}>{(event.description || '').substring(0, 100)}...</p>
+                    <p className="text-dim" style={{ fontSize: '0.95rem', marginBottom: '1.25rem', lineBreak: 'anywhere' }}>{(event.description || '').substring(0, 100)}...</p>
 
                     <div className="event-details">
                       <div className="cyber-label" style={{ fontSize: '0.7rem', marginBottom: '0.5rem' }}>Availability</div>
