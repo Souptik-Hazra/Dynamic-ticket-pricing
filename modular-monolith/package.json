@@ -1,0 +1,32 @@
+{
+  "name": "fan-fever-monolith",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "cross-env PORT=4001 node server.js",
+    "dev": "cross-env PORT=4001 node --watch server.js"
+  },
+  "dependencies": {
+    "axios": "^1.15.2",
+    "bcryptjs": "^3.0.3",
+    "compression": "^1.8.1",
+    "cors": "^2.8.6",
+    "cross-env": "^7.0.3",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.4.1",
+    "helmet": "^8.0.0",
+    "ioredis": "^5.10.1",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.4.1",
+    "neo4j-driver": "^6.0.1",
+    "nodemailer": "^8.0.5",
+    "qrcode": "^1.5.4",
+    "sharp": "^0.34.5",
+    "ws": "^8.20.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

@@ -21,10 +21,10 @@ const keepAliveAgentOptions = {
   keepAlive: true,
   maxSockets: 500,     // ⚡ Increased for massive inter-service parallelism
   maxFreeSockets: 50,  // ⚡ Keep 50 internal sockets 'hot' for instant reuse
-  timeout: 60000, 
+  timeout: 60000,
 };
 
-const httpAgent  = new http.Agent(keepAliveAgentOptions);
+const httpAgent = new http.Agent(keepAliveAgentOptions);
 const httpsAgent = new https.Agent(keepAliveAgentOptions);
 
 // ── Trace ID Interceptor ──────────────────────────────────────────────────
@@ -182,10 +182,10 @@ export const cacheSet = (key, value, ttlSeconds) =>
  */
 export const cacheGet = async (key) => {
   try {
-    const { data } = await axios.get(`${SERVICES.cache}/api/cache/${key}`, { 
+    const { data } = await axios.get(`${SERVICES.cache}/api/cache/${key}`, {
       timeout: 1000, // Reduced from 2s to fail faster
-      httpAgent, 
-      httpsAgent 
+      httpAgent,
+      httpsAgent
     });
     return data.value;
   } catch (err) {

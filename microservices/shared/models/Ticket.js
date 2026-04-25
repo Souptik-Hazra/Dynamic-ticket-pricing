@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { createBookingReference } from '../../../modular-monolith/src/shared/utils.js';
 
 const ticketSchema = new mongoose.Schema(
   {
@@ -37,9 +38,7 @@ ticketSchema.index({ purchaseDate: -1 });      // Essential for recent feed
 /* ── Pre-save: auto-generate booking reference ───────────────────────────── */
 ticketSchema.pre('save', async function () {
   if (!this.bookingReference) {
-    const ts   = Date.now().toString(36).toUpperCase();
-    const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
-    this.bookingReference = `FF-${ts}-${rand}`;
+    this.bookingReference = createBookingReference();
   }
 });
 

@@ -1,16 +1,9 @@
-// Centralized API configuration
-
-// API Gateway URL
-// API Gateway URL
-// Auto-detect host to allow mobile devices on same Wi-Fi to reach the API
-// Auto-detect host to allow mobile devices on same Wi-Fi to reach the API via Vite Proxy
 const getBaseUrl = () => {
-    // In production, we might want to specify a full URL (e.g. https://api.example.com)
-    // Vite injects environment variables prefixed with VITE_
+    // Priority 1: Explicit environment variable (Production/Custom Dev)
     const envUrl = import.meta.env.VITE_API_URL;
     if (envUrl) return envUrl;
 
-    // In dev, always use relative /api which Vite proxies to port 3001
+    // Priority 2: Standard relative proxy path (Development default)
     return '/api';
 };
 

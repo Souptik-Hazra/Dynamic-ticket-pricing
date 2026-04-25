@@ -1,0 +1,27 @@
+{
+    "model_type": "MCENN (Neural Network)",
+    "trained_at": "2026-04-23T17:29:53.454487",
+    "metrics": {
+        "mae": 818.6262704509065,
+        "r2_score": 0.9394210497508363
+    },
+    "features": [
+        "capacity",
+        "tickets_sold",
+        "base_price",
+        "max_price",
+        "days_until_event",
+        "event_popularity",
+        "venue_tier",
+        "artist_tier",
+        "cognitive_score",
+        "is_holiday",
+        "cat_concert",
+        "cat_sports",
+        "cat_theater",
+        "cat_conference",
+        "cat_festival",
+        "cat_other"
+    ],
+    "num_samples": 10000
+}

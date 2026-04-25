@@ -47,7 +47,7 @@ function Analytics() {
           <p className="text-dim" style={{ margin: '1.5rem 0' }}>
             {isAccessDenied 
               ? 'Unauthorized personnel detected. Admin or Organizer credentials required for BI access.' 
-              : 'Failed to establish encrypted link with Analytics Microservice. Ensure service is operational on port 4011.'}
+              : 'Failed to establish encrypted link with Analytics Module. Ensure Monolith is operational on port 4000.'}
           </p>
           <button 
             onClick={fetchDashboardData}

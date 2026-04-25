@@ -1,35 +1,39 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import mkcert from 'vite-plugin-mkcert'
 
 // https://vite.dev/config/
-export default defineConfig({
-  base: './',
-  plugins: [
-    react(),
-    mkcert()
-  ],
-  server: {
-    https: true, // Force HTTPS
-    port: Number(process.env.VITE_PORT) || 5173,
-    strictPort: true, // Fail if port is taken, don't increment
-    proxy: {
-      // Ensure websocket path is proxied with Upgrade support before the generic /api proxy
-      // In dev, proxy websocket connections directly to the websocket service
-      '/api/ws': {
-        target: process.env.VITE_WS_PROXY_TARGET || 'http://localhost:4010',
-        ws: true,
-        changeOrigin: true,
-        secure: false,
-      },
-      '/api': {
-        target: 'http://localhost:3001',
-        changeOrigin: true,
-        secure: false, // Don't verify SSL for local proxy
+export default defineConfig(({ mode }) => {
+  // Load env file from the current directory
+  const env = loadEnv(mode, process.cwd());
+  const backendUrl = env.VITE_WS_PROXY_TARGET || 'http://localhost:4000';
+
+  return {
+    base: './',
+    plugins: [
+      react(),
+      mkcert()
+    ],
+    server: {
+      https: true, // Force HTTPS
+      port: Number(env.VITE_PORT) || 5173,
+      strictPort: false, 
+      proxy: {
+        '/api/ws': {
+          target: backendUrl,
+          ws: true,
+          changeOrigin: true,
+          secure: false,
+        },
+        '/api': {
+          target: backendUrl,
+          changeOrigin: true,
+          secure: false,
+        }
       }
+    },
+    build: {
+      sourcemap: false
     }
-  },
-  build: {
-    sourcemap: false
-  }
+  };
 })

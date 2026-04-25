@@ -12,17 +12,25 @@ export const generatePricingAuditHash = async (decisionData) => {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 };
 
+import api from '../api/client';
+
 /**
  * logPricingDecision
  * 
- * Simulates logging the decision to a decentralized ledger.
+ * Logs the decision to the monolithic permanent ledger for auditability.
  */
 export const logPricingDecision = async (decision) => {
   const hash = await generatePricingAuditHash(decision);
-  console.log("📜 PRICING AUDIT LOGGED:", {
-    hash,
-    timestamp: new Date().toISOString(),
-    decision
-  });
+  
+  try {
+    await api.post('/ai/log-decision', {
+      ...decision,
+      hash
+    });
+    console.log("📜 PRICING AUDIT LOGGED TO SERVER:", hash);
+  } catch (err) {
+    console.error("❌ FAILED TO LOG PRICING AUDIT:", err.message);
+  }
+  
   return hash;
 };

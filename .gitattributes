@@ -1,2 +1,47 @@
-# Auto detect text files and perform LF normalization
+# ═══════════════════════════════════════════════════════════════════════════
+#  FanFever: Modular Monolith — .gitattributes
+# ═══════════════════════════════════════════════════════════════════════════
+
+# ── Global Behavior ────────────────────────────────────────────────────────
 * text=auto
+
+# ── Line Endings (Cross-Platform) ──────────────────────────────────────────
+# Force LF (Linux) for scripts to ensure they run in Docker/WSL
+*.sh      text eol=lf
+*.py      text eol=lf
+*.js      text eol=lf
+*.jsx     text eol=lf
+*.json    text eol=lf
+*.css     text eol=lf
+*.html    text eol=lf
+*.md      text eol=lf
+.env*     text eol=lf
+
+# Force CRLF (Windows) for batch files
+*.bat     text eol=crlf
+*.cmd     text eol=crlf
+
+# ── Large File Storage (LFS) ───────────────────────────────────────────────
+# Treat ML model weights as binary and track via LFS if available
+*.pkl     filter=lfs diff=lfs merge=lfs -text
+*.h5      filter=lfs diff=lfs merge=lfs -text
+*.pt      filter=lfs diff=lfs merge=lfs -text
+*.pth     filter=lfs diff=lfs merge=lfs -text
+*.onnx    filter=lfs diff=lfs merge=lfs -text
+*.bin     filter=lfs diff=lfs merge=lfs -text
+
+# ── Binary Assets ────────────────────────────────────────────────────────────
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.gif     binary
+*.ico     binary
+*.woff    binary
+*.woff2   binary
+*.pdf     binary
+
+# ── GitHub Linguist Overrides ──────────────────────────────────────────────
+# Treat generated files as generated to hide them from diffs by default
+dist/*    linguist-generated
+build/*   linguist-generated
+node_modules/* linguist-vendored

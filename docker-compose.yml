@@ -1,125 +1,57 @@
 version: '3.8'
 
 services:
-  # ── Infrastructure ─────────────────────────────────────────────────────────
+  # ── Infrastructure (Shared) ────────────────────────────────────────────────
   mongodb:
     image: mongo:latest
-    container_name: cyber_mongodb
+    container_name: fanfever_db
     ports: ["27017:27017"]
-    volumes: [mongo_data:/data/db]
+    volumes:
+      - mongo_data:/data/db
 
   redis:
     image: redis:alpine
-    container_name: cyber_redis
+    container_name: fanfever_cache
     ports: ["6379:6379"]
 
   neo4j:
     image: neo4j:latest
-    container_name: cyber_neo4j
+    container_name: fanfever_graph
     ports: ["7474:7474", "7687:7687"]
-    environment: [NEO4J_AUTH=neo4j/password]
-    volumes: [neo4j_data:/data]
+    environment:
+      - NEO4J_AUTH=neo4j/password
+    volumes:
+      - neo4j_data:/data
 
-  # ── AI Layer ───────────────────────────────────────────────────────────────
-  ml-engine:
-    build: { context: ./ml-model, dockerfile: Dockerfile }
-    container_name: cyber_ml_engine
-    ports: ["5000:5000"]
-    environment: [ML_PORT=5000]
-
-  # ── Gateway & Auth ─────────────────────────────────────────────────────────
-  api-gateway:
-    build: { context: ./microservices, dockerfile: Dockerfile.node, args: { SERVICE_PATH: api-gateway, PORT: 4000 } }
-    container_name: cyber_gateway
-    ports: ["4000:4000"]
+  # ── Backend (Modular Monolith + ML Sidecar) ───────────────────────────────
+  backend:
+    build:
+      context: ./modular-monolith
+      dockerfile: Dockerfile
+    container_name: fanfever_monolith
+    ports:
+      - "4000:4000"
+      - "5000:5000"
     env_file: .env
-    depends_on: [mongodb, redis]
+    depends_on:
+      - mongodb
+      - redis
+      - neo4j
+    restart: always
 
-  auth-service:
-    build: { context: ./microservices, dockerfile: Dockerfile.node, args: { SERVICE_PATH: authentication-service, PORT: 4001 } }
-    container_name: cyber_auth
-    env_file: .env
-    depends_on: [mongodb]
-
-  user-service:
-    build: { context: ./microservices, dockerfile: Dockerfile.node, args: { SERVICE_PATH: user-service, PORT: 4003 } }
-    container_name: cyber_user
-    env_file: .env
-
-  # ── Core Business Logic ────────────────────────────────────────────────────
-  organizer-service:
-    build: { context: ./microservices, dockerfile: Dockerfile.node, args: { SERVICE_PATH: organizer-service, PORT: 4013 } }
-    container_name: cyber_organizer
-    ports: ["4013:4013"]
-    env_file: .env
-    depends_on: [mongodb, neo4j, ml-engine]
-
-  payment-service:
-    build: { context: ./microservices, dockerfile: Dockerfile.node, args: { SERVICE_PATH: payment-service, PORT: 4004 } }
-    container_name: cyber_payment
-    env_file: .env
-    depends_on: [mongodb]
-
-  wallet-service:
-    build: { context: ./microservices, dockerfile: Dockerfile.node, args: { SERVICE_PATH: wallet-service, PORT: 4011 } }
-    container_name: cyber_wallet
-    env_file: .env
-    depends_on: [mongodb]
-
-  # ── Security & Validation ──────────────────────────────────────────────────
-  qr-service:
-    build: { context: ./microservices, dockerfile: Dockerfile.node, args: { SERVICE_PATH: qr-service, PORT: 4014 } }
-    container_name: cyber_qr
-    env_file: .env
-
-  scanner-service:
-    build: { context: ./microservices, dockerfile: Dockerfile.node, args: { SERVICE_PATH: scanner-service, PORT: 4015 } }
-    container_name: cyber_scanner
-    env_file: .env
-
-  # ── Communication & Sync ───────────────────────────────────────────────────
-  notification-service:
-    build: { context: ./microservices, dockerfile: Dockerfile.node, args: { SERVICE_PATH: notification-service, PORT: 4008 } }
-    container_name: cyber_notifications
-    env_file: .env
-
-  websocket-service:
-    build: { context: ./microservices, dockerfile: Dockerfile.node, args: { SERVICE_PATH: websocket-service, PORT: 4009 } }
-    container_name: cyber_websockets
-    ports: ["4009:4009"]
-    env_file: .env
-
-  # ── Management & BI ────────────────────────────────────────────────────────
-  analytics-service:
-    build: { context: ./microservices, dockerfile: Dockerfile.node, args: { SERVICE_PATH: analytics-service, PORT: 4010 } }
-    container_name: cyber_analytics
-    env_file: .env
-    depends_on: [mongodb]
-
-  admin-service:
-    build: { context: ./microservices, dockerfile: Dockerfile.node, args: { SERVICE_PATH: admin-service, PORT: 4002 } }
-    container_name: cyber_admin
-    env_file: .env
-
-  # ── Specialized Utilities ──────────────────────────────────────────────────
-  subscription-service:
-    build: { context: ./microservices, dockerfile: Dockerfile.node, args: { SERVICE_PATH: subscription-service, PORT: 4016 } }
-    container_name: cyber_subscriptions
-    env_file: .env
-
-  cache-service:
-    build: { context: ./microservices, dockerfile: Dockerfile.node, args: { SERVICE_PATH: cache-service, PORT: 4006 } }
-    container_name: cyber_cache
-    env_file: .env
-    depends_on: [redis]
-
-  # ── Frontend ───────────────────────────────────────────────────────────────
+  # ── Frontend (React/Vite) ──────────────────────────────────────────────────
   frontend:
-    build: { context: ., dockerfile: Dockerfile.frontend }
-    container_name: cyber_frontend
-    ports: ["5173:5173"]
-    environment: [VITE_API_URL=http://localhost:4000]
-    depends_on: [api-gateway]
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: fanfever_frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=/api
+    depends_on:
+      - backend
+    restart: always
 
 volumes:
   mongo_data:

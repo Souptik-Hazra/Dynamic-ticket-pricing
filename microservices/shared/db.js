@@ -4,10 +4,10 @@ import { persistLog } from './logger.js';
 const SHARED_DB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/dynamic-ticket-pricing';
 
 // ── Connection event logging ───────────────────────────────────────────────
-mongoose.connection.on('connected',    ()    => console.log('[MongoDB] Connected'));
-mongoose.connection.on('disconnected', ()    => console.log('[MongoDB] Disconnected — will auto-reconnect'));
-mongoose.connection.on('reconnected',  ()    => console.log('[MongoDB] Reconnected'));
-mongoose.connection.on('error',        (err) => console.error('[MongoDB] Connection error:', err.message));
+mongoose.connection.on('connected', () => console.log('[MongoDB] Connected'));
+mongoose.connection.on('disconnected', () => console.log('[MongoDB] Disconnected — will auto-reconnect'));
+mongoose.connection.on('reconnected', () => console.log('[MongoDB] Reconnected'));
+mongoose.connection.on('error', (err) => console.error('[MongoDB] Connection error:', err.message));
 
 /**
  * Connect to the shared MongoDB database.
@@ -19,10 +19,10 @@ const connectDB = async (serviceName = 'Service') => {
   try {
     await mongoose.connect(SHARED_DB_URI, {
       serverSelectionTimeoutMS: 10000,   // fail fast at startup if Mongo is down
-      socketTimeoutMS:          60000,  // close sockets after 60s of inactivity
-      connectTimeoutMS:         15000,  // wait 15s to establish connection
-      maxPoolSize:              50,     // ⚡ Increased for high-concurrency
-      minPoolSize:              5,      // ⚡ Keep 5 connections warm
+      socketTimeoutMS: 60000,  // close sockets after 60s of inactivity
+      connectTimeoutMS: 15000,  // wait 15s to establish connection
+      maxPoolSize: 50,     // ⚡ Increased for high-concurrency
+      minPoolSize: 5,      // ⚡ Keep 5 connections warm
     });
     const maskedUri = SHARED_DB_URI.replace(/\/\/([^:]+):([^@]+)@/, '//$1:****@');
     console.log(`[${serviceName}] MongoDB connected → ${maskedUri}`);
@@ -70,7 +70,7 @@ export const gracefulShutdown = (server, signal = 'SIGNAL') => {
 export const registerProcessHandlers = (server, serviceName = 'Service') => {
   process.on('uncaughtException', async (err) => {
     console.error(`[${serviceName}] UNCAUGHT EXCEPTION:`, err.message, err.stack);
-    
+
     // Attempt to log the crash before exiting
     await persistLog({
       service: serviceName,
@@ -79,25 +79,25 @@ export const registerProcessHandlers = (server, serviceName = 'Service') => {
       stack: err.stack,
       traceId: 'SYSTEM_FATAL'
     });
-    
+
     gracefulShutdown(server, 'uncaughtException');
   });
 
   process.on('unhandledRejection', async (reason) => {
     console.error(`[${serviceName}] UNHANDLED REJECTION:`, reason);
-    
+
     await persistLog({
       service: serviceName,
       level: 'CRITICAL',
       message: `CRASH (Unhandled Promise): ${reason}`,
       traceId: 'SYSTEM_FATAL'
     });
-    
+
     gracefulShutdown(server, 'unhandledRejection');
   });
 
   process.on('SIGTERM', () => gracefulShutdown(server, 'SIGTERM'));
-  process.on('SIGINT',  ()    => gracefulShutdown(server, 'SIGINT'));
+  process.on('SIGINT', () => gracefulShutdown(server, 'SIGINT'));
 };
 
 /**
@@ -107,7 +107,7 @@ export const registerProcessHandlers = (server, serviceName = 'Service') => {
 export const tuneExpressServer = (server) => {
   // Nginx default is 65s. We set Node higher (70s) to avoid race conditions.
   server.keepAliveTimeout = 70000;
-  server.headersTimeout   = 71000;
+  server.headersTimeout = 71000;
   // console.log('[OS/Network] Server keep-alive timeouts tuned (70s/71s)');
 };
 

@@ -1,63 +1,35 @@
 {
-  "name": "dynamic-ticket-pricing",
+  "name": "fan-fever-tickets",
   "private": true,
-  "main": "electron-main.cjs",
   "version": "1.0.0",
   "type": "module",
-  "description": "Dynamic Ticket Pricing System with ML-powered price predictions",
+  "description": "FanFever - High-Performance AI-Powered Dynamic Ticket Pricing & Bot-Shield Platform",
+  "author": "Souptik Hazra",
+  "homepage": "https://fanfever.local",
+  "main": "electron-main.cjs",
   "scripts": {
-    "dev": "node --no-deprecation node_modules/vite/bin/vite.js --host",
+    "dev": "vite --host",
+    "monolith:dev": "cd modular-monolith && npm run dev",
+    "start": "concurrently -n \"frontend,monolith\" -c \"cyan,green\" \"npm run dev\" \"npm run monolith:dev\"",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "start": "vite --host",
     "electron:dev": "vite build && npx electron .",
     "electron:serve": "npx electron .",
     "package": "electron-builder",
-    "build-and-package": "npm run build && npm run package",
-    "start:api-gateway": "node microservices/api-gateway/index.js",
-    "start:authentication-service": "node microservices/authentication-service/index.js",
-    "start:user-service": "node microservices/user-service/index.js",
-    "start:admin-service": "node microservices/admin-service/index.js",
-    "start:payment-service": "node microservices/payment-service/index.js",
-    "start:cache-service": "node microservices/cache-service/index.js",
-    "start:email-service": "node microservices/email-service/index.js",
-    "start:notification-service": "node microservices/notification-service/index.js",
-    "start:websocket-service": "node microservices/websocket-service/index.js",
-    "start:analytics-service": "node microservices/analytics-service/index.js",
-    "start:subscription-service": "node microservices/subscription-service/index.js",
-    "start:organizer-service": "node microservices/organizer-service/index.js",
-    "seed:neo4j": "node microservices/organizer-service/scripts/seed_neo4j.js",
-    "start:qr-service": "node microservices/qr-service/index.js",
-    "start:scanner-service": "node microservices/scanner-service/index.js",
-    "start:wallet-service": "node microservices/wallet-service/index.js",
-    "start:all": "npm run kill:ports && concurrently --names \"frontend,api-gateway,auth,user,admin,payment,cache,email,notification,websocket,analytics,subscription,organizer,qr,scanner,wallet,ml\" \"npm run dev\" \"npm run start:api-gateway\" \"npm run start:authentication-service\" \"npm run start:user-service\" \"npm run start:admin-service\" \"npm run start:payment-service\" \"npm run start:cache-service\" \"npm run start:email-service\" \"npm run start:notification-service\" \"npm run start:websocket-service\" \"npm run start:analytics-service\" \"npm run start:subscription-service\" \"npm run start:organizer-service\" \"npm run start:qr-service\" \"npm run start:scanner-service\" \"npm run start:wallet-service\" \"npm run start:ml\" --kill-others-on-fail",
-    "start:ml": "cd ml-model && python app.py",
-    "test:price-tamper": "node tests/price_tamper_test.js",
-    "install:all": "npm install && cd microservices/api-gateway && npm install && cd ../authentication-service && npm install && cd ../user-service && npm install && cd ../admin-service && npm install && cd ../payment-service && npm install && cd ../cache-service && npm install && cd ../email-service && npm install && cd ../notification-service && npm install && cd ../websocket-service && npm install && cd ../analytics-service && npm install && cd ../subscription-service && npm install && cd ../organizer-service && npm install && cd ../qr-service && npm install && cd ../scanner-service && npm install && cd ../wallet-service && npm install && cd ../../..",
-    "kill:ports": "powershell -Command \"$ports = @(5173, 3001, 5000) + (4001..4016); foreach ($p in $ports) { try { $conn = Get-NetTCPConnection -LocalPort $p -ErrorAction SilentlyContinue; if ($conn) { $conn | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue } } } catch {} }; exit 0\""
+    "kill:ports": "powershell -Command \"$ports = @(5173, 4000, 5000); foreach ($p in $ports) { try { $conn = Get-NetTCPConnection -LocalPort $p -ErrorAction SilentlyContinue; if ($conn) { $conn | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue } } } catch {} }; exit 0\""
   },
   "dependencies": {
     "@tanstack/react-query": "^5.99.2",
     "@tensorflow/tfjs": "^4.22.0",
-    "amqplib": "^1.0.3",
     "axios": "^1.15.2",
-    "bcryptjs": "^3.0.3",
-    "cors": "^2.8.6",
     "dotenv": "^17.4.2",
-    "express": "^5.2.1",
     "html5-qrcode": "^2.3.8",
-    "http-proxy-middleware": "^3.0.5",
-    "ioredis": "^5.10.1",
-    "jsonwebtoken": "^9.0.3",
-    "mongoose": "^9.4.1",
-    "nodemailer": "^8.0.5",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-hook-form": "^7.73.1",
     "react-router-dom": "^7.14.2",
     "recharts": "^3.8.1",
-    "ws": "^8.20.0",
     "zustand": "^5.0.12"
   },
   "devDependencies": {
@@ -65,7 +37,7 @@
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
-    "concurrently": "^8.2.2",
+    "concurrently": "^9.1.0",
     "electron": "^41.2.2",
     "electron-builder": "^26.8.1",
     "eslint": "^10.2.0",
@@ -79,17 +51,15 @@
   "engines": {
     "node": ">=18.0.0"
   },
-  "workspaces": [
-    "microservices/*"
-  ],
   "build": {
+    "appId": "com.fanfever.tickets",
     "productName": "FanFeverTickets",
     "compression": "maximum",
-    "icon": "icon.ico",
+    "icon": "public/favicon.png",
     "files": [
       "dist/**/*",
       "electron-main.cjs",
-      "backend/**/*"
+      "public/icon.png"
     ]
   }
 }

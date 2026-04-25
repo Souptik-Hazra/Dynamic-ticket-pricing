@@ -25,6 +25,8 @@ import {
   CACHE_KEYS,
 } from '../shared/interservice.js';
 
+import { predictMLPrice, createBookingReference, createTicketQrToken } from '../../modular-monolith/src/shared/utils.js';
+
 dotenv.config();
 
 const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:5000';
@@ -33,14 +35,6 @@ const PRICE_ABS_TOLERANCE = Number(process.env.PRICE_ABS_TOLERANCE) || 1.0; // a
 const PRICE_REL_TOLERANCE = Number(process.env.PRICE_REL_TOLERANCE) || 0.02; // relative (fraction)
 
 console.log(`Price validation tolerances — abs: ${PRICE_ABS_TOLERANCE}, rel: ${PRICE_REL_TOLERANCE}`);
-
-const createTicketQrToken = () => crypto.randomBytes(32).toString('base64url');
-
-const createBookingReference = () => {
-  const ts = Date.now().toString(36).toUpperCase();
-  const rand = crypto.randomBytes(3).toString('hex').toUpperCase();
-  return `FF-${ts}-${rand}`;
-};
 
 const createTicketQrCode = (token) =>
   QRCode.toDataURL(token, {
@@ -80,61 +74,7 @@ setInterval(() => {
   }
 }, 60000);
 
-// ── Dynamic price helper (Fallback) ──────────────────────────────────────────
-const getDynamicPriceFallback = (category, event, cognitive_score = 1.0) => {
-  if (!event) return 0;
-  const basePrice = category ? (Number(category.price) || 0) : (Number(event.basePrice) || 0);
-  const maxPrice = category ? (Number(category.maxPrice) || basePrice * 3) : basePrice * 3;
-  if (basePrice <= 0) return 0;
-  const categories = event.ticketCategories || [];
-  const totalCap = categories.reduce((s, c) => s + (Number(c.seats) || 0), 0) || Number(event.capacity) || 1;
-  const totalSold = categories.reduce((s, c) => s + (Number(c.seats) || 0) - (Number(c.availableSeats ?? c.seats) || 0), 0);
-  const occupancy = Math.max(0, Math.min(1, totalSold / totalCap));
-  
-  // Base market multiplier
-  let multiplier = Math.max(0.9, Math.min(2.0, 1 + occupancy * 0.5));
-  
-  // ── DECPG Bot Penalty Function ──
-  if (cognitive_score < 0.8) {
-    const penalty = Math.pow(1.5, (0.8 - cognitive_score) * 10);
-    multiplier *= penalty;
-  }
-  
-  const finalPrice = Math.round(basePrice * multiplier);
-  // Strictly clamp between [basePrice, maxPrice]
-  return Math.max(basePrice, Math.min(finalPrice, maxPrice));
-};
-
-async function predictMLPrice(category, event, cognitive_score = 1.0) {
-  const basePrice = category ? category.price : event.basePrice;
-  const maxPrice = category ? (category.maxPrice || basePrice * 3) : basePrice * 3;
-  
-  try {
-    const now = new Date();
-    const start = new Date(event.startDate);
-    const totalCap = (event.ticketCategories || []).reduce((s, c) => s + (Number(c.seats) || 0), 0) || Number(event.capacity) || 1;
-    const totalSold = (event.ticketCategories || []).reduce((s, c) => s + (Number(c.seats) || 0) - (Number(c.availableSeats ?? c.seats) || 0), 0);
-    const daysUntil = Math.max(0, (start - now) / (1000 * 60 * 60 * 24));
-
-    const payload = {
-      capacity: totalCap,
-      tickets_sold: totalSold,
-      base_price: basePrice,
-      max_price: maxPrice,
-      days_until_event: daysUntil,
-      event_popularity: event.eventPopularity || 0.5,
-      cognitive_score: cognitive_score,
-      category: event.category || 'other',
-      is_holiday: event.isHoliday ? 1 : 0
-    };
-
-    const { data } = await axios.post(`${ML_SERVICE_URL}/predict`, payload, { timeout: 2000 });
-    // Note: app.py already clamps, but we apply a safety clamp here too
-    return Math.max(basePrice, Math.min(Math.round(data.predicted_price), maxPrice));
-  } catch {
-    return getDynamicPriceFallback(category, event, cognitive_score);
-  }
-}
+// Dynamic price and booking token generation are centralized in the monolith's shared utils
 
 app.get('/api/events', async (req, res, next) => {
   try {
