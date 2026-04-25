@@ -15,10 +15,10 @@
 
   --text-main: #f0f4ff;
   /* Bright cool white */
-  --text-muted: #8a99b8;
-  /* Desaturated blue gray */
-  --text-dim: #5c6b8a;
-  /* Darker blue gray */
+  --text-muted: #a1aecb;
+  /* High contrast blue gray (WCAG 2.1) */
+  --text-dim: #7a88a5;
+  /* High contrast dark blue gray */
 
   --accent-cyan: #4facfe;
   /* Electric Cyan */
@@ -50,6 +50,12 @@
 
   --transition-fast: 0.15s ease;
   --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-luxe: 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+
+  /* Diamond Intelligence Tokens (Phase 8) */
+  --diamond-glow: 0 0 30px rgba(79, 172, 254, 0.4);
+  --roi-gradient: linear-gradient(135deg, #00e676, #1de9b6);
+  --pulse-red: rgba(255, 82, 82, 0.8);
 }
 
 /* ── Reset & Base ──────────────────────────────────────────────────────── */

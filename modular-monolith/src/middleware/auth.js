@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { logSecurity } from '../shared/logger.service.js';
+import { logSecurity } from '../shared/utils/logger.js';
 
 /**
  * Auth Middleware
@@ -16,6 +16,12 @@ export const authMiddleware = async (req, res, next) => {
 
     const token = authHeader.split(' ')[1];
     const secret = process.env.JWT_SECRET;
+
+    // Diamond Step: Check Blacklist
+    const { isTokenBlacklisted } = await import('../shared/utils/cache.js');
+    if (await isTokenBlacklisted(token)) {
+      return res.status(401).json({ error: 'Session revoked. Please log in again.' });
+    }
     
     if (!secret) {
       console.error('[Auth] CRITICAL: JWT_SECRET missing.');
@@ -24,6 +30,14 @@ export const authMiddleware = async (req, res, next) => {
 
     const decoded = jwt.verify(token, secret);
     req.user = decoded;
+
+    // Diamond Step: Adaptive Security Friction (Phase 8)
+    if (decoded.botScore > 5) {
+      const delay = Math.min(5000, (decoded.botScore - 5) * 500);
+      console.warn(`🛡️ [Security:Friction] Suspected bot (Score: ${decoded.botScore}). Injecting ${delay}ms delay.`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+
     next();
   } catch (err) {
     // 🔥 PERSISTENT SECURITY LOGGING

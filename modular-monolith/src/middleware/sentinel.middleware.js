@@ -1,5 +1,5 @@
 import { auditHumanity } from '../modules/ai/ai.service.js';
-import { logSecurity } from '../shared/logger.service.js';
+import { logSecurity } from '../shared/utils/logger.js';
 
 /**
  * Sentinel Middleware

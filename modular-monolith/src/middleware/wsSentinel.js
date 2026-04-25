@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
-import User from '../shared/models/User.js';
-import { logSecurity } from '../shared/logger.service.js';
+import User from '../modules/users/model/user.model.js';
+import { logSecurity } from '../shared/utils/logger.js';
 
 const connectionCounts = new Map();
 const MAX_CONNECTIONS_PER_IP = 5;

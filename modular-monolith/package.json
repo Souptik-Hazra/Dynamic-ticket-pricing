@@ -18,14 +18,19 @@
     "express-rate-limit": "^8.4.1",
     "helmet": "^8.0.0",
     "ioredis": "^5.10.1",
+    "jsend": "^1.1.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.4.1",
+    "morgan": "^1.10.1",
     "neo4j-driver": "^6.0.1",
     "node-cron": "^4.2.1",
     "nodemailer": "^8.0.5",
     "qrcode": "^1.5.4",
     "sharp": "^0.34.5",
-    "ws": "^8.20.0"
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
+    "ws": "^8.20.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"
