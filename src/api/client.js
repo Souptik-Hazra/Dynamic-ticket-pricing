@@ -54,6 +54,15 @@ client.interceptors.response.use((response) => {
   const duration = Date.now() - start;
   logNetwork('RECV', `${response.status} | ${duration}ms | ${response.config.url}`, traceId, '#10b981');
 
+  // Unwrap JSend-style response bodies so `response.data` contains the
+  // actual payload. This keeps callers consistent (`response.data.user`,
+  // `response.data.prices`, or direct arrays for lists).
+  if (response && response.data && typeof response.data === 'object' && 'status' in response.data) {
+    // If the server returned the standard { status, message, data } envelope,
+    // replace axios' response.data with the inner payload for convenience.
+    response.data = response.data.data;
+  }
+
   return response;
 }, (error) => {
   const { start, traceId } = error.config?.metadata || {};

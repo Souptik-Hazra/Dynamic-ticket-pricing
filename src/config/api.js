@@ -20,10 +20,10 @@ export const ENDPOINTS = {
   LOGOUT:         '/auth/logout',
   VERIFY:         '/auth/verify',
 
-  // Events (Organizer Service)
-  EVENTS:               '/events',
-  EVENT_BY_ID:          (id) => `/events/${id}`,
-  EVENT_DYNAMIC_PRICES: (id) => `/events/${id}/dynamic-prices`,
+  // Catalog (public) - mounted under `/catalog` on the monolith/gateway
+  EVENTS:               '/catalog/events',
+  EVENT_BY_ID:          (id) => `/catalog/events/${id}`,
+  EVENT_DYNAMIC_PRICES: (id) => `/catalog/events/${id}/dynamic-prices`,
 
   // Tickets (Organizer Service)
   TICKETS:              '/tickets',
@@ -62,13 +62,19 @@ export const ENDPOINTS = {
   // ML Model
   ML_PREDICT: (id) => `/ml-model/predict/${id}`,
   ML_HEALTH:  '/ml-model/health',
-
   // Organizer Service (Messaging & Management)
-  ORGANIZER_STATS:         '/organizers/stats',
-  ORGANIZER_EVENTS:        '/organizers/events',
-  ORGANIZER_TICKETS:       '/organizers/tickets',
-  ORGANIZER_BROADCAST:     '/organizers/broadcast',
-  ORGANIZER_MESSAGE_ADMIN: '/organizers/message-admin',
+  ORGANIZER_STATS:         '/organizer/stats',
+  ORGANIZER_EVENTS:        '/organizer/events',
+  ORGANIZER_TICKETS:       '/organizer/tickets',
+  ORGANIZER_BROADCAST:     '/organizer/broadcast',
+  ORGANIZER_MESSAGE_ADMIN: '/organizer/message-admin',
+  ORGANIZER_SEAT_OWNERS:   (id) => `/organizer/events/${id}/seat-owners`,
+
+  // AI Module
+  AI_HEALTH:              '/ai/health',
+  AI_PRICES:              (id) => `/ai/prices/${id}`,
+  AI_FED_SYNC:            '/ai/federated/sync',
+  AI_FED_AGGREGATE:       '/ai/federated/aggregate',
   
   // Scanner / QR
   SCANNER_VERIFY:    '/scanner/verify',

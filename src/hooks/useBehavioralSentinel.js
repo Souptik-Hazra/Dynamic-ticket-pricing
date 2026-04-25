@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import * as tf from '@tensorflow/tfjs';
+import api from '../api/client';
+import { ENDPOINTS } from '../config/api';
 
 /**
  * useBehavioralSentinel
@@ -87,23 +89,23 @@ export const useBehavioralSentinel = () => {
         });
       }
 
-      // Send to the central Auditor with Reputation context
-      const response = await fetch('/api/ai/fl/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+      // Send to the central Auditor with Reputation context using axios (includes auth headers)
+      try {
+        const response = await api.post(ENDPOINTS.AI_FED_SYNC, {
           weights: weightData,
           nodeId: window.crypto.randomUUID(),
           timestamp: Date.now(),
           reputation: {
-              accountAgeDays: Math.floor(Math.random() * 365), // Simulated
-              purchaseCount: Math.floor(Math.random() * 10)    // Simulated
+            accountAgeDays: Math.floor(Math.random() * 365), // Simulated
+            purchaseCount: Math.floor(Math.random() * 10)    // Simulated
           }
-        })
-      });
+        });
 
-      if (response.ok) {
-        console.log("✅ Federated Sync Complete. Local intelligence merged with Global Brain.");
+        if (response.status === 200) {
+          console.log("✅ Federated Sync Complete. Local intelligence merged with Global Brain.");
+        }
+      } catch (err) {
+        console.error('Federated sync call failed', err);
       }
     } catch (e) {
       console.error("Federated Sync failed", e);

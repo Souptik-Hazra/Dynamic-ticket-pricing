@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api/client';
+import { ENDPOINTS } from '../config/api';
 
 function AutoPriceUpdater({ eventId, onPriceUpdate, compact = false }) {
   const [priceInfo, setPriceInfo] = useState(null);
@@ -8,7 +9,7 @@ function AutoPriceUpdater({ eventId, onPriceUpdate, compact = false }) {
     if (!eventId) return;
     
     try {
-      const response = await api.get(`/events/${eventId}/dynamic-prices`);
+    const response = await api.get(ENDPOINTS.EVENT_DYNAMIC_PRICES(eventId));
       if (response.data) {
         setPriceInfo(response.data);
         if (onPriceUpdate) {

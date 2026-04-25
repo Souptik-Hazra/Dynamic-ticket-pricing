@@ -52,6 +52,17 @@ export async function getCalculatedPrice(category, event, cognitiveScore = 1.0, 
     if (isAiDisabled === true) return basePrice;
 
     const experiments = await getActiveExperiments();
+    
+    // Diamond Step: Emergency Revenue Trigger (Phase 14)
+    const hoursToEvent = (new Date(event.startDate) - new Date()) / (1000 * 60 * 60);
+    const occupancy = (event.ticketsSold / (event.capacity || 1)) * 100;
+    let emergencyDiscount = 1.0;
+
+    if (hoursToEvent < 48 && occupancy < 30) {
+      emergencyDiscount = 0.8; // 20% Rescue Discount
+      bus.publish('event.flash_sale', { eventId: event._id, discount: 20 });
+    }
+
     let modelUsed = 'stable_v1';
     let price;
 
@@ -77,6 +88,9 @@ export async function getCalculatedPrice(category, event, cognitiveScore = 1.0, 
       // UX Step: Lock the price for 5 minutes
       await createPriceLock(userId, event._id, category?._id, finalPrice);
     }
+
+    // Diamond Step: Apply Emergency Discount (Phase 14)
+    finalPrice = Math.round(finalPrice * emergencyDiscount);
 
     return finalPrice;
   } catch (err) {

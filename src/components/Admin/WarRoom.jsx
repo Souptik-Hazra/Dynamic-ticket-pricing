@@ -17,6 +17,12 @@ const WarRoom = () => {
     aiRevenue: 45000,
     activeRooms: 8
   });
+  const [isAiDisabled, setIsAiDisabled] = useState(false);
+
+  const toggleAiPanic = async () => {
+    // In a real app, this would call the API
+    setIsAiDisabled(!isAiDisabled);
+  };
 
   // Simulated real-time system vitals
   useEffect(() => {
@@ -38,7 +44,16 @@ const WarRoom = () => {
           <h1 className="title-main" style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>War-Room</h1>
           <p className="text-muted">Command & Control Intelligence for Diamond Monolith</p>
         </div>
-        <div className="cyber-badge badge-success">SYSTEMS ONLINE</div>
+        <div className="flex-center" style={{ gap: '1rem' }}>
+          <button 
+            onClick={toggleAiPanic}
+            className={`cyber-btn ${isAiDisabled ? 'btn-success' : 'btn-danger'} cyber-pulse`}
+            style={{ padding: '0.5rem 1.5rem' }}
+          >
+            {isAiDisabled ? 'RE-ENABLE AI' : '🔴 AI PANIC SWITCH'}
+          </button>
+          <div className="cyber-badge badge-success">SYSTEMS ONLINE</div>
+        </div>
       </div>
 
       <div className="cyber-grid" style={{ gridTemplateColumns: '1fr 2fr' }}>

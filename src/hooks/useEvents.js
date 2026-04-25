@@ -17,7 +17,7 @@ export const useUpdatePrice = () => {
   
   return useMutation({
     mutationFn: async (eventId) => {
-      const response = await api.get(`/events/${eventId}/dynamic-prices`);
+      const response = await api.get(ENDPOINTS.EVENT_DYNAMIC_PRICES(eventId));
       return response.data;
     },
     onSuccess: () => {

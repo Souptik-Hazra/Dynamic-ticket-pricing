@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import VenueMap from './VenueMap';
 import SeatGrid from './SeatGrid';
+import api from '../api/client';
+import { ENDPOINTS } from '../config/api';
 
 export default function EventMapModal({ event, onClose }) {
   const [seatOwners, setSeatOwners] = useState({});
@@ -11,12 +13,10 @@ export default function EventMapModal({ event, onClose }) {
     async function fetchOwners() {
       if (!eventId) return;
       try {
-        const res = await fetch(`/api/organizer/events/${eventId}/seat-owners`, { credentials: 'include' });
+        const res = await api.get(ENDPOINTS.ORGANIZER_SEAT_OWNERS(eventId));
         if (!mounted) return;
-        if (!res.ok) return; // silently ignore
-        const data = await res.json();
-        if (mounted && data && data.seatOwners) setSeatOwners(data.seatOwners);
-      } catch {
+        if (res && res.data && res.data.seatOwners) setSeatOwners(res.data.seatOwners);
+      } catch (err) {
         // ignore for now
       }
     }

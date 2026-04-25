@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import api from '../api/client';
+import { ENDPOINTS } from '../config/api';
 import { useAuth } from '../context/AuthContext';
 import VenueMap from './VenueMap';
 import SeatGrid from './SeatGrid';
@@ -35,7 +36,7 @@ function TicketPurchase({ event, onBack, onSuccess }) {
       if (!event?._id) return;
       try {
         const stableScore = Math.round(score * 10) / 10;
-        const response = await api.get(`/events/${event._id}/dynamic-prices?cognitive_score=${stableScore}`);
+        const response = await api.get(`${ENDPOINTS.EVENT_DYNAMIC_PRICES(event._id)}?cognitive_score=${stableScore}`);
         if (response.data.prices) setDynamicPrices(response.data.prices);
       } catch (err) {
         console.warn('Fallback to local occupancy-based pricing');
