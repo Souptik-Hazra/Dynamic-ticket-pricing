@@ -8,101 +8,88 @@ import authMiddleware from '../../middleware/auth.js';
 const router = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET;
-const JWT_EXPIRE = process.env.JWT_EXPIRE || '7d';
+const JWT_EXPIRE = process.env.JWT_EXPIRE || '15m';
+const REFRESH_EXPIRE = process.env.REFRESH_EXPIRE || '7d';
 
-const issueToken = (user) =>
-  jwt.sign({ id: user._id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: JWT_EXPIRE });
+export const issueToken = (user) => 
+  jwt.sign({ id: user._id.toString(), email: user.email, role: user.role }, JWT_SECRET, { expiresIn: JWT_EXPIRE });
 
-const safeUser = (u) => ({
-  _id: u._id,
-  name: u.name,
-  email: u.email,
-  role: u.role,
-  city: u.city || '',
-  birthdate: u.birthdate || null,
-  subscription: u.subscription || { plan: 'none', isActive: false },
-  createdAt: u.createdAt,
-});
+export const issueRefreshToken = (user) => 
+  jwt.sign({ id: user._id.toString() }, JWT_SECRET, { expiresIn: REFRESH_EXPIRE });
 
 // ── Auth Handlers ─────────────────────────────────────────────────────────
 
 const registerHandler = async (req, res, next) => {
   try {
     const { name, email, password, role } = req.body;
-    if (!name || !email || !password)
-      return res.status(400).json({ error: 'name, email and password are required' });
-    if (password.length < 6)
-      return res.status(400).json({ error: 'password must be at least 6 characters' });
+    if (!name || !email || !password) return res.status(400).json({ error: 'Missing credentials' });
 
     const hashed = await bcrypt.hash(password, 12);
-    const user = await User.create({ name, email, password: hashed, role: role || 'user' });
+    const user = await User.create({ name, email, password: hashed, role: role === 'organizer' ? 'organizer' : 'user' });
+    
     const token = issueToken(user);
-    res.status(201).json({ token, user: safeUser(user) });
-  } catch (err) { next(err); }
+    const refreshToken = issueRefreshToken(user);
+    user.refreshToken = await bcrypt.hash(refreshToken, 10);
+    await user.save();
+
+    res.status(201).json({ token, refreshToken, userId: user._id });
+  } catch (err) { 
+    if (err.code === 11000) return res.status(409).json({ error: 'Email already registered.' });
+    next(err); 
+  }
 };
 
 const loginHandler = async (req, res, next) => {
   try {
     const { email, password } = req.body;
-    if (!email || !password)
-      return res.status(400).json({ error: 'email and password are required' });
-
     const user = await User.findOne({ email }).select('+password');
-    if (!user) return res.status(401).json({ error: 'Invalid email or password' });
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
 
-    const match = await bcrypt.compare(password, user.password);
-    if (!match) return res.status(401).json({ error: 'Invalid email or password' });
+    const token = issueToken(user);
+    const refreshToken = issueRefreshToken(user);
+    user.refreshToken = await bcrypt.hash(refreshToken, 10);
+    await user.save();
 
-    res.json({ token: issueToken(user), user: safeUser(user) });
+    res.json({ token, refreshToken, userId: user._id });
   } catch (err) { next(err); }
 };
 
 // ── Routes ────────────────────────────────────────────────────────────────
 
-router.post('/signup', requireDB, registerHandler);
-router.post('/register', requireDB, registerHandler);
-router.post('/login', requireDB, loginHandler);
-router.post('/signin', requireDB, loginHandler);
+router.post(['/signup', '/register'], requireDB, registerHandler);
+router.post(['/login', '/signin'], requireDB, loginHandler);
 
-router.get('/me', requireDB, authMiddleware, async (req, res, next) => {
-  try {
-    const user = await User.findById(req.user.id);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    res.json({ user: safeUser(user) });
-  } catch (err) { next(err); }
-});
+router.post('/refresh', requireDB, async (req, res, next) => {
+  const { refreshToken } = req.body;
+  if (!refreshToken) return res.status(400).json({ error: 'Refresh token required' });
 
-router.put('/update-profile', requireDB, authMiddleware, async (req, res, next) => {
   try {
-    const { name, email, city, birthdate, password } = req.body;
-    const fields = {};
-    if (name) fields.name = name;
-    if (email) fields.email = email;
-    if (city !== undefined) fields.city = city;
-    if (birthdate) fields.birthdate = new Date(birthdate);
-    if (password) {
-      if (password.length < 6) return res.status(400).json({ error: 'New password must be at least 6 characters' });
-      fields.password = await bcrypt.hash(password, 12);
+    const decoded = jwt.verify(refreshToken, JWT_SECRET);
+    const user = await User.findById(decoded.id).select('+refreshToken');
+    if (!user || !user.refreshToken || !(await bcrypt.compare(refreshToken, user.refreshToken))) {
+      return res.status(401).json({ error: 'Invalid session' });
     }
 
-    const user = await User.findByIdAndUpdate(req.user.id, fields, { new: true, runValidators: true });
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    res.json({ user: safeUser(user) });
-  } catch (err) { next(err); }
-});
+    const newToken = issueToken(user);
+    const newRefreshToken = issueRefreshToken(user);
+    user.refreshToken = await bcrypt.hash(newRefreshToken, 10);
+    await user.save();
 
-router.post('/refresh', requireDB, authMiddleware, async (req, res, next) => {
-  try {
-    const user = await User.findById(req.user.id);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    res.json({ token: issueToken(user), user: safeUser(user) });
-  } catch (err) { next(err); }
+    res.json({ token: newToken, refreshToken: newRefreshToken });
+  } catch (err) { res.status(401).json({ error: 'Expired session' }); }
 });
 
 router.get('/verify', authMiddleware, (req, res) => {
   res.json({ valid: true, decoded: req.user });
 });
 
-router.post('/logout', (req, res) => res.json({ message: 'Logged out' }));
+router.post('/logout', requireDB, authMiddleware, async (req, res) => {
+  try {
+    await User.findByIdAndUpdate(req.user.id, { $unset: { refreshToken: 1 } });
+  } catch {}
+  res.json({ success: true });
+});
 
 export default router;

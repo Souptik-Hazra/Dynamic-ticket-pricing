@@ -88,7 +88,7 @@ export const useBehavioralSentinel = () => {
       }
 
       // Send to the central Auditor with Reputation context
-      const response = await fetch('/api/security/federated-sync', {
+      const response = await fetch('/api/ai/fl/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -232,43 +232,41 @@ export const useBehavioralSentinel = () => {
       inputTensor.dispose();
       prediction.dispose();
 
-      // 2. Spectral Density Validation (The "Muscle Rhythm" Check)
+      // 2. Spectral Density Validation
       const spectralDensity = calculateSpectralDensity();
       
-      // 3. Behavioral Consistency Check (Hybrid Logic)
+      // 3. Behavioral Consistency Check
       const dxs = movements.current.map(m => m[0]);
       const variance = dxs.reduce((a, b) => a + Math.pow(b, 2), 0) / dxs.length;
 
-      console.log(`🛡️ Spectral Density: ${spectralDensity.toFixed(4)}, Score: ${score.toFixed(4)}`);
+      // 4. Time Audit (Approximate capture window)
+      const captureDuration = Date.now() - (lastEventTime.current - 5000); 
 
-      // HUMAN THRESHOLD: Must have enough score AND a natural frequency signature
       if (score > 0.1 && spectralDensity > 0.05 && variance > 0.5) {
-        const rawData = JSON.stringify({ 
-            s: score, 
-            v: variance, 
-            f: spectralDensity,
-            nonce: sessionNonce // Lock to current session
-        });
-        
+        const rawData = JSON.stringify({ s: score, v: variance, f: spectralDensity, nonce: sessionNonce });
         const encoder = new TextEncoder();
         const data = encoder.encode(rawData + Date.now());
         const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
         
         setEntropy(hashHex);
         setIsVerified(true);
         setScore(score);
-        return hashHex;
-      } else {
-          console.warn("⚠️ Behavior flagged as suspicious or low-entropy.");
+
+        return { 
+          signature: hashHex, 
+          telemetry: { 
+            durationMs: Math.max(500, Math.floor(captureDuration)), 
+            sampleCount: movements.current.length 
+          } 
+        };
       }
     } catch (e) {
       console.error("Inference failed", e);
     }
-
     return null;
   };
+
 
   return { generateHumanityProof, isVerified, entropy, score };
 };

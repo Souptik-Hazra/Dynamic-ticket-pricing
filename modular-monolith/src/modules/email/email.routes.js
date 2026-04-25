@@ -65,6 +65,14 @@ const templates = {
           <tr style="background:#f9f9f9"><td><strong>Quantity:</strong></td><td>${data.quantity}</td></tr>
           <tr><td><strong>Total Paid:</strong></td><td>₹${data.totalAmount}</td></tr>
         </table>
+        
+        ${data.qrCode ? `
+        <div style="text-align:center;margin:30px 0;padding:20px;background:#f0f0f0;border-radius:10px">
+          <p style="margin-bottom:10px;font-weight:bold">Your Entry Pass (Scan at Venue)</p>
+          <img src="${data.qrCode}" alt="Ticket QR" style="width:180px;height:180px;border:10px solid #white" />
+        </div>
+        ` : ''}
+        
         <p style="color:#888;font-size:12px;text-align:center">Keep this email as your booking record. Enjoy the event!</p>
       </div>`,
   }),

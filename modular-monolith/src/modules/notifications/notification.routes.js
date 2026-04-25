@@ -35,10 +35,24 @@ bus.subscribe('system.alert', (payload) => {
 
 // ── Shared Push Helpers ───────────────────────────────────────────────────
 
+import { wsSentinel, verifyWsToken } from '../../middleware/wsSentinel.js';
+
 export const broadcast = (payload) => {
   const msg = JSON.stringify({ ...payload, ts: Date.now() });
-  for (const set of clients.values()) {
-    set.forEach(ws => { if (ws.readyState === 1) ws.send(msg); });
+  
+  for (const [uid, set] of clients.entries()) {
+    set.forEach(ws => {
+      if (ws.readyState === 1) {
+        // Algorithmic Throttling: High botScore users receive delayed updates
+        if (ws.throttleDelay > 0) {
+          setTimeout(() => {
+            if (ws.readyState === 1) ws.send(msg);
+          }, ws.throttleDelay);
+        } else {
+          ws.send(msg);
+        }
+      }
+    });
   }
 };
 
@@ -51,7 +65,9 @@ export const pushNotification = async (userId, data) => {
     const userSockets = clients.get(String(userId));
     if (userSockets) {
       const msg = JSON.stringify({ type: 'notification', ...data, ts: Date.now() });
-      userSockets.forEach(ws => { if (ws.readyState === 1) ws.send(msg); });
+      userSockets.forEach(ws => { 
+        if (ws.readyState === 1) ws.send(msg); 
+      });
     }
   } catch (err) {
     console.error('[NotificationsModule] Push failed:', err.message);
@@ -74,32 +90,43 @@ export const wsAttendanceUpdate = (eventId, scannedCount, totalSold) => {
 
 // ── WebSocket Handler ─────────────────────────────────────────────────────
 
-export const handleWsConnection = (ws) => {
-  let currentUserId = null;
+export const handleWsConnection = (ws, req) => {
   ws.isAlive = true;
+  wsSentinel(ws, req); // Apply IP limits and Auth timeouts
   
   ws.on('pong', () => { ws.isAlive = true; });
 
-  ws.on('message', (raw) => {
+  ws.on('message', async (raw) => {
     try {
       const msg = JSON.parse(raw.toString());
+      
       if (msg.type === 'auth') {
-        const decoded = jwt.verify(msg.token, process.env.JWT_SECRET || 'SouptikHazraSecretKey');
-        currentUserId = String(decoded.id);
-        if (!clients.has(currentUserId)) clients.set(currentUserId, new Set());
-        clients.get(currentUserId).add(ws);
-        ws.send(JSON.stringify({ type: 'auth_success', userId: currentUserId }));
+        const success = await verifyWsToken(ws, msg.token);
+        if (success) {
+          const userId = ws.userId;
+          if (!clients.has(userId)) clients.set(userId, new Set());
+          clients.get(userId).add(ws);
+          ws.send(JSON.stringify({ 
+            type: 'auth_success', 
+            userId, 
+            throttle: ws.throttleDelay 
+          }));
+          console.log(`[WS] 🛡️ Secure connection established for user ${userId} (Throttle: ${ws.throttleDelay}ms)`);
+        } else {
+          ws.send(JSON.stringify({ type: 'auth_error', message: 'Verification failed' }));
+        }
       }
+      
       if (msg.type === 'ping') ws.send(JSON.stringify({ type: 'pong' }));
-    } catch {
-      ws.send(JSON.stringify({ type: 'auth_error', message: 'Invalid token' }));
+    } catch (err) {
+      console.error('[WS] Message error:', err.message);
     }
   });
 
   ws.on('close', () => {
-    if (currentUserId && clients.has(currentUserId)) {
-      clients.get(currentUserId).delete(ws);
-      if (clients.get(currentUserId).size === 0) clients.delete(currentUserId);
+    if (ws.userId && clients.has(ws.userId)) {
+      clients.get(ws.userId).delete(ws);
+      if (clients.get(ws.userId).size === 0) clients.delete(ws.userId);
     }
   });
 };

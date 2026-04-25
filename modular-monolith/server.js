@@ -1,8 +1,10 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
-import dotenv from 'dotenv';
 import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
 import { spawn } from 'child_process';
@@ -28,9 +30,11 @@ import analyticsRoutes from './src/modules/analytics/analytics.routes.js';
 import adminRoutes from './src/modules/admin/admin.routes.js';
 import subscriptionRoutes from './src/modules/subscriptions/subscription.routes.js';
 import emailRoutes from './src/modules/email/email.routes.js';
+import catalogRoutes from './src/modules/catalog/catalog.routes.js';
+import { initAutomation } from './src/shared/automation.js';
 
 // Load environment variables
-dotenv.config();
+// (Already loaded at top)
 
 const app = express();
 const httpServer = createServer(app);
@@ -59,6 +63,10 @@ const startMLModel = () => {
 
 if (cluster.isPrimary) {
   startMLModel();
+  // Automation runs only on Primary process to avoid redundant tasks
+  connectMongoDB().then(() => {
+    initAutomation();
+  });
 }
 
 // ── Clustering Strategy (Multi-Core Scaling) ───────────────────────────────
@@ -102,9 +110,10 @@ if (cluster.isPrimary && (process.env.NODE_ENV === 'production' || process.env.C
   const moduleRegistry = [
     { path: '/api/auth', router: authRoutes, limiter: authLimiter },
     { path: '/api/users', router: userRoutes },
+    { path: '/api/catalog', router: catalogRoutes },
+    { path: '/api/events', router: catalogRoutes }, // Alias for legacy/public discovery
     { path: '/api/organizer', router: organizerRoutes },
-    { path: '/api/organizers', router: organizerRoutes },
-    { path: '/api/events', router: organizerRoutes },
+    { path: '/api/organizers', router: organizerRoutes }, // Restore plural alias
     { path: '/api/tickets', router: ticketRoutes, limiter: purchaseLimiter },
     { path: '/api/scanner', router: ticketRoutes, limiter: purchaseLimiter },
     { path: '/api/qr', router: ticketRoutes, limiter: purchaseLimiter },

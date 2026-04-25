@@ -1,60 +1,31 @@
 import express from 'express';
 import mongoose from 'mongoose';
-import axios from 'axios';
 import Event from '../../shared/models/Event.js';
 import Ticket from '../../shared/models/Ticket.js';
 import User from '../../shared/models/User.js';
 import { requireDB } from '../../shared/database.js';
 import authMiddleware, { requireRole } from '../../middleware/auth.js';
-import { cacheDel, cacheDelPattern } from '../../shared/cache.js';
+import { cacheGet, cacheSet, cacheDel, cacheDelPattern } from '../../shared/cache.js';
 import { pushNotification } from '../notifications/notification.routes.js';
-import { predictMLPrice } from '../../shared/utils.js';
 
 const router = express.Router();
-const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:5000';
 
-// ML prediction uses centralized helper from `src/shared/utils.js`
-
-// ── Event Discovery (Public) ──────────────────────────────────────────────
-
-// Handles GET /api/events or GET /api/organizers/events (public view)
-router.get('/', async (req, res, next) => {
-  try {
-    const events = await Event.find({ status: { $ne: 'cancelled' } }).sort({ startDate: 1 });
-    res.json(events);
-  } catch (err) { next(err); }
-});
-
-router.get('/:id', async (req, res, next) => {
-  try {
-    const event = await Event.findById(req.params.id);
-    if (!event) return res.status(404).json({ error: 'Event not found' });
-    res.json(event);
-  } catch (err) { next(err); }
-});
-
-router.get('/:id/dynamic-prices', requireDB, async (req, res, next) => {
-  try {
-    const event = await Event.findById(req.params.id);
-    if (!event) return res.status(404).json({ error: 'Event not found' });
-    
-    const prices = {};
-    if (event.ticketCategories && event.ticketCategories.length > 0) {
-      for (const cat of event.ticketCategories) {
-        prices[cat.name] = await predictMLPrice(cat, event);
-      }
-    } else {
-      prices['standard'] = await predictMLPrice(null, event);
-    }
-    res.json({ eventId: event._id, prices, occupancyRate: Math.round(((event.ticketsSold || 0) / (event.capacity || 1)) * 100) });
-  } catch (err) { next(err); }
-});
+/**
+ * Organizer Module
+ * 
+ * Restricted to management tasks for event hosts.
+ * No longer handles public discovery or low-level inventory reversals.
+ */
 
 // ── Organizer Management (Protected) ────────────────────────────────────────
 
 router.get('/stats', authMiddleware, requireRole('organizer'), requireDB, async (req, res, next) => {
   try {
     const organizerId = req.user.id;
+    const cacheKey = `organizer:stats:${organizerId}`;
+    const cached = await cacheGet(cacheKey);
+    if (cached) return res.json(cached);
+
     const [eventsCount, ticketsAgg] = await Promise.all([
       Event.countDocuments({ organizerId }),
       Ticket.aggregate([
@@ -73,7 +44,10 @@ router.get('/stats', authMiddleware, requireRole('organizer'), requireDB, async 
       ])
     ]);
     const { totalRevenue = 0, totalTickets = 0 } = ticketsAgg[0] || {};
-    res.json({ stats: { totalEvents: eventsCount, totalTickets, totalRevenue } });
+    const result = { stats: { totalEvents: eventsCount, totalTickets, totalRevenue } };
+    
+    await cacheSet(cacheKey, result, 60); // 1 min cache
+    res.json(result);
   } catch (err) { next(err); }
 });
 
@@ -89,7 +63,12 @@ router.get('/my-events', authMiddleware, requireRole('organizer'), requireDB, as
 // Alias for compatibility: GET /api/organizers/events (when logged in as organizer)
 router.get(['/events', '/my-list'], authMiddleware, requireRole('organizer'), requireDB, async (req, res, next) => {
   try {
+    const cacheKey = `organizer:events:${req.user.id}`;
+    const cached = await cacheGet(cacheKey);
+    if (cached) return res.json(cached);
+
     const events = await Event.find({ organizerId: req.user.id }).sort({ startDate: 1 });
+    await cacheSet(cacheKey, { events }, 120); // 2 min cache
     res.json({ events });
   } catch (err) { next(err); }
 });
@@ -159,36 +138,6 @@ router.post('/message-admin', authMiddleware, requireRole('organizer'), requireD
       await pushNotification(admin._id, { title: `💬 From Organizer: ${req.user.name}`, message: req.body.message, type: 'message' });
     }
     res.json({ success: true });
-  } catch (err) { next(err); }
-});
-
-// ── Internal / Inventory Reversal (for Refunds) ─────────────────────────────
-
-router.post('/revert-inventory', requireDB, async (req, res, next) => {
-  try {
-    const { eventId, categoryName, quantity, amount, seatNumbers = [] } = req.body;
-    const event = await Event.findById(eventId);
-    if (!event) return res.status(404).json({ error: 'Event not found' });
-
-    // 1. Return tickets to pool
-    const cat = event.ticketCategories.find(c => c.name === categoryName);
-    if (cat) {
-      cat.availableSeats = Math.min(cat.seats, (cat.availableSeats || 0) + quantity);
-      if (seatNumbers.length > 0) cat.bookedSeats = (cat.bookedSeats || []).filter(s => !seatNumbers.includes(s));
-    } else {
-      event.availableTickets = Math.min(event.capacity, (event.availableTickets || 0) + quantity);
-    }
-
-    // 2. Adjust revenue metrics
-    event.ticketsSold = Math.max(0, (event.ticketsSold || 0) - quantity);
-    event.totalRevenue = Math.max(0, (event.totalRevenue || 0) - amount);
-    event.commissionCollected = Math.max(0, (event.commissionCollected || 0) - Math.round(amount * 0.20));
-
-    await event.save();
-    await cacheDel(`event:${event._id}`);
-    await cacheDelPattern('events:list:*');
-
-    res.json({ success: true, message: 'Inventory reverted successfully' });
   } catch (err) { next(err); }
 });
 

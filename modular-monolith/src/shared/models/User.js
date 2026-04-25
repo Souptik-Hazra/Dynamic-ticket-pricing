@@ -17,6 +17,7 @@ const userSchema = new mongoose.Schema(
     lastPurchaseAt: { type: Date },
     botScore: { type: Number, default: 0 },
     subscription: { type: subscriptionSchema, default: () => ({}) },
+    refreshToken: { type: String, select: false },
   },
   { timestamps: true }
 );

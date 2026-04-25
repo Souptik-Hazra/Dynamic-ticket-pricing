@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 
 const flRoundLogSchema = new mongoose.Schema({
-  roundNumber: { type: Number, required: true, unique: true },
+  roundNumber: { type: Number, required: true },
   timestamp: { type: Date, default: Date.now },
   participantsCount: { type: Number, required: true, default: 0 },
   rejectedSubmissions: { type: Number, default: 0 },

@@ -9,6 +9,7 @@ import { requireDB } from '../../shared/database.js';
 import authMiddleware, { requireRole } from '../../middleware/auth.js';
 import { cacheDel, cacheDelPattern } from '../../shared/cache.js';
 import { pushNotification } from '../notifications/notification.routes.js';
+import bus from '../../shared/InternalBus.js';
 
 const router = express.Router();
 
@@ -91,6 +92,14 @@ router.post('/events/:id/complete', requireDB, async (req, res, next) => {
 
     await cacheDel(`event:${event._id}`);
     await cacheDelPattern('events:list:*');
+
+    // Notify organizer via Internal Bus
+    bus.publish('event.completed', {
+      eventId: event._id,
+      organizerId: event.organizerId,
+      commissionAmount: commission,
+      totalRevenue: revenue
+    });
 
     res.json({ success: true, message: 'Event completed and commission recorded', commission });
   } catch (err) { next(err); }

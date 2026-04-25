@@ -9,8 +9,10 @@ import { requireDB } from '../../shared/database.js';
 import authMiddleware from '../../middleware/auth.js';
 import { cacheDel, cacheDelPattern } from '../../shared/cache.js';
 import dotenv from 'dotenv';
+import { pushNotification } from '../notifications/notification.routes.js';
 import bus from '../../shared/InternalBus.js';
 
+dotenv.config();
 const router = express.Router();
 
 // ── Payment Routes ─────────────────────────────────────────────────────────
@@ -103,7 +105,8 @@ router.post('/', authMiddleware, requireDB, async (req, res, next) => {
       startDate: new Date(tickets[0].eventId.startDate).toLocaleDateString(),
       bookingReference: tickets[0].bookingReference,
       categoryName: tickets[0].categoryName || 'General',
-      quantity: tickets.reduce((sum, t) => sum + (t.quantity || 1), 0)
+      quantity: tickets.reduce((sum, t) => sum + (t.quantity || 1), 0),
+      qrCode: tickets[0].qrCode // Pass the pre-generated QR image
     });
 
     res.status(201).json({ success: true, payment: payment[0] });

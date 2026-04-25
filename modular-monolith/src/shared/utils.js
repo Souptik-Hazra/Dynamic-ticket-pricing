@@ -35,7 +35,36 @@ export const predictMLPrice = async (category, event, cognitive_score = 1.0) => 
 
     const { data } = await axios.post(`${ML_SERVICE_URL}/predict`, payload, { timeout: 2000 });
     return Math.max(basePrice, Math.min(Math.round(data.predicted_price), maxPrice));
-  } catch (err) {
+  } catch (_err) {
     return category ? Number(category.price) : (Number(event.basePrice) || 0);
   }
 };
+
+/**
+ * validateBehavioralTelemetry
+ * 
+ * Server-side auditor for Edge-AI signatures.
+ * Detects "Impossible Actions" that even the client-side model might miss.
+ */
+export const validateBehavioralTelemetry = (signature, telemetry = {}) => {
+  if (!signature || typeof signature !== 'string') return false;
+
+  const { durationMs, sampleCount } = telemetry;
+
+  // 1. Velocity Audit: A human cannot perform a complex behavioral capture in < 500ms
+  // Most bots using headless browsers or scripts will trigger this immediately.
+  if (durationMs && durationMs < 500) {
+    console.warn(`[BehavioralAuditor] 🚩 Velocity Violation: Capture took only ${durationMs}ms`);
+    return false;
+  }
+
+  // 2. Data Integrity: The CNN model requires at least 50 samples for a valid inference.
+  // If the client claims a high score with fewer samples, it is a forgery.
+  if (sampleCount !== undefined && sampleCount < 50) {
+    console.warn(`[BehavioralAuditor] 🚩 Sample Violation: Only ${sampleCount} samples provided`);
+    return false;
+  }
+
+  return true;
+};
+

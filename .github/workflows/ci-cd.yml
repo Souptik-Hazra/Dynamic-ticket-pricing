@@ -18,14 +18,23 @@ jobs:
           node-version: '20'
           cache: 'npm'
           
-      - name: Install dependencies
+      - name: Install dependencies (Root)
         run: npm install
         
-      - name: Lint
+      - name: Install dependencies (Monolith)
+        run: cd modular-monolith && npm install
+        
+      - name: Lint Root
         run: npm run lint
         
-      # - name: Test (Uncomment when tests are added)
-      #   run: npm test
+      - name: Build Frontend
+        run: npm run build
+        
+      - name: Archive Frontend Assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: dist/
 
   build-images:
     needs: lint-and-test
@@ -44,18 +53,17 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
           
-      - name: Build and push API Gateway
-        uses: docker/build-push-action@v5
+      - name: Download Frontend Assets
+        uses: actions/download-artifact@v4
         with:
-          context: ./microservices/api-gateway
-          push: true
-          tags: ghcr.io/${{ github.repository }}/api-gateway:latest
-
-      - name: Build and push Authentication Service
-        uses: docker/build-push-action@v5
-        with:
-          context: ./microservices/authentication-service
-          push: true
-          tags: ghcr.io/${{ github.repository }}/authentication-service:latest
+          name: frontend-dist
+          path: modular-monolith/dist
           
-      # Add other services as needed
+      - name: Build and push Modular Monolith
+        uses: docker/build-push-action@v5
+        with:
+          context: ./modular-monolith
+          push: true
+          tags: ghcr.io/${{ github.repository }}/monolith:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

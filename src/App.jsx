@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { BehavioralProvider } from './context/BehavioralContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import HomePage from './components/HomePage';
 import Login from './components/Login';
@@ -11,10 +12,10 @@ import Analytics from './components/Analytics';
 import TicketPurchase from './components/TicketPurchase';
 import Subscription from './components/Subscription';
 import { ENDPOINTS } from './config/api';
-import UserProfile from "./components/UserProfile.jsx";
-import Notifications from "./components/Notifications.jsx";
-import OrganizerDashboard from "./components/OrganizerDashboard.jsx";
-import Scanner from "./components/Scanner.jsx";
+import UserProfile from "./components/UserProfile";
+import Notifications from "./components/Notifications";
+import OrganizerDashboard from "./components/OrganizerDashboard";
+import Scanner from "./components/Scanner";
 import { useEvents, useUpdatePrice } from './hooks/useEvents';
 
 function AppContent() {
@@ -35,8 +36,6 @@ function AppContent() {
       }
     }
   }, [isAuthenticated, location.pathname, user, navigate]);
-
-  // We no longer need manual fetchEvents and useEffect for it as useEvents handles it
 
   const handleUpdatePrice = async (eventId) => {
     try {
@@ -182,7 +181,9 @@ function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <AppContent />
+        <BehavioralProvider>
+          <AppContent />
+        </BehavioralProvider>
       </AuthProvider>
     </ErrorBoundary>
   );

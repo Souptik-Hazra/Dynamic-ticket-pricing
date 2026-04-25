@@ -37,7 +37,7 @@ export const ENDPOINTS = {
   ADMIN_TICKETS:     '/admin/tickets',
   ADMIN_COMMISSIONS: '/admin/commissions',
   ADMIN_BROADCAST:   '/admin/broadcast',
-  PLATFORM_HEALTH:   '/health-all',
+  PLATFORM_HEALTH:   '/admin/health-all',
 
   // Analytics (Analytics Service)
   ANALYTICS:           '/analytics',
@@ -60,7 +60,7 @@ export const ENDPOINTS = {
   PAYMENT_REFUND:  (id) => `/payments/${id}/refund`,
 
   // ML Model
-  ML_PREDICT: '/ml-model/predict',
+  ML_PREDICT: (id) => `/ml-model/predict/${id}`,
   ML_HEALTH:  '/ml-model/health',
 
   // Organizer Service (Messaging & Management)
@@ -95,7 +95,7 @@ export const getWsUrl = () => {
   // HTTPS page which would fail if the backend doesn't support TLS.
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const url = `${protocol}//${window.location.host}/api/ws`;
-  try { console.debug('[getWsUrl] websocket URL ->', url); } catch {};
+  try { console.debug('[getWsUrl] websocket URL ->', url); } catch (_err) { /* ignore in restricted runtimes */ };
   return url;
 };
 

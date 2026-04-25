@@ -3,6 +3,7 @@ import { requireDB } from '../../shared/database.js';
 import authMiddleware, { requireRole } from '../../middleware/auth.js';
 import { getDashboardStats } from './analytics.utils.js';
 import SystemLog from '../../shared/models/SystemLog.js';
+import { cacheGet, cacheSet } from '../../shared/cache.js';
 
 const router = express.Router();
 
@@ -23,27 +24,21 @@ router.get('/health', async (req, res) => {
 
 // ── System Logs ────────────────────────────────────────────────────────────
 
-router.get('/system-logs', requireDB, async (req, res, next) => {
+router.get('/system-logs', authMiddleware, requireRole('admin'), requireDB, async (req, res, next) => {
   try {
     const logs = await SystemLog.find().sort({ timestamp: -1 }).limit(100);
     res.json(logs);
   } catch (err) { next(err); }
 });
 
-router.post('/system-logs', requireDB, async (req, res, next) => {
-  try {
-    const log = await SystemLog.create({
-      ...req.body,
-      timestamp: new Date()
-    });
-    res.status(201).json(log);
-  } catch (err) { next(err); }
-});
-
 // ── System Health ──────────────────────────────────────────────────────────
 
-router.get('/system-health', requireDB, async (req, res, next) => {
+router.get('/system-health', authMiddleware, requireRole('admin'), requireDB, async (req, res, next) => {
   try {
+    const cacheKey = 'admin:system:health';
+    const cached = await cacheGet(cacheKey);
+    if (cached) return res.json(cached);
+
     const twentyFourHoursAgo = new Date();
     twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
 
@@ -65,13 +60,16 @@ router.get('/system-health', requireDB, async (req, res, next) => {
       ])
     ]);
 
-    res.json({
+    const result = {
       serviceDistribution: serviceDistribution.map(s => ({ name: s._id, value: s.count })),
       errorTimeline: errorTimeline.map(t => ({ 
         time: t._id.replace(' ', 'T') + ':00Z', 
         errors: t.count 
       }))
-    });
+    };
+
+    await cacheSet(cacheKey, result, 300); // 5 min cache
+    res.json(result);
   } catch (err) { next(err); }
 });
 

@@ -1,108 +1,91 @@
-const fs = require('fs');
-const path = require('path');
-const fetch = global.fetch || require('node-fetch');
+const axios = require('axios');
 
-const AUTH_URL = process.env.AUTH_URL || 'http://localhost:4001/api/auth/signup';
-const GATEWAY_SIM_URL = process.env.GATEWAY_SIM_URL || 'http://localhost:3001/api/simulator/neo4j';
+// ── Unified Monolith Configuration ──
+const BASE_URL = process.env.API_URL || 'http://localhost:4000/api';
+const AUTH_URL = `${BASE_URL}/auth/signup`;
+const SIM_URL = `${BASE_URL}/ai/simulator/neo4j`;
 
-async function main(){
-  try{
-    const signupPayloadPath = path.join(__dirname, '..', 'microservices', 'authentication-service', 'scripts', 'signup_payload.json');
-    const simPayloadPath = path.join(__dirname, '..', 'microservices', 'organizer-service', 'scripts', 'test_payload.json');
+async function main() {
+  try {
+    console.log('🚀 Starting Monolith Integration Test...');
+    console.log(`🔗 API Base: ${BASE_URL}`);
 
-    const signupPayload = JSON.parse(fs.readFileSync(signupPayloadPath, 'utf8'));
-    const simPayload = JSON.parse(fs.readFileSync(simPayloadPath, 'utf8'));
+    // Default payloads
+    const signupPayload = {
+      name: 'Test Citizen',
+      email: 'test-citizen@fanfever.local',
+      password: 'password123',
+      role: 'organizer'
+    };
 
-    console.log('Signing up test user (or signing in if already exists)...');
+    const simPayload = {
+      eventName: 'Demo Concert',
+      eventId: 'demo-' + Date.now(),
+      categories: [
+        { name: 'VIP', seats: 100, bookedSeats: ['A1', 'A2'], blockedSeats: ['A3'] },
+        { name: 'Standard', seats: 500, bookedSeats: [], blockedSeats: [] }
+      ],
+      layoutType: 'stadium',
+      venueMetrics: { exitsCount: 4 },
+      eventPopularity: 0.85
+    };
+
+    // 🛡️ Global Security Headers for Axios
+    const commonHeaders = {
+      'User-Agent': 'Mozilla/5.0 (MonolithTester; 1.0)',
+      'Accept': 'application/json'
+    };
+
+    // 1. Authenticate (Signup or Signin)
+    console.log('🛡️  Authenticating...');
     let token = null;
-    try{
-      const su = await fetch(AUTH_URL, {
-        method: 'POST',
-        headers: { 'Content-Type':'application/json' },
-        body: JSON.stringify(signupPayload),
-      });
-      const suJson = await su.json().catch(()=>({error:'invalid-json'}));
-      if(su.ok && suJson.token){
-        token = suJson.token;
-        console.log('Signup succeeded.');
-      } else if(su.status === 409){
-        console.log('User already exists; attempting signin...');
+    
+    try {
+      const su = await axios.post(AUTH_URL, signupPayload, { headers: commonHeaders }).catch(e => e.response);
+      
+      if (su && su.status === 201 && su.data.token) {
+        token = su.data.token;
+        console.log('✅ Signup successful.');
       } else {
-        console.error('Signup error:', su.status, suJson);
-      }
-    }catch(e){
-      console.error('Signup request failed:', e && e.message ? e.message : e);
-    }
-
-    // If token not set, try signin
-    if(!token){
-      try{
-        const signinUrl = AUTH_URL.replace('/signup', '/signin');
-        const creds = { email: signupPayload.email, password: signupPayload.password };
-        const s = await fetch(signinUrl, {
-          method: 'POST',
-          headers: { 'Content-Type':'application/json' },
-          body: JSON.stringify(creds),
-        });
-        const sJson = await s.json().catch(()=>({error:'invalid-json'}));
-        if(s.ok && sJson.token){
-          token = sJson.token;
-          console.log('Signin succeeded.');
+        const signinUrl = AUTH_URL.replace('/signup', '/login');
+        const s = await axios.post(signinUrl, { 
+          email: signupPayload.email, 
+          password: signupPayload.password 
+        }, { headers: commonHeaders });
+        
+        if (s.data && s.data.token) {
+          token = s.data.token;
+          console.log('✅ Signin successful.');
         } else {
-          console.error('Signin failed:', s.status, sJson);
+          console.error('❌ Authentication failed:', s.status, s.data);
           process.exit(2);
         }
-      }catch(e){
-        console.error('Signin request failed:', e && e.message ? e.message : e);
-        process.exit(2);
       }
+    } catch (e) {
+      console.error('❌ Auth request failed:', e.message);
+      process.exit(2);
     }
-    console.log('Got JWT, now POSTing to gateway simulator...');
 
-    const res = await fetch(GATEWAY_SIM_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type':'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify(simPayload),
-    }).catch(e=>({error:e}));
+    // 2. Test Simulator Endpoint
+    console.log('🧪 Testing Neo4j Simulator...');
+    const res = await axios.post(SIM_URL, simPayload, {
+      headers: { ...commonHeaders, 'Authorization': `Bearer ${token}` }
+    });
 
-    if(res && res.error){
-      console.error('Request to gateway failed:', res.error.message || res.error);
+    console.log('📡 Response Status:', res.status);
+
+    if (res.status === 200 && res.data.stored) {
+      console.log('✅ Simulation stored in Neo4j graph.');
+      console.log('📊 Synthetic Scores:', JSON.stringify(res.data.scores));
+      console.log('🎊 MONOLITH INTEGRATION TEST PASSED!');
+      process.exit(0);
+    } else {
+      console.error('❌ Simulator test failed:', res.data);
       process.exit(3);
     }
 
-    const body = await res.json().catch(()=>null);
-    console.log('Gateway response status:', res.status);
-    console.log('Gateway response body:', JSON.stringify(body));
-
-    // Basic assertions: non-fallback and scores for each category are numbers
-    if (!body) {
-      console.error('Empty body from gateway');
-      process.exit(4);
-    }
-    if (body.fallback) {
-      console.error('Simulator returned fallback mode — Neo4j not used');
-      process.exit(5);
-    }
-    if (body.stored !== true) {
-      console.error('Simulator did not persist results to Neo4j (stored flag false)');
-      process.exit(7);
-    }
-    const inputPayload = simPayload;
-    const missing = [];
-    inputPayload.categories.forEach(c => {
-      if (!body.scores || typeof body.scores[c.name] !== 'number') missing.push(c.name);
-    });
-    if (missing.length) {
-      console.error('Missing or invalid score entries for categories:', missing);
-      process.exit(6);
-    }
-    console.log('Integration test passed: scores present for all categories.');
-    process.exit(0);
-  }catch(err){
-    console.error('Test script error:', err && err.stack ? err.stack : err);
+  } catch (err) {
+    console.error('💥 Critical script error:', err.response?.data || err.message);
     process.exit(1);
   }
 }

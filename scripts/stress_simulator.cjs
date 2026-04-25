@@ -1,8 +1,9 @@
 const axios = require('axios');
 
-const BASE = process.env.GATEWAY_SIM_URL || 'http://localhost:4013';
-const URL = `${BASE}/api/simulator/neo4j`;
-const AUTH_URL = process.env.AUTH_URL || 'http://localhost:4001/api/auth';
+// ── Unified Monolith Configuration ──
+const BASE_URL = process.env.API_URL || 'http://localhost:4000/api';
+const SIM_URL = `${BASE_URL}/ai/simulator/neo4j`;
+const AUTH_URL = `${BASE_URL}/auth/login`;
 
 const layoutTypes = ['stadium','arena','festival','theater'];
 const stagePositions = ['center','front','left','right'];
@@ -15,23 +16,19 @@ function genPayload(idx){
   const categories = [];
   for(let i=0;i<numCats;i++){
     const seats = randInt(50,500);
+    const bookedCount = randInt(0, Math.min(20, Math.floor(seats/10)));
     const blockedCount = randInt(0, Math.min(20, Math.floor(seats/10)));
-    const bookedCount = randInt(0, Math.min(50, Math.floor(seats/5)));
-    const blockedSeats = [];
-    const bookedSeats = [];
-    for(let b=0;b<blockedCount;b++) blockedSeats.push(randInt(1,seats));
-    for(let b=0;b<bookedCount;b++) bookedSeats.push(randInt(1,seats));
     categories.push({
       name: `Category-${i+1}`,
       seats,
-      blockedSeats,
-      bookedSeats
+      bookedSeats: Array.from({length: bookedCount}, (_, i) => `S${i}`),
+      blockedSeats: Array.from({length: blockedCount}, (_, i) => `B${i}`)
     });
   }
 
   return {
-    eventName: `Demo Concert`,
-    eventId: `demo-${idx % 5}`,
+    eventName: `Stress Test Event`,
+    eventId: `stress-${idx % 10}`,
     categories,
     layoutType: pick(layoutTypes),
     stagePosition: pick(stagePositions),
@@ -40,45 +37,47 @@ function genPayload(idx){
       aisleWidth: pick(['narrow','standard','wide']),
       securitySpeed: pick(['slow','normal','fast'])
     },
-    eventPopularity: randInt(1,100)
+    eventPopularity: Math.random()
   };
 }
 
 async function run(count=50, delay=150){
+  console.log(`🚀 Starting Stress Test on ${BASE_URL}...`);
   let stored=0, total=0, errors=0;
-  // Ensure we have an auth token
-  let token = null;
-  try{
-    const signupPayload = { name: 'Stress Tester', email: 'stress+neo4j@local', password: 'password123' };
-    // Try signup (may 409)
-    await axios.post(`${AUTH_URL}/signup`, signupPayload, { timeout: 5000 }).then(r=>{ if(r.data && r.data.token) token = r.data.token; }).catch(()=>{});
-    if(!token){
-      const creds = { email: 'stress+neo4j@local', password: 'password123' };
-      const signin = await axios.post(`${AUTH_URL}/signin`, creds, { timeout: 5000 });
-      if(signin && signin.data && signin.data.token) token = signin.data.token;
-    }
-  }catch(e){ console.warn('Auth step failed:', e && e.message); }
 
+  // 1. Get Auth Token
+  let token = null;
+  try {
+    const creds = { email: 'test-citizen@fanfever.local', password: 'password123' };
+    const res = await axios.post(AUTH_URL, creds, { timeout: 5000 });
+    if(res.data && res.data.token) token = res.data.token;
+    console.log('✅ Auth token acquired.');
+  } catch(e) {
+    console.warn('⚠️  Auth failed (using unauthenticated requests):', e.message);
+  }
+
+  // 2. Run Stress Loop
   for(let i=0;i<count;i++){
     const payload = genPayload(i);
-    try{
+    try {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const res = await axios.post(URL, payload, { timeout: 10000, headers });
+      const res = await axios.post(SIM_URL, payload, { timeout: 10000, headers });
       total++;
-      const body = res.data || {};
-      if(body.stored) stored++;
-      console.log(`[${i+1}/${count}] status=${res.status} stored=${!!body.stored} scores=${JSON.stringify(body.scores||{})}`);
-    }catch(err){
+      if(res.data.stored) stored++;
+      console.log(`[${i+1}/${count}] status=${res.status} stored=${!!res.data.stored} event=${payload.eventId}`);
+    } catch(err) {
       errors++;
-      console.error(`[${i+1}/${count}] request failed:`, err.message);
+      console.error(`[${i+1}/${count}] request failed:`, err.response?.data?.error || err.message);
     }
-    await new Promise(r=>setTimeout(r, delay));
+    if (delay > 0) await new Promise(r=>setTimeout(r, delay));
   }
-  console.log(`Finished. total=${total} stored=${stored} errors=${errors}`);
+  
+  console.log('----------------------------------------');
+  console.log(`🏁 Finished. Total: ${total} | Stored: ${stored} | Errors: ${errors}`);
 }
 
 const args = process.argv.slice(2);
 const n = parseInt(args[0],10) || 50;
 const d = parseInt(args[1],10) || 150;
 
-run(n,d).catch(e=>{ console.error('Fatal:', e); process.exit(1); });
+run(n,d).catch(e=>{ console.error('💥 Fatal:', e); process.exit(1); });

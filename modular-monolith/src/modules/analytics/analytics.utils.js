@@ -1,6 +1,7 @@
 import Event from '../../shared/models/Event.js';
 import Ticket from '../../shared/models/Ticket.js';
 import { cacheSet, cacheGet } from '../../shared/cache.js';
+import { getAiHealth } from '../ai/ai.service.js';
 
 export const getDashboardStats = async (userId, role, bypassCache = false) => {
   const cacheKey = `analytics:dashboard:${userId}`;
@@ -14,37 +15,45 @@ export const getDashboardStats = async (userId, role, bypassCache = false) => {
 
   const [summary, salesTrends, categoryDistribution, topVenues] = await Promise.all([
     Event.aggregate([
-      { $group: {
-        _id: null,
-        totalEvents: { $sum: 1 },
-        totalCapacity: { $sum: '$capacity' },
-        totalRevenue: { $sum: '$totalRevenue' },
-        avgOccupancy: { $avg: { $cond: [{ $gt: ['$capacity', 0] }, { $divide: ['$ticketsSold', '$capacity'] }, 0] } }
-      }}
+      {
+        $group: {
+          _id: null,
+          totalEvents: { $sum: 1 },
+          totalCapacity: { $sum: '$capacity' },
+          totalRevenue: { $sum: '$totalRevenue' },
+          avgOccupancy: { $avg: { $cond: [{ $gt: ['$capacity', 0] }, { $divide: ['$ticketsSold', '$capacity'] }, 0] } }
+        }
+      }
     ]),
     Ticket.aggregate([
       { $match: { purchaseDate: { $gte: thirtyDaysAgo }, status: 'confirmed' } },
-      { $group: {
-        _id: { $dateToString: { format: "%Y-%m-%d", date: "$purchaseDate" } },
-        revenue: { $sum: "$totalAmount" },
-        count: { $sum: "$quantity" }
-      }},
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$purchaseDate" } },
+          revenue: { $sum: "$totalAmount" },
+          count: { $sum: "$quantity" }
+        }
+      },
       { $sort: { "_id": 1 } }
     ]),
     Event.aggregate([
-      { $group: {
-        _id: "$category",
-        count: { $sum: 1 },
-        revenue: { $sum: "$totalRevenue" }
-      }},
+      {
+        $group: {
+          _id: "$category",
+          count: { $sum: 1 },
+          revenue: { $sum: "$totalRevenue" }
+        }
+      },
       { $sort: { revenue: -1 } }
     ]),
     Event.aggregate([
-      { $group: {
-        _id: "$venue",
-        totalRevenue: { $sum: "$totalRevenue" },
-        eventCount: { $sum: 1 }
-      }},
+      {
+        $group: {
+          _id: "$venue",
+          totalRevenue: { $sum: "$totalRevenue" },
+          eventCount: { $sum: 1 }
+        }
+      },
       { $sort: { totalRevenue: -1 } },
       { $limit: 5 }
     ])

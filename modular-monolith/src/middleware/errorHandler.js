@@ -1,10 +1,16 @@
 import mongoose from 'mongoose';
-import { persistLog, traceStorage } from '../shared/logger.js';
+import { logError, logSecurity } from '../shared/logger.service.js';
 
 const MONGO_DUPLICATE_KEY = 11000;
 
+/**
+ * Global Error Handler
+ * 
+ * Standard Synchronous Express 4 Error Handler.
+ * Initiates persistent logging in the background.
+ */
 export const errorHandler = (err, req, res, _next) => {
-  const traceId = traceStorage.getStore()?.traceId || 'no-trace';
+  const traceId = req.headers['x-trace-id'] || `trace-${Date.now()}`;
 
   const sendError = (status, code, message, extra = {}) => {
     return res.status(status).json({
@@ -12,67 +18,64 @@ export const errorHandler = (err, req, res, _next) => {
     });
   };
 
+  // 1. Log the error persistently (Fire and Forget with safety)
+  if (err.status >= 500 || !err.status) {
+      logError('Server', `Unhandled Exception: ${err.message}`, err, { traceId, path: req.path })
+        .catch(logErr => console.error(`[ErrorLog] Failed to persist log: ${logErr.message}`));
+  }
+
+  // 2. Mongoose Cast Errors (Invalid IDs)
   if (err instanceof mongoose.Error.CastError) {
     return sendError(400, 'INVALID_PARAMETER', `Invalid value '${err.value}' for field '${err.path}'`);
   }
 
+  // 3. Validation Errors
   if (err instanceof mongoose.Error.ValidationError) {
     const details = Object.values(err.errors).map((e) => ({ field: e.path, message: e.message }));
     return sendError(400, 'VALIDATION_FAILED', 'Input validation failed', { details });
   }
 
+  // 4. Duplicate Keys
   if (err.code === MONGO_DUPLICATE_KEY) {
     const field = Object.keys(err.keyValue || {})[0] || 'field';
-    const value = err.keyValue?.[field] || '';
-    return sendError(409, 'CONFLICT', `'${value}' is already registered for ${field}`);
+    return sendError(409, 'CONFLICT', `The provided ${field} is already in use.`);
   }
 
+  // 5. JWT Errors
   if (err.name === 'JsonWebTokenError') {
-    return sendError(401, 'INVALID_TOKEN', 'Invalid token. Please log in again.');
+    return sendError(401, 'INVALID_TOKEN', 'Session invalid. Please log in again.');
   }
   if (err.name === 'TokenExpiredError') {
-    return sendError(401, 'TOKEN_EXPIRED', 'Session expired. Please log in again.');
+    return sendError(401, 'TOKEN_EXPIRED', 'Session expired. Please refresh your token.');
   }
 
-  if (err.type === 'entity.parse.failed') {
-    return sendError(400, 'MALFORMED_JSON', 'Malformed JSON in request body');
+  // 6. Security & Rate Limits
+  if (err.status === 429) {
+      logSecurity('Sentinel', `Rate limit exceeded for IP ${req.ip}`, { path: req.path })
+        .catch(() => null);
+      return sendError(429, 'TOO_MANY_REQUESTS', 'Rate limit exceeded. Please wait before retrying.');
   }
 
-  if (err.status && err.status < 500) {
-    return sendError(err.status, 'APP_ERROR', err.message);
-  }
-
-  console.error(`[${new Date().toISOString()}] Unhandled error [${traceId}]:`, err.message, '\n', err.stack);
+  // 7. Default Internal Server Error
+  const status = err.status || 500;
+  const message = (status === 500 && process.env.NODE_ENV === 'production') 
+    ? 'An unexpected system error occurred' 
+    : err.message;
   
-  persistLog({
-    service: req.moduleName || 'MonolithCore',
-    level: 'CRITICAL',
-    message: err.message,
-    stack: err.stack,
-    traceId,
-    context: {
-        method: req.method,
-        url: req.originalUrl,
-        statusCode: 500,
-        ip: req.ip
-    }
-  });
-
-  res.status(500).json({ 
+  res.status(status).json({
     error: {
-      code: 'INTERNAL_SERVER_ERROR',
-      message: 'An unexpected error occurred. Please try again later.',
+      code: err.code || 'INTERNAL_ERROR',
+      message,
       traceId
     }
   });
 };
 
 export const notFound = (req, res) => {
-  res.status(404).json({ 
+  res.status(404).json({
     error: {
       code: 'NOT_FOUND',
-      message: `Route ${req.method} ${req.originalUrl} not found`,
-      traceId: 'no-trace'
+      message: `The requested path '${req.path}' was not found on this server.`
     }
   });
 };

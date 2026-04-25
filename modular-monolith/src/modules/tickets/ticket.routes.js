@@ -1,21 +1,20 @@
 import express from 'express';
 import crypto from 'crypto';
-import axios from 'axios';
-import QRCode from 'qrcode';
 import Ticket from '../../shared/models/Ticket.js';
 import Event from '../../shared/models/Event.js';
 import User from '../../shared/models/User.js';
 import PriceLog from '../../shared/models/PriceLog.js';
 import { requireDB } from '../../shared/database.js';
 import authMiddleware, { requireRole } from '../../middleware/auth.js';
-import { cacheDel, cacheDelPattern } from '../../shared/cache.js';
+import { cacheGet, cacheSet, cacheDel, cacheDelPattern } from '../../shared/cache.js';
 import { broadcast, pushNotification } from '../notifications/notification.routes.js';
-import { verifyTemporalProof } from '../../shared/temporalAuthServer.js';
-import sharp from 'sharp';
-import { predictMLPrice, createBookingReference, createTicketQrToken } from '../../shared/utils.js';
+import { verifyTemporalProof, createBookingReference, createTicketQrToken } from '../../shared/utils.js';
+import { generateBrandedQR } from '../../shared/media.utils.js';
+import { allocateInventory, revertInventory } from './ticket.service.js';
+import { getCalculatedPrice, auditHumanity, notifyPurchaseToML } from '../ai/ai.service.js';
+import { honeypotGuard } from '../../middleware/sentinel.middleware.js';
 
 const router = express.Router();
-const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:5000';
 
 // ── Security State ─────────────────────────────────────────────────────────
 const sessionNonces = new Map(); // sessionId -> { nonce, ts }
@@ -26,49 +25,24 @@ const PRICE_REL_TOLERANCE = 0.02;
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
-
 function normalizeTicketToken(value) {
   let token = String(value || '').trim();
   if (!token) return '';
   try {
     const parsed = JSON.parse(token);
     if (parsed && typeof parsed === 'object') token = String(parsed.token || parsed.qrToken || parsed.ticketToken || token).trim();
-  } catch {}
+  } catch (_e) { /* ignore invalid JSON token */ }
   try {
     const url = new URL(token, 'https://scanner.local');
     const extracted = url.searchParams.get('token') || url.searchParams.get('qrToken') || url.searchParams.get('ticketToken');
     if (extracted) return extracted.trim();
-  } catch {}
+  } catch (_e) { /* ignore URL parse failures */ }
   if (token.includes('token=')) {
     const params = new URLSearchParams(token.startsWith('?') ? token.slice(1) : token);
     const extracted = params.get('token') || params.get('qrToken') || params.get('ticketToken');
     if (extracted) return extracted.trim();
   }
   return token.split('&')[0].trim();
-}
-// ML prediction uses centralized helper from shared utils
-
-async function generateBrandedQR(text, logoPath, position = 'center') {
-  try {
-    const qrBuffer = await QRCode.toBuffer(text, { errorCorrectionLevel: 'H', margin: 1, width: 600, color: { dark: '#000000', light: '#ffffff' } });
-    if (!logoPath) return `data:image/png;base64,${qrBuffer.toString('base64')}`;
-    const qrMetadata = await sharp(qrBuffer).metadata();
-    const logoSize = Math.floor(qrMetadata.width * 0.18);
-    const maskSize = Math.floor(logoSize * 1.15);
-    const maskBuffer = await sharp({ create: { width: maskSize, height: maskSize, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } } }).png().toBuffer();
-    const logoInnerBuffer = await sharp(logoPath).resize(logoSize, logoSize, { fit: 'contain' }).toBuffer();
-    const brandedLogoBuffer = await sharp(maskBuffer).composite([{ input: logoInnerBuffer, gravity: 'center' }]).toBuffer();
-    let compositeOptions = { input: brandedLogoBuffer };
-    switch (position) {
-      case 'top-left': compositeOptions.top = 20; compositeOptions.left = 20; break;
-      case 'top-right': compositeOptions.top = 20; compositeOptions.left = qrMetadata.width - logoSize - 20; break;
-      case 'bottom-left': compositeOptions.top = qrMetadata.height - logoSize - 20; compositeOptions.left = 20; break;
-      case 'bottom-right': compositeOptions.top = qrMetadata.height - logoSize - 20; compositeOptions.left = qrMetadata.width - logoSize - 20; break;
-      case 'center': default: compositeOptions.gravity = 'center';
-    }
-    const finalImageBuffer = await sharp(qrBuffer).composite([compositeOptions]).toBuffer();
-    return `data:image/png;base64,${finalImageBuffer.toString('base64')}`;
-  } catch (error) { return null; }
 }
 
 // ── Routes ──
@@ -80,23 +54,27 @@ router.get('/security/nonce', (req, res) => {
   res.json({ nonce, sessionId });
 });
 
-router.post('/', authMiddleware, requireDB, async (req, res, next) => {
+router.post('/', authMiddleware, requireDB, honeypotGuard, async (req, res, next) => {
   const { 
     eventId, categoryId, categoryName, quantity, selectedSeats = [], 
     customerName, customerEmail, pricePerTicket,
-    sessionId, humanityProof, temporalProof, cognitive_score,
-    username_real // 🍯 Honeypot field
+    sessionId, humanityProof, temporalProof, cognitive_score
   } = req.body;
-
-  // 0. 🛡️ BOT DETECTION (Honeypot Sentinel)
-  if (username_real) {
-    console.warn(`[Sentinel] 🚩 Bot purchase attempt blocked (Honeypot triggered).`);
-    return res.status(403).json({ error: 'SECURITY_PROTOCOL_BREACH', message: 'Automated activity detected.' });
-  }
 
   // 1. 🛡️ IRONCLAD SECURITY Speed-Bumps
   if (!humanityProof || !temporalProof || !verifyTemporalProof(humanityProof, temporalProof)) {
     return res.status(403).json({ error: 'INVALID_TEMPORAL_PROOF', message: 'Temporal security check failed.' });
+  }
+
+  // 1.5 🧠 BEHAVIORAL NEURAL AUDITOR (Backend Validation)
+  const behavioralMetadata = req.body.behavioralMetadata || {};
+  const isHuman = await auditHumanity(req.user.id, humanityProof, behavioralMetadata);
+  
+  if (!isHuman) {
+    return res.status(403).json({ 
+      error: 'BEHAVIORAL_ANOMALY', 
+      message: 'Inconsistent behavioral signature detected. Please interact more naturally.' 
+    });
   }
 
   if (!sessionId || !sessionNonces.has(sessionId)) {
@@ -111,9 +89,9 @@ router.post('/', authMiddleware, requireDB, async (req, res, next) => {
     const cat = (event.ticketCategories || []).find(c => (categoryId && String(c._id) === String(categoryId)) || c.name === categoryName) || null;
     const ticketCount = Math.max(1, Number(quantity) || (Array.isArray(selectedSeats) ? selectedSeats.length : 1));
     
-    // 2. ⚖️ PRICE VALIDATION (Neural Auditor)
+    // 2. ⚖️ PRICE VALIDATION (Neural Auditor via AI Service)
     const score = typeof cognitive_score === 'number' ? cognitive_score : 1.0;
-    const serverPrice = await predictMLPrice(cat, event, score);
+    const serverPrice = await getCalculatedPrice(cat, event, score);
     const clientPrice = Number(pricePerTicket) || 0;
 
     const absDiff = Math.abs(clientPrice - serverPrice);
@@ -142,24 +120,9 @@ router.post('/', authMiddleware, requireDB, async (req, res, next) => {
       userId: req.user.id
     }).catch(() => null);
 
-    // 4. 📦 INVENTORY TRANSACTION
-    let filter = { _id: event._id, status: { $ne: 'cancelled' } };
-    let update = { $inc: { availableTickets: -ticketCount, ticketsSold: ticketCount } };
-
-    if (cat) {
-      filter['ticketCategories._id'] = cat._id;
-      filter['ticketCategories.availableSeats'] = { $gte: ticketCount };
-      update.$inc['ticketCategories.$.availableSeats'] = -ticketCount;
-      if (selectedSeats.length > 0) update.$addToSet = { 'ticketCategories.$.bookedSeats': { $each: selectedSeats } };
-    } else {
-      filter.availableTickets = { $gte: ticketCount };
-    }
-
-    const updatedEvent = await Event.findOneAndUpdate(filter, update, { new: true });
+    // 4. 📦 INVENTORY TRANSACTION (via Ticket Service)
+    const updatedEvent = await allocateInventory(event._id, cat?._id, ticketCount, selectedSeats);
     if (!updatedEvent) return res.status(400).json({ error: 'Tickets sold out or seats unavailable' });
-
-    await cacheDel(`event:${event._id}`);
-    await cacheDelPattern('events:list:*');
 
     const ticketsToCreate = [];
     const finalName = customerName || req.user.name || 'Guest';
@@ -168,15 +131,23 @@ router.post('/', authMiddleware, requireDB, async (req, res, next) => {
 
     for (let i = 0; i < ticketCount; i++) {
       const qrToken = createTicketQrToken();
+      const qrData = JSON.stringify({ token: qrToken, bookingRef });
+      const qrCodeImage = await generateBrandedQR(qrData, null); 
+
       ticketsToCreate.push({
         eventId, userId: req.user.id, categoryId: cat?._id, categoryName: cat?.name || categoryName || 'standard',
         seatNumber: selectedSeats[i], customerName: finalName, customerEmail: finalEmail, quantity: 1,
-        pricePerTicket: finalPrice, totalAmount: finalPrice, status: 'pending_payment', qrToken,
+        pricePerTicket: finalPrice, totalAmount: finalPrice, status: 'pending_payment', 
+        qrToken, qrCode: qrCodeImage,
         bookingReference: bookingRef
       });
     }
 
     const tickets = await Ticket.insertMany(ticketsToCreate);
+
+    // 5. Asynchronous ML Notification
+    notifyPurchaseToML(eventId, tickets.length);
+
     broadcast({ type: 'ticket_sold', eventId, categoryName: cat?.name || 'standard', remainingSeats: updatedEvent.availableTickets });
     res.status(201).json({ success: true, tickets });
   } catch (err) { next(err); }
@@ -184,16 +155,27 @@ router.post('/', authMiddleware, requireDB, async (req, res, next) => {
 
 router.get('/', authMiddleware, requireDB, async (req, res, next) => {
   try {
+    const cacheKey = `user:tickets:${req.user.id}`;
+    const cached = await cacheGet(cacheKey);
+    if (cached) return res.json(cached);
+
     const tickets = await Ticket.find({ userId: req.user.id }).populate('eventId', 'name venue startDate').sort({ purchaseDate: -1 });
+    await cacheSet(cacheKey, tickets, 60); // 1 min cache
     res.json(tickets);
   } catch (err) { next(err); }
 });
 
 router.get('/:id', authMiddleware, requireDB, async (req, res, next) => {
   try {
+    const cacheKey = `ticket:${req.params.id}`;
+    const cached = await cacheGet(cacheKey);
+    if (cached && (String(cached.userId) === req.user.id || req.user.role === 'admin')) return res.json(cached);
+
     const ticket = await Ticket.findById(req.params.id).populate('eventId', 'name venue startDate');
     if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
     if (String(ticket.userId) !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ error: 'Unauthorized' });
+    
+    await cacheSet(cacheKey, ticket, 600); // 10 min cache
     res.json(ticket);
   } catch (err) { next(err); }
 });
@@ -241,7 +223,7 @@ router.post('/verify', authMiddleware, requireDB, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.post('/generate', authMiddleware, async (req, res) => {
+router.post('/generate', authMiddleware, requireRole('admin'), async (req, res) => {
   const { text, logoPath, position } = req.body;
   if (!text) return res.status(400).json({ error: 'Text is required' });
   try {
@@ -249,55 +231,6 @@ router.post('/generate', authMiddleware, async (req, res) => {
     res.json({ qrCode });
   } catch { res.status(500).json({ error: 'Failed to generate QR' }); }
 });
-
-// ── Reclamation Sentinel (Self-Healing Inventory) ──────────────────────────
-// Periodically purges tickets stuck in 'pending_payment' and returns inventory.
-setInterval(async () => {
-  try {
-    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
-    const staleTickets = await Ticket.find({
-      status: 'pending_payment',
-      purchaseDate: { $lt: tenMinutesAgo }
-    });
-
-    if (staleTickets.length === 0) return;
-
-    console.log(`[Sentinel] 🧹 Reclaiming ${staleTickets.length} abandoned tickets...`);
-
-    // Group by event and category to minimize DB hits
-    const groups = staleTickets.reduce((acc, t) => {
-      const key = `${t.eventId}_${t.categoryName}`;
-      if (!acc[key]) acc[key] = { eventId: t.eventId, categoryName: t.categoryName, qty: 0, seats: [] };
-      acc[key].qty += 1;
-      if (t.seatNumber) acc[key].seats.push(t.seatNumber);
-      return acc;
-    }, {});
-
-    for (const group of Object.values(groups)) {
-      const event = await Event.findById(group.eventId);
-      if (!event) continue;
-
-      const cat = event.ticketCategories.find(c => c.name === group.categoryName);
-      if (cat) {
-        cat.availableSeats = Math.min(cat.seats, (cat.availableSeats || 0) + group.qty);
-        if (group.seats.length > 0) {
-          cat.bookedSeats = (cat.bookedSeats || []).filter(s => !group.seats.includes(s));
-        }
-      } else {
-        event.availableTickets = Math.min(event.capacity, (event.availableTickets || 0) + group.qty);
-      }
-
-      event.ticketsSold = Math.max(0, (event.ticketsSold || 0) - group.qty);
-      await event.save();
-      await cacheDel(`event:${event._id}`);
-    }
-
-    await Ticket.deleteMany({ _id: { $in: staleTickets.map(t => t._id) } });
-    await cacheDelPattern('events:list:*');
-  } catch (err) {
-    console.error('[Sentinel] 🚩 Reclamation failed:', err.message);
-  }
-}, 300000); // Run every 5 minutes
 
 // ── Security Cleanup ──
 setInterval(() => {

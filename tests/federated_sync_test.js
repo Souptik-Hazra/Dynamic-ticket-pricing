@@ -1,7 +1,10 @@
 import axios from 'axios';
 
-const ORGANIZER_SERVICE_URL = 'http://localhost:4013';
-const AUTH_SERVICE_URL = 'http://localhost:4001'; // Needed to get a JWT token if we enforce auth
+const ORGANIZER_SERVICE_URL = 'http://localhost:4000';
+const AUTH_SERVICE_URL = 'http://localhost:4000'; // Monolith provides auth endpoints at /api/auth
+
+// Present a browser-like User-Agent so the BotShield doesn't block our test client
+axios.defaults.headers.common['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)';
 
 // Helper to generate fake neural weights
 function generateFakeWeights(isAnomaly = false) {
@@ -35,7 +38,7 @@ async function runFederatedTest() {
     };
     
     try {
-      const res = await axios.post(`${ORGANIZER_SERVICE_URL}/api/security/federated-sync`, payload);
+      const res = await axios.post(`${ORGANIZER_SERVICE_URL}/api/ai/fl/sync`, payload);
       console.log(`✅ Good Client ${i} Sync:`, res.data);
     } catch (err) {
       console.error(`❌ Good Client ${i} Sync failed:`, err.response?.data || err.message);
@@ -50,7 +53,7 @@ async function runFederatedTest() {
   };
   
   try {
-    const res = await axios.post(`${ORGANIZER_SERVICE_URL}/api/security/federated-sync`, botPayload);
+    const res = await axios.post(`${ORGANIZER_SERVICE_URL}/api/ai/fl/sync`, botPayload);
     console.log(`❌ Bot Sync succeeded unexpectedly:`, res.data);
   } catch (err) {
     console.log(`🛡️ Bot Sync correctly rejected (Status ${err.response?.status}):`, err.response?.data);
@@ -58,6 +61,8 @@ async function runFederatedTest() {
 
   // 3. Trigger Aggregation
   console.log("🔄 Triggering Aggregation Round...");
+  // Clear previous federated logs to avoid unique-key conflicts from prior runs
+  try { await axios.post(`${ORGANIZER_SERVICE_URL}/api/ai/fl/clear`, {}, { headers: axios.defaults.headers.common }); } catch (e) { /* ignore */ }
   
   // Note: We need a JWT token for /api/federated/aggregate because it has jwtMiddleware.
   // For testing without the auth service running complexly, we can either:
@@ -90,7 +95,7 @@ async function runFederatedTest() {
 
   try {
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
-    const aggRes = await axios.post(`${ORGANIZER_SERVICE_URL}/api/federated/aggregate`, {}, { headers });
+    const aggRes = await axios.post(`${ORGANIZER_SERVICE_URL}/api/ai/fl/aggregate`, {}, { headers });
     console.log("✅ Aggregation Successful! Round Log:");
     console.log(JSON.stringify(aggRes.data.roundLog, null, 2));
     console.log("New Model Version:", aggRes.data.modelVersion);
