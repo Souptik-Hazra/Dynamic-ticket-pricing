@@ -101,7 +101,9 @@ export const getWsUrl = () => {
   // This avoids attempting to open wss://localhost:4010 directly from an
   // HTTPS page which would fail if the backend doesn't support TLS.
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  return `${protocol}//${window.location.host}/api/ws`;
+  const url = `${protocol}//${window.location.host}/api/ws`;
+  try { console.debug('[getWsUrl] websocket URL ->', url); } catch {};
+  return url;
 };
 
 export default API_URL;

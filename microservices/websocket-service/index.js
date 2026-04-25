@@ -10,7 +10,7 @@ import jwt from 'jsonwebtoken';
 dotenv.config();
 
 const app = express();
-app.use(helmet());
+app.use(helmet({ contentSecurityPolicy: { directives: { defaultSrc: ["'self'"], scriptSrc: ["'self'", "'unsafe-inline'"], styleSrc: ["'self'", "'unsafe-inline'"], imgSrc: ["'self'", "data:"], connectSrc: ["'self'", "ws:", "wss:", "http://localhost:5173"], fontSrc: ["'self'", "https:"] } }, crossOriginEmbedderPolicy: false }));
 app.use(cors({
   origin: process.env.ALLOWED_ORIGINS === '*' ? '*' : (process.env.ALLOWED_ORIGINS || '').split(','),
   credentials: true,
@@ -53,7 +53,8 @@ function heartbeat() {
   this.isAlive = true;
 }
 
-wss.on('connection', (ws, _req) => {
+wss.on('connection', (ws, req) => {
+  try { console.log('[WebSocketService] connection from', req.headers.host || req.socket.remoteAddress, 'url', req.url); } catch {}
   ws.isAlive = true;
   ws.on('pong', heartbeat);
 

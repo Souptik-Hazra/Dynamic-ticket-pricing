@@ -51,7 +51,17 @@ if (cluster.isPrimary) {
 
   app.use(compression()); // Compress responses to save bandwidth
   app.use(helmet({
-    crossOriginResourcePolicy: { policy: "cross-origin" } // Allow cross-origin requests
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", 'data:', 'https:'],
+        connectSrc: ["'self'", 'ws:', 'wss:', 'http://localhost:5173', 'https://localhost:5173'],
+        fontSrc: ["'self'", 'https:'],
+      },
+    },
   }));
 
   // 1. Global Rate limiting — prevents brute force/DDoS
@@ -208,8 +218,16 @@ if (cluster.isPrimary) {
   // ── WebSocket Upgrade Handler ─────────────────────────────────────────────
   // Manually forward 'upgrade' events to the WebSocket proxy
   server.on('upgrade', (req, socket, head) => {
-    if (req.url?.startsWith('/api/ws')) {
-      wsProxy.upgrade(req, socket, head);
-    }
-  });
+      try {
+        console.log('[APIGateway] upgrade event:', { url: req.url, headers: { upgrade: req.headers.upgrade, host: req.headers.host } });
+      } catch (e) {}
+      if (req.url?.startsWith('/api/ws')) {
+        try {
+          wsProxy.upgrade(req, socket, head);
+        } catch (err) {
+          console.error('[APIGateway] wsProxy.upgrade failed:', err && err.message);
+          try { socket.destroy(); } catch {};
+        }
+      }
+    });
 }

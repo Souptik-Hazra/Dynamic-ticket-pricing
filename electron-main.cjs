@@ -1,4 +1,3 @@
-
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
 
@@ -14,22 +13,14 @@ function createWindow () {
   win.loadFile(path.join(__dirname, 'dist/index.html'));
 }
 
-
-
-
 app.whenReady().then(() => {
   createWindow();
 });
-
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-
-
-
-// Backend auto-start logic
 const { spawn } = require('child_process');
 const http = require('http');
 let backendStarted = false;
@@ -84,7 +75,3 @@ app.whenReady = () => {
     });
   });
 };
-
-// Backend is not killed on Electron exit
-
-// No backend or ML model cleanup needed

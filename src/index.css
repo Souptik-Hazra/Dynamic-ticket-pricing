@@ -255,6 +255,13 @@ body {
   backdrop-filter: var(--blur-strong);
   border: 1px solid var(--border-dim);
   border-radius: var(--radius-md);
+  /* Ensure panels used as toolbars/filters maintain readable height */
+  padding: 0.5rem 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  /* Make panels more robust against collapsing */
+  min-height: 44px;
 }
 
 /* Buttons */
@@ -350,6 +357,7 @@ body {
   font-family: inherit;
   font-size: 1rem;
   transition: all var(--transition-fast);
+  min-height: 40px;
 }
 
 .cyber-input:focus {
@@ -371,6 +379,19 @@ body {
   background: var(--bg-surface);
   border: 1px solid var(--border-dim);
   border-radius: var(--radius-md);
+  /* Ensure table areas don't collapse to a very thin line when empty or during loading */
+  min-height: 180px;
+}
+
+/* TEMPORARY DEBUG HELPERS - remove after inspection */
+.glass-panel {
+  outline: 2px dashed rgba(255, 255, 255, 0.03);
+}
+.cyber-input {
+  outline: 1px dashed rgba(79, 172, 254, 0.06);
+}
+.cyber-table-container {
+  outline: 1px dashed rgba(102, 126, 234, 0.04);
 }
 
 .cyber-table {

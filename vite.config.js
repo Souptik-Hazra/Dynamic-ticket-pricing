@@ -15,8 +15,9 @@ export default defineConfig({
     strictPort: true, // Fail if port is taken, don't increment
     proxy: {
       // Ensure websocket path is proxied with Upgrade support before the generic /api proxy
+      // In dev, proxy websocket connections directly to the websocket service
       '/api/ws': {
-        target: 'http://localhost:3001',
+        target: process.env.VITE_WS_PROXY_TARGET || 'http://localhost:4010',
         ws: true,
         changeOrigin: true,
         secure: false,
