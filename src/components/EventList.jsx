@@ -147,7 +147,7 @@ function EventList({ events, onSelectEvent, onRefresh }) {
                      !isPurchasable(event) ? 'SOLD OUT' : 'INITIALIZE BOOKING'}
                   </button>
                   
-                  <AutoPriceUpdater eventId={event._id} onPriceUpdate={onRefresh} compact={true} />
+                  <AutoPriceUpdater eventId={event._id} compact={true} />
                 </div>
               </div>
             </div>

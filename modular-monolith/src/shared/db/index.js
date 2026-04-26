@@ -6,8 +6,17 @@ let neo4jDriver;
 
 export const connectMongoDB = async () => {
   try {
-    await mongoose.connect(config.mongodb.uri, config.mongodb.options);
-    console.log('✅ [Database] MongoDB connected');
+    const options = {
+      ...config.mongodb.options,
+      maxPoolSize: 50,
+      minPoolSize: 10,
+      socketTimeoutMS: 45000,
+      family: 4,
+      // Diamond Step: Read Preference for Analytics (Phase 15)
+      readPreference: 'secondaryPreferred' 
+    };
+    await mongoose.connect(config.mongodb.uri, options);
+    console.log('✅ [Database] MongoDB connected (Optimized Pool)');
   } catch (err) {
     console.error('❌ [Database] MongoDB connection failed:', err.message);
     throw err;

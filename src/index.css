@@ -627,7 +627,9 @@ body {
   border: 1px solid var(--border-dim);
   border-radius: var(--radius-lg);
   padding: 0.4rem 0.4rem 0.4rem 1.2rem;
+  /* allow wider search bar while still constraining on very large screens */
   max-width: 800px;
+  width: 100%;
   margin: 2rem auto 0;
   transition: all var(--transition-luxe);
   box-shadow: var(--shadow-base);
@@ -659,7 +661,7 @@ body {
 }
 
 .hero-search .cyber-btn {
-  padding: 0.6rem 2rem;
+  padding: 0.6rem 1.6rem;
   border-radius: var(--radius-md);
   font-weight: 800;
   font-size: 0.8rem;

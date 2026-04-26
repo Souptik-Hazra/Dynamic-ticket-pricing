@@ -7,6 +7,7 @@ import ticketRepo from '../../modules/tickets/repository/ticket.repo.js';
 import catalogRepo from '../../modules/catalog/repository/catalog.repo.js';
 import aiService from '../../modules/ai/service/ai.service.js';
 import ticketService from '../../modules/tickets/service/ticket.service.js';
+import intelligenceService from '../../modules/analytics/service/intelligence.service.js';
 
 /**
  * Background Automation Service
@@ -97,6 +98,17 @@ export const initAutomation = () => {
       console.log(`📊 [Automation] Daily sales summary generated.`);
     } catch (err) {
       console.error('❌ [Automation] Daily Report Failed:', err.message);
+    }
+  });
+
+  // 6. Intelligence Aggregation (Hourly)
+  cron.schedule('0 * * * *', async () => {
+    try {
+      console.log('🧠 [Automation] Running Intelligence Aggregation...');
+      await intelligenceService.aggregateDailyRevenue();
+      await intelligenceService.aggregateEventOccupancy();
+    } catch (err) {
+      console.error('❌ [Automation] Intelligence Aggregation Failed:', err.message);
     }
   });
 

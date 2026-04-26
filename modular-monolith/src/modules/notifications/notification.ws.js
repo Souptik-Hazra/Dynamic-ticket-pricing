@@ -1,4 +1,6 @@
 import { wsSentinel, verifyWsToken } from '../../middleware/wsSentinel.js';
+import { broadcastGlobal, broadcastToRoomGlobal } from '../../shared/utils/broadcaster.js';
+import { getRedisClient } from '../../shared/utils/cache.js';
 
 /**
  * WebSocket Manager for Notifications
@@ -11,34 +13,39 @@ export const clients = new Map(); // userId -> Set<ws>
 export const rooms = new Map();   // roomId -> Set<ws>
 
 export const broadcast = (payload) => {
-  const msg = JSON.stringify({ ...payload, ts: Date.now() });
-  
-  for (const [uid, set] of clients.entries()) {
-    set.forEach(ws => deliverMessage(ws, msg));
-  }
+  broadcastGlobal(payload);
 };
 
 export const broadcastToRoom = (roomId, payload) => {
-  const msg = JSON.stringify({ ...payload, ts: Date.now() });
-  const room = rooms.get(String(roomId));
-  
-  if (room) {
-    room.forEach(ws => deliverMessage(ws, msg));
-  }
+  broadcastToRoomGlobal(roomId, payload);
 };
 
 /**
  * 💓 Live Pulse Broadcast (Phase 6)
  * Periodically sends the "Viewing" count to all users in a room.
  */
-export const broadcastLivePulse = () => {
+export const broadcastLivePulse = async () => {
+  const redis = getRedisClient();
+  if (!redis) return;
+
   for (const [roomId, roomClients] of rooms.entries()) {
-    const viewerCount = roomClients.size;
-    if (viewerCount > 0) {
+    const localCount = roomClients.size;
+    const workerId = process.pid;
+
+    // 🕸️ Expert Step: Cluster-Aware Pulse (Phase 16)
+    // Update this worker's count for this room in Redis
+    await redis.hset(`rooms:viewer_counts:${roomId}`, workerId, localCount);
+    await redis.expire(`rooms:viewer_counts:${roomId}`, 60);
+
+    // Fetch total count across all workers
+    const allCounts = await redis.hvals(`rooms:viewer_counts:${roomId}`);
+    const totalCount = allCounts.reduce((sum, c) => sum + parseInt(c || 0), 0);
+
+    if (totalCount > 0) {
       broadcastToRoom(roomId, { 
         type: 'live_pulse', 
         roomId, 
-        viewerCount: viewerCount + Math.floor(Math.random() * 5) // Slight random fluctuation for 'liveness'
+        viewerCount: totalCount + Math.floor(Math.random() * 3) 
       });
     }
   }

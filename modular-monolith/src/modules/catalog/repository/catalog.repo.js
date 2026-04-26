@@ -1,14 +1,22 @@
 import Event from '../model/event.model.js';
 
-export const listPublicEvents = async () => {
-  return await Event.find({ status: { $ne: 'cancelled' } })
+export const listPublicEvents = async ({ page = 1, limit = 20, cursor = null } = {}) => {
+  const filter = { status: { $ne: 'cancelled' } };
+  if (cursor) {
+    filter._id = { $gt: cursor };
+  }
+
+  const skip = Math.max(0, (page - 1)) * Number(limit || 20);
+  return await Event.find(filter)
+    .select('-seatMap -bookedSeats -blockedSeats') // Project out heavy fields
     .sort({ startDate: 1 })
-    .limit(50);
+    .skip(skip)
+    .limit(Number(limit || 20))
+    .lean(); // Faster, plain JS objects
 };
 
 export const findById = async (id) => {
-  // Overlord Step: DB Resilience Sentinel (Phase 12)
-  const query = Event.findById(id);
+  const query = Event.findById(id).lean(); // Lean by default for single lookups
   const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('DB_QUERY_TIMEOUT')), 2000));
   return await Promise.race([query, timeout]).catch(err => {
     if (err.message === 'DB_QUERY_TIMEOUT') console.warn(`🚩 [SRE] Query timeout on Event:${id}`);
@@ -16,11 +24,17 @@ export const findById = async (id) => {
   });
 };
 
-export const findByCategory = async (category) => {
+export const findByCategory = async (category, { page = 1, limit = 20 } = {}) => {
+  const skip = Math.max(0, (page - 1)) * Number(limit || 20);
   return await Event.find({ 
     category: category.toLowerCase(), 
     status: 'upcoming' 
-  }).sort({ startDate: 1 });
+  })
+  .select('-seatMap -bookedSeats -blockedSeats')
+  .sort({ startDate: 1 })
+  .skip(skip)
+  .limit(Number(limit || 20))
+  .lean();
 };
 
 export const countEvents = async (filter) => {

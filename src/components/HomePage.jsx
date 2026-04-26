@@ -2,7 +2,10 @@ import { useState } from 'react';
 import { useEvents } from '../hooks/useEvents';
 
 const HomePage = ({ onNavigate }) => {
-  const { data: events = [], isLoading: loading } = useEvents();
+  const [page] = useState(1);
+  const [limit] = useState(6);
+  const { data: eventsData = { items: [] }, isLoading: loading } = useEvents(page, limit);
+  const events = eventsData.items || [];
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
 
@@ -135,6 +138,84 @@ const HomePage = ({ onNavigate }) => {
         </div>
       </section>
 
+      {/* Creative Footer Section */}
+      <section className="creative-footer cyber-section" style={{ borderTop: '1px solid var(--border-dim)', background: 'rgba(5, 9, 20, 0.4)', marginTop: '4rem' }}>
+        <div className="cyber-container flex-column flex-center">
+          <div className="flex-column flex-center" style={{ marginBottom: '3rem', textAlign: 'center' }}>
+            <h2 className="title-sub text-gradient" style={{ fontWeight: '900', letterSpacing: '2px' }}>GLOBAL EVENT PULSE</h2>
+            <p className="text-dim" style={{ maxWidth: '600px', fontSize: '0.9rem' }}>
+              Our neural network is currently scanning 1,429 sectors across the globe to bring you the most exclusive and fairly priced experiences.
+            </p>
+          </div>
+
+          <div style={{ position: 'relative', width: '100%', maxWidth: '800px', height: '300px', background: 'radial-gradient(circle at 50% 50%, rgba(79, 172, 254, 0.05) 0%, transparent 70%)', borderRadius: '40px', padding: '20px' }}>
+            <svg width="100%" height="100%" viewBox="0 0 800 300">
+              <defs>
+                <filter id="glow">
+                  <feGaussianBlur stdDeviation="2.5" result="blur" />
+                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                </filter>
+                <linearGradient id="line-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="var(--bg-accent)" />
+                  <stop offset="50%" stopColor="var(--accent-cyan)" />
+                  <stop offset="100%" stopColor="var(--bg-accent)" />
+                </linearGradient>
+              </defs>
+              
+              {/* Connection Lines */}
+              <g stroke="var(--bg-accent)" strokeWidth="1" opacity="0.4">
+                <line x1="100" y1="50" x2="250" y2="150" />
+                <line x1="250" y1="150" x2="150" y2="250" />
+                <line x1="150" y1="250" x2="400" y2="100" />
+                <line x1="400" y1="100" x2="600" y2="200" />
+                <line x1="600" y1="200" x2="700" y2="50" />
+                <line x1="700" y1="50" x2="500" y2="150" />
+                <line x1="500" y1="150" x2="400" y2="100" />
+              </g>
+
+              {/* Pulsing Nodes */}
+              {[
+                { x: 100, y: 50, label: 'LONDON' },
+                { x: 250, y: 150, label: 'TOKYO' },
+                { x: 150, y: 250, label: 'SYDNEY' },
+                { x: 400, y: 100, label: 'NEW YORK' },
+                { x: 600, y: 200, label: 'PARIS' },
+                { x: 700, y: 50, label: 'BERLIN' },
+                { x: 500, y: 150, label: 'DUBAI' },
+              ].map((node, i) => (
+                <g key={i}>
+                  <circle cx={node.x} cy={node.y} r="5" fill="var(--accent-cyan)" filter="url(#glow)">
+                    <animate attributeName="r" values="4;7;4" dur={`${2 + i % 3}s`} repeatCount="indefinite" />
+                    <animate attributeName="opacity" values="0.5;1;0.5" dur={`${2 + i % 3}s`} repeatCount="indefinite" />
+                  </circle>
+                  <circle cx={node.x} cy={node.y} r="12" fill="none" stroke="var(--accent-cyan)" strokeWidth="0.5" opacity="0.3">
+                    <animate attributeName="r" values="8;20;8" dur={`${3 + i % 2}s`} repeatCount="indefinite" />
+                    <animate attributeName="opacity" values="0.3;0;0.3" dur={`${3 + i % 2}s`} repeatCount="indefinite" />
+                  </circle>
+                  <text x={node.x + 15} y={node.y + 5} fill="var(--text-dim)" fontSize="9" style={{ fontWeight: '900', letterSpacing: '2px', textTransform: 'uppercase' }}>
+                    {node.label}
+                  </text>
+                </g>
+              ))}
+            </svg>
+          </div>
+
+          <div className="flex-center" style={{ gap: '5rem', marginTop: '4rem', flexWrap: 'wrap' }}>
+            <div className="flex-column flex-center">
+              <span className="title-main text-gradient" style={{ fontSize: '2.5rem', marginBottom: '0.2rem', margin: 0 }}>14K+</span>
+              <span className="cyber-label" style={{ fontSize: '0.75rem', letterSpacing: '2px' }}>TICKETS SECURED</span>
+            </div>
+            <div className="flex-column flex-center">
+              <span className="title-main text-gradient" style={{ fontSize: '2.5rem', marginBottom: '0.2rem', margin: 0 }}>0.02S</span>
+              <span className="cyber-label" style={{ fontSize: '0.75rem', letterSpacing: '2px' }}>AI PRICE SYNC</span>
+            </div>
+            <div className="flex-column flex-center">
+              <span className="title-main text-gradient" style={{ fontSize: '2.5rem', marginBottom: '0.2rem', margin: 0 }}>99.9%</span>
+              <span className="cyber-label" style={{ fontSize: '0.75rem', letterSpacing: '2px' }}>NETWORK UPTIME</span>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   );
 };

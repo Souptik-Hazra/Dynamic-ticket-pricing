@@ -16,6 +16,8 @@ import { initGraphSync } from './src/modules/analytics/graph.sync.js';
 import { initStatsSync } from './src/modules/admin/service/stats.service.js';
 import { initMLScheduler } from './src/modules/ai/service/ml.scheduler.js';
 import { initAutomation } from './src/shared/utils/automation.js';
+import { initBigDataPipeline } from './src/shared/utils/bigData.service.js';
+import { initBroadcaster } from './src/shared/utils/broadcaster.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -73,10 +75,30 @@ if (cluster.isPrimary && (process.env.NODE_ENV === 'production' || process.env.C
   initGraphSync();
   initStatsSync();
   initMLScheduler();
+  initBigDataPipeline();
+  initBroadcaster();
 
-  // ── Database Initialization ──
-  connectMongoDB();
-  connectNeo4j();
+  // ── Database Initialization & Startup ──
+  const start = async () => {
+    try {
+      await connectMongoDB();
+      connectNeo4j();
+
+      const PORT = process.env.PORT || 4000;
+      httpServer.listen(PORT, () => console.log(`🚀 Worker ${process.pid} | Monolith running on port ${PORT}`))
+        .on('error', (err) => {
+          if (err.code === 'EADDRINUSE') {
+            console.error(`❌ PORT ${PORT} IS BUSY. Change it in .env or kill the process using it.`);
+            process.exit(1);
+          }
+        });
+    } catch (err) {
+      console.error(`❌ Worker ${process.pid} failed to start:`, err.message);
+      process.exit(1);
+    }
+  };
+
+  start();
 
   // ── Systems Sentinels ──
   setInterval(() => {
@@ -87,16 +109,6 @@ if (cluster.isPrimary && (process.env.NODE_ENV === 'production' || process.env.C
       process.exit(1);
     }
   }, 30000);
-
-  const PORT = process.env.PORT || 4000;
-  
-  httpServer.listen(PORT, () => console.log(`🚀 Worker ${process.pid} | Monolith running on port ${PORT}`))
-    .on('error', (err) => {
-      if (err.code === 'EADDRINUSE') {
-        console.error(`❌ PORT ${PORT} IS BUSY. Change it in .env or kill the process using it.`);
-        process.exit(1);
-      }
-    });
 
   // ── Graceful Shutdown ──
   const shutdown = () => {
