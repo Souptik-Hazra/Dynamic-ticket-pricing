@@ -86,9 +86,12 @@ const config = {
   // Security
   security: {
     allowedOrigins: process.env.ALLOWED_ORIGINS || '*',
+    frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
+    trustProxy: process.env.TRUST_PROXY || '1',
     rateLimitAuth: parseInt(process.env.RATE_LIMIT_AUTH || '20', 10),
     rateLimitPurchase: parseInt(process.env.RATE_LIMIT_PURCHASE || '10', 10),
     rateLimitGeneral: parseInt(process.env.RATE_LIMIT_GENERAL || '120', 10)
+
   }
 };
 

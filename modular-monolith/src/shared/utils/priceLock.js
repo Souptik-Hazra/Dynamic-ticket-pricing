@@ -14,14 +14,24 @@ const LOCK_DURATION = 300; // 5 minutes
  */
 export const createPriceLock = async (userId, eventId, categoryId, price) => {
   const lockKey = `pricelock:${userId}:${eventId}:${categoryId || 'base'}`;
+  
+  // OS Concept: Atomic Guard
+  // Only create a new lock if one doesn't exist or has expired.
+  // This prevents multiple "price prediction" requests from bouncing the price.
   const lockData = {
     price,
     expiresAt: Date.now() + (LOCK_DURATION * 1000)
   };
 
-  await cacheSet(lockKey, lockData, LOCK_DURATION);
-  return lockData;
+  const success = await cacheSetNX(lockKey, lockData, LOCK_DURATION);
+  if (success) {
+    return lockData;
+  }
+
+  // If set failed, return the existing lock
+  return await cacheGet(lockKey);
 };
+
 
 /**
  * Retrieve and verify a price lock

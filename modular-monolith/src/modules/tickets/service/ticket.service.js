@@ -1,12 +1,17 @@
 import bus from '../../../shared/utils/bus.js';
-import { cacheDel, cacheDelPattern } from '../../../shared/utils/cache.js';
+import { cacheDel, cacheDelPattern, cacheSetNX } from '../../../shared/utils/cache.js';
+
 import { createBookingReference, createTicketQrToken, verifyTemporalProof } from '../../../shared/utils/helpers.js';
+import { writeDurableLog } from '../../../shared/utils/durability.js';
 import { generateBrandedQR } from '../../../shared/utils/media.js';
+
 import ticketRepo from '../repository/ticket.repo.js';
 
 // Cross-module service calls
 import aiService from '../../ai/service/ai.service.js';
 import catalogRepo from '../../catalog/repository/catalog.repo.js';
+import { withTransaction } from '../../../shared/db/index.js';
+
 
 const PRICE_ABS_TOLERANCE = 1.0; 
 const PRICE_REL_TOLERANCE = 0.02;
@@ -26,12 +31,22 @@ export async function purchaseTickets(userId, data, userDetails) {
   const { 
     eventId, categoryId, categoryName, quantity, selectedSeats = [], 
     customerName, customerEmail, pricePerTicket,
-    humanityProof, temporalProof, cognitive_score, behavioralMetadata
+    humanityProof, temporalProof, cognitive_score, behavioralMetadata,
+    idempotencyKey
   } = data;
 
-  if (!humanityProof || !temporalProof || !verifyTemporalProof(humanityProof, temporalProof)) {
+  // OS Concept: Idempotency (Atomic Set-if-Not-Exists)
+  // Prevents double-purchase if a user clicks twice or a network retry occurs.
+  const iKey = idempotencyKey || `idem:${userId}:${eventId}:${quantity}:${JSON.stringify(selectedSeats)}`;
+  const isNewRequest = await cacheSetNX(iKey, { status: 'processing', timestamp: Date.now() }, 300);
+  if (!isNewRequest) throw new Error('DUPLICATE_REQUEST_IN_PROGRESS');
+
+
+
+  if (!humanityProof || !temporalProof || !(await verifyTemporalProof(humanityProof, temporalProof))) {
     throw new Error('INVALID_TEMPORAL_PROOF');
   }
+
 
   const isHuman = await aiService.auditHumanity(userId, humanityProof, behavioralMetadata || {});
   if (!isHuman) throw new Error('BEHAVIORAL_ANOMALY');
@@ -69,35 +84,44 @@ export async function purchaseTickets(userId, data, userDetails) {
     eventId, categoryId, price: finalPricePerTicket, qty: ticketCount, hash: temporalProof, humanitySignature: humanityProof
   }, userId).catch(() => null);
 
-  const updatedEvent = await allocateInventory(event._id, cat?._id, ticketCount, selectedSeats);
-  if (!updatedEvent) throw new Error('INVENTORY_UNAVAILABLE_OR_SEATS_TAKEN');
+  return await withTransaction(async (session) => {
+    const updatedEvent = await allocateInventory(event._id, cat?._id, ticketCount, selectedSeats, null, session);
+    if (!updatedEvent) throw new Error('INVENTORY_UNAVAILABLE_OR_SEATS_TAKEN');
 
-  const ticketsToCreate = [];
-  const finalName = customerName || userDetails.name || 'Guest';
-  const finalEmail = customerEmail || userDetails.email;
-  const bookingRef = createBookingReference();
+    const ticketsToCreate = [];
+    const finalName = customerName || userDetails.name || 'Guest';
+    const finalEmail = customerEmail || userDetails.email;
+    const bookingRef = createBookingReference();
 
-  for (let i = 0; i < ticketCount; i++) {
-    const qrToken = createTicketQrToken();
-    const qrData = JSON.stringify({ token: qrToken, bookingRef });
-    const qrCodeImage = await generateBrandedQR(qrData, null); 
+    for (let i = 0; i < ticketCount; i++) {
+      const qrToken = createTicketQrToken();
+      const qrData = JSON.stringify({ token: qrToken, bookingRef });
+      const qrCodeImage = await generateBrandedQR(qrData, null); 
 
-    ticketsToCreate.push({
-      eventId, userId, categoryId: cat?._id, categoryName: cat?.name || categoryName || 'standard',
-      seatNumber: selectedSeats[i], customerName: finalName, customerEmail: finalEmail, quantity: 1,
-      pricePerTicket: serverPrice, totalAmount: serverPrice, status: 'confirmed', 
-      qrToken, qrCode: qrCodeImage,
-      bookingReference: bookingRef
-    });
-  }
+      ticketsToCreate.push({
+        eventId, userId, categoryId: cat?._id, categoryName: cat?.name || categoryName || 'standard',
+        seatNumber: selectedSeats[i], customerName: finalName, customerEmail: finalEmail, quantity: 1,
+        pricePerTicket: serverPrice, totalAmount: serverPrice, status: 'confirmed', 
+        qrToken, qrCode: qrCodeImage,
+        bookingReference: bookingRef
+      });
+    }
 
-  const tickets = await ticketRepo.create(ticketsToCreate);
+    const tickets = await ticketRepo.create(ticketsToCreate, { session });
 
-  bus.publish('ticket.sold', { eventId, categoryName: cat?.name || 'standard', remainingSeats: updatedEvent.availableTickets, count: tickets.length });
-  bus.publish('ticket.purchased', { userId, count: tickets.length, eventName: event.name });
+    // OS Concept: File System Durability
+    // Ensure the transaction is physically written to disk before confirming to user.
+    await writeDurableLog({
+      bookingRef, userId, eventId, ticketCount, totalAmount: serverPrice * ticketCount
+    }).catch(err => console.warn('[Durability] Failed to write audit log:', err.message));
 
-  return tickets;
+    bus.publish('ticket.sold', { eventId, categoryName: cat?.name || 'standard', remainingSeats: updatedEvent.availableTickets, count: tickets.length }, true);
+    bus.publish('ticket.purchased', { userId, count: tickets.length, eventName: event.name }, true);
+
+    return tickets;
+  });
 }
+
 
 export async function verifyAndUseTicket(token, user) {
   const ticket = await ticketRepo.findByQrToken(token);
@@ -156,7 +180,8 @@ export async function cancelTicket(ticketId, reason = 'user_cancelled') {
   return await ticket.save();
 }
 
-export const allocateInventory = async (eventId, categoryId, ticketCount, selectedSeats = [], expectedVersion = null) => {
+export const allocateInventory = async (eventId, categoryId, ticketCount, selectedSeats = [], expectedVersion = null, session = null) => {
+
   let filter = { _id: eventId, status: { $ne: 'cancelled' } };
   
   // Diamond Step: Optimistic Locking
@@ -183,7 +208,8 @@ export const allocateInventory = async (eventId, categoryId, ticketCount, select
     filter.availableTickets = { $gte: ticketCount };
   }
 
-  const updatedEvent = await catalogRepo.updateInventory(filter, update);
+  const updatedEvent = await catalogRepo.updateInventory(filter, update, { session });
+
   if (updatedEvent) {
     await cacheDel(`event:${eventId}`);
     await cacheDelPattern('events:list:*');

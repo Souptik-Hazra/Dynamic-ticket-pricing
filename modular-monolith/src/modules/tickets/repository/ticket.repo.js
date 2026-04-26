@@ -1,8 +1,9 @@
 import Ticket from '../model/ticket.model.js';
 
-export const create = async (data) => {
-  return await Ticket.create(data);
+export const create = async (data, options = {}) => {
+  return await Ticket.create(data, options);
 };
+
 
 export const findById = async (id) => {
   return await Ticket.findById(id);

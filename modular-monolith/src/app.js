@@ -4,6 +4,9 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import compression from 'compression';
 import { createServer } from 'http';
+import hpp from 'hpp';
+import config from './shared/config/index.js';
+
 
 // Middleware
 import { errorHandler } from './middleware/error.js';
@@ -28,12 +31,36 @@ import { botShield } from './middleware/botShield.js';
 export function createApp() {
   const app = express();
 
+  // OS/Network Concept: IP Spoofing Protection
+  // Corrects req.ip when behind a load balancer (e.g., Nginx, Cloudflare)
+  app.set('trust proxy', config.security.trustProxy);
+
+  // OS/Network Concept: Information Disclosure Protection
+  app.disable('x-powered-by');
+
   // Basic Middleware
-  app.use(helmet());
-  app.use(cors());
+  app.use(helmet({
+    contentSecurityPolicy: config.isProd ? undefined : false, // Adjust for dev/prod
+    crossOriginEmbedderPolicy: false
+  }));
+
+  // OS/Network Concept: Strict CORS Policy
+  // Only allows the official frontend to talk to this API
+  app.use(cors({
+    origin: config.security.frontendUrl,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+    credentials: true
+  }));
+
   app.use(compression());
   app.use(express.json({ limit: '10mb' }));
+
+  // OS/Network Concept: Parameter Pollution Protection
+  // Prevents multiple parameters of the same name (e.g. ?id=1&id=2) from crashing the server
+  app.use(hpp());
+
   app.use(morgan('dev'));
+
 
   // Global Security Shield
   app.use(botShield);

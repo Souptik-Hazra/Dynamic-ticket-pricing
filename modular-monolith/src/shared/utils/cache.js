@@ -87,6 +87,19 @@ export const cacheSet = async (key, value, ttlSeconds = 3600) => {
   } catch (err) { return null; }
 };
 
+/**
+ * cacheSetNX
+ * Atomic "Set if Not Exists" operation for Idempotency.
+ */
+export const cacheSetNX = async (key, value, ttlSeconds = 60) => {
+  if (!isReady()) return false;
+  try {
+    const result = await redis.set(key, JSON.stringify(value), 'EX', ttlSeconds, 'NX');
+    return result === 'OK';
+  } catch (err) { return false; }
+};
+
+
 // ── Cache Versioning (Phase 16) ──
 // Allows for instant invalidation of all lists by incrementing a single key.
 export const getCacheVersion = async () => {
@@ -138,5 +151,7 @@ export default {
   cacheDel,
   cacheDelPattern,
   blacklistToken,
-  isTokenBlacklisted
+  isTokenBlacklisted,
+  cacheSetNX
 };
+

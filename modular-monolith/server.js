@@ -100,8 +100,25 @@ if (cluster.isPrimary && (process.env.NODE_ENV === 'production' || process.env.C
     process.exit(0);
   });
 } else if (cluster.isWorker || !cluster.isPrimary || process.env.NODE_ENV !== 'production') {
+  // OS Concept: Process Priority Scheduling
+  // Ensure worker processes handling requests have Normal priority.
+  try {
+    os.setPriority(process.pid, os.constants.priority.PRIORITY_NORMAL);
+  } catch (err) {
+    // Ignore if permission denied
+  }
+
   const app = createApp();
+
   const httpServer = createHttpServer(app);
+
+  // OS/Network Concept: Anti-Slowloris Protection
+  // Limits how long the server waits for headers and request bodies.
+  // Prevents "Low and Slow" attacks from exhausting the connection pool.
+  httpServer.headersTimeout = 10000; // 10 seconds
+  httpServer.requestTimeout = 30000; // 30 seconds
+  httpServer.keepAliveTimeout = 65000; // Slightly more than typical ELB/Nginx timeout
+
 
   // Initialize WebSocket Server
   const wss = new WebSocketServer({ server: httpServer, path: '/api/ws' });
@@ -146,16 +163,35 @@ if (cluster.isPrimary && (process.env.NODE_ENV === 'production' || process.env.C
     }
   }, 30000);
 
-  // ── Graceful Shutdown ──
-  const shutdown = () => {
-    clearInterval(heartbeatInterval);
-    httpServer.close(() => {
-      console.log(`👋 Worker ${process.pid} shutdown complete.`);
-      process.exit(0);
+  // ── Graceful Shutdown (OS Context: Resource Cleanup) ──
+  const shutdown = async (signal) => {
+    console.log(`\n🛑 [Worker ${process.pid}] Received ${signal}. Starting graceful shutdown...`);
+    
+    // Stop accepting new connections
+    httpServer.close(async () => {
+      try {
+        clearInterval(heartbeatInterval);
+        
+        // Disconnect from databases in reverse order
+        const { closeNeo4j } = await import('./src/shared/db/index.js');
+        await closeNeo4j().catch(() => null);
+        
+        console.log(`👋 Worker ${process.pid} shutdown complete.`);
+        process.exit(0);
+      } catch (err) {
+        console.error(`❌ Shutdown error: ${err.message}`);
+        process.exit(1);
+      }
     });
-    setTimeout(() => process.exit(1), 10000).unref(); // Force exit if stuck
+
+    // Force exit if shutdown takes too long (Backstop)
+    setTimeout(() => {
+      console.error('🚩 Shutdown timed out, forcing exit.');
+      process.exit(1);
+    }, 10000).unref();
   };
 
-  process.on('SIGTERM', shutdown);
-  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 }
+

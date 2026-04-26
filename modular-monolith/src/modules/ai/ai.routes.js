@@ -7,7 +7,11 @@ const router = express.Router();
 
 router.get('/health', aiController.health);
 router.get('/prices/:eventId', requireDB, aiController.getPrices);
-router.post('/federated/sync', authMiddleware, requireDB, aiController.syncFederated);
+
+// Network Concept: Payload Size Protection
+// Specific limit for heavy AI weight payloads to prevent OOM (Out Of Memory) attacks.
+router.post('/federated/sync', express.json({ limit: '5mb' }), authMiddleware, requireDB, aiController.syncFederated);
 router.post('/federated/aggregate', authMiddleware, requireRole('admin'), requireDB, aiController.aggregateFederated);
+
 
 export default router;

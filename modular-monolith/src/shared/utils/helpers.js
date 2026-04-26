@@ -2,13 +2,22 @@ import crypto from 'crypto';
 import axios from 'axios';
 import config from '../config/index.js';
 
-export const verifyTemporalProof = (challenge, proof, difficulty = 2000) => {
-  let result = challenge;
-  for (let i = 0; i < difficulty; i++) {
-    result = crypto.createHash('sha256').update(result + i).digest('hex');
+import workerManager from './worker.manager.js';
+
+export const verifyTemporalProof = async (challenge, proof, difficulty = 2000) => {
+  // For very low difficulty, keep it sync to avoid worker overhead
+  if (difficulty < 500) {
+    let result = challenge;
+    for (let i = 0; i < difficulty; i++) {
+      result = crypto.createHash('sha256').update(result + i).digest('hex');
+    }
+    return result === proof;
   }
-  return result === proof;
+
+  // Offload to worker thread for high difficulty
+  return await workerManager.runTask('verifyPoW', { challenge, proof, difficulty });
 };
+
 
 export const createBookingReference = () => {
   const ts = Date.now().toString(36).toUpperCase();

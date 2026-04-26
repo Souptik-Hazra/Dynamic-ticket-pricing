@@ -49,9 +49,10 @@ export const create = async (data) => {
   return await Event.create(data);
 };
 
-export const findOneAndUpdate = async (filter, update) => {
-  return await Event.findOneAndUpdate(filter, update, { new: true, runValidators: true });
+export const findOneAndUpdate = async (filter, update, options = {}) => {
+  return await Event.findOneAndUpdate(filter, update, { new: true, runValidators: true, ...options });
 };
+
 
 export const findOneAndDelete = async (filter) => {
   return await Event.findOneAndDelete(filter);
