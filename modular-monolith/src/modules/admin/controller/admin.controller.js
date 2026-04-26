@@ -108,9 +108,25 @@ export const health = async (req, res) => {
   }
 };
 
+export const getAuditLogs = async (req, res, next) => {
+  try {
+    const logs = await adminService.getAuditLogs();
+    res.json({ logs });
+  } catch (err) { next(err); }
+};
+
+export const getSecurityLogs = async (req, res, next) => {
+  try {
+    const logs = await adminService.getSecurityLogs();
+    res.json({ logs });
+  } catch (err) { next(err); }
+};
+
 export default {
   getStats,
   getEvents,
+  getAuditLogs,
+  getSecurityLogs,
   createEvent,
   updateEventStatus,
   deleteEvent,

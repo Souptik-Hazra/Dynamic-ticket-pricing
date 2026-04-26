@@ -1,13 +1,11 @@
-const getBaseUrl = () => {
-    // Priority 1: Explicit environment variable (Production/Custom Dev)
-    const envUrl = import.meta.env.VITE_API_URL;
-    if (envUrl) return envUrl;
+import config from './index';
 
-    // Priority 2: Standard relative proxy path (Development default)
-    return '/api';
-};
+/**
+ * 🛰️ FanFever - API Configuration
+ * Consumes values from the centralized config module.
+ */
 
-export const API_URL = getBaseUrl();
+export const API_URL = config.apiBaseUrl;
 
 // API endpoints (paths relative to each service's /api root)
 export const ENDPOINTS = {
@@ -37,6 +35,8 @@ export const ENDPOINTS = {
   ADMIN_TICKETS:     '/admin/tickets',
   ADMIN_COMMISSIONS: '/admin/commissions',
   ADMIN_BROADCAST:   '/admin/broadcast',
+  ADMIN_AUDIT_LOGS:  '/admin/audit-logs',
+  ADMIN_SECURITY_LOGS: '/admin/security-logs',
   PLATFORM_HEALTH:   '/admin/health-all',
 
   // Analytics (Analytics Service)
@@ -91,18 +91,7 @@ export const buildUrl = (endpoint) => `${API_URL}${endpoint}`;
 
 // Helper - build WebSocket URL via gateway
 export const getWsUrl = () => {
-  // Allow overriding via env var for special cases
-  const envWs = import.meta.env.VITE_WS_URL;
-  if (envWs) return envWs;
-
-  // Prefer connecting to the same origin `/api/ws` so the dev server (Vite)
-  // or the API gateway can correctly handle the websocket Upgrade.
-  // This avoids attempting to open wss://localhost:4010 directly from an
-  // HTTPS page which would fail if the backend doesn't support TLS.
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const url = `${protocol}//${window.location.host}/api/ws`;
-  try { console.debug('[getWsUrl] websocket URL ->', url); } catch (_err) { /* ignore in restricted runtimes */ };
-  return url;
+  return config.wsUrl;
 };
 
 export default API_URL;

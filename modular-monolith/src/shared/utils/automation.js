@@ -65,7 +65,7 @@ export const initAutomation = () => {
   // 4. Precompute Prices (Every 30 minutes)
   cron.schedule('*/30 * * * *', async () => {
     try {
-      const activeEvents = await catalogRepo.list({ status: { $in: ['upcoming', 'ongoing'] } });
+      const activeEvents = await catalogRepo.findMany({ status: { $in: ['upcoming', 'ongoing'] } });
       let updatedCount = 0;
 
       for (const event of activeEvents) {

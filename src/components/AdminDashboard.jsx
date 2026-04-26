@@ -22,6 +22,8 @@ function AdminDashboard() {
   const [adminWallet, setAdminWallet]     = useState({ balance: 0 });
   const [messageForm, setMessageForm]     = useState({ target: 'all_users', targetId: '', title: '', message: '' });
   const [healthData, setHealthData]       = useState({ services: {}, loading: false });
+  const [auditLogs, setAuditLogs]         = useState([]);
+  const [securityLogs, setSecurityLogs]   = useState([]);
 
   // Real-time: refresh stats when a ticket is sold
   useEffect(() => {
@@ -42,6 +44,10 @@ function AdminDashboard() {
     if (view === 'users')   fetchUsers();
     if (view === 'organizers') fetchCommissions();
     if (view === 'diagnostics') fetchPlatformHealth();
+    if (view === 'security') {
+      fetchAuditLogs();
+      fetchSecurityLogs();
+    }
     fetchAdminWallet();
   }, [view]);
 
@@ -120,6 +126,26 @@ function AdminDashboard() {
       alert(err.response?.data?.error || 'Failed to complete event');
     } finally { setLoading(false); }
   };
+
+  async function fetchSecurityLogs() {
+    try {
+      setLoading(true);
+      const { data } = await api.get(ENDPOINTS.ADMIN_SECURITY_LOGS);
+      setSecurityLogs(data.logs || []);
+    } catch (err) {
+      console.error('Security logs error:', err);
+    } finally { setLoading(false); }
+  }
+
+  async function fetchAuditLogs() {
+    try {
+      setLoading(true);
+      const { data } = await api.get(ENDPOINTS.ADMIN_AUDIT_LOGS);
+      setAuditLogs(data.logs || []);
+    } catch (err) {
+      console.error('Audit logs error:', err);
+    } finally { setLoading(false); }
+  }
 
   async function fetchUsers() {
     try {
@@ -660,18 +686,20 @@ function AdminDashboard() {
                 <div className="cyber-card">
                   <h3 className="cyber-label" style={{ marginBottom: '1.5rem' }}>🚨 Real-time Threat Matrix</h3>
                   <div className="flex-column" style={{ gap: '1rem' }}>
-                    <div className="flex-between glass-panel" style={{ padding: '0.8rem', borderLeft: '3px solid var(--danger)' }}>
-                      <span className="text-main">L4 Bot Flood Thwarted</span>
-                      <span className="cyber-badge badge-danger">BLOCK</span>
-                    </div>
-                    <div className="flex-between glass-panel" style={{ padding: '0.8rem', borderLeft: '3px solid var(--warning)' }}>
-                      <span className="text-main">Anomalous Pricing Gradient</span>
-                      <span className="cyber-badge badge-warning">AUDITED</span>
-                    </div>
-                    <div className="flex-between glass-panel" style={{ padding: '0.8rem', borderLeft: '3px solid var(--info)' }}>
-                      <span className="text-main">Zero-Entropy Browser Signature</span>
-                      <span className="cyber-badge badge-info">VDF DELAY</span>
-                    </div>
+                    {securityLogs.map((log) => (
+                      <div key={log._id} className="flex-between glass-panel" style={{ padding: '0.8rem', borderLeft: `3px solid ${log.level === 'WARN' ? 'var(--warning)' : 'var(--danger)'}` }}>
+                        <div className="flex-column">
+                          <span className="text-main" style={{ fontSize: '0.9rem' }}>{log.message}</span>
+                          <span className="text-dim" style={{ fontSize: '0.7rem' }}>{log.service.toUpperCase()} | {new Date(log.timestamp).toLocaleTimeString()}</span>
+                        </div>
+                        <span className={`cyber-badge badge-${log.level === 'WARN' ? 'warning' : 'danger'}`}>
+                          {log.message.includes('Bot') ? 'BLOCKED' : 'AUDITED'}
+                        </span>
+                      </div>
+                    ))}
+                    {securityLogs.length === 0 && (
+                      <div className="text-dim flex-center" style={{ padding: '2rem' }}>No active threats detected. Platform secure.</div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -691,19 +719,18 @@ function AdminDashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {[
-                        { hash: '0x8f2a...3e9d', event: 'Summer Fest 2026', type: 'Occupancy Spike', status: 'COMMITTED' },
-                        { hash: '0x1c4b...7f2a', event: 'Global Tech Con', type: 'Velocity Adjustment', status: 'VERIFIED' },
-                        { hash: '0x9a3d...1b4c', event: 'Neon Nights', type: 'Base Recalibration', status: 'COMMITTED' }
-                      ].map((log, i) => (
-                        <tr key={i}>
-                          <td><code className="text-glow" style={{ color: 'var(--accent-cyan)' }}>{log.hash}</code></td>
-                          <td>{log.event}</td>
-                          <td><span className="text-dim">{log.type}</span></td>
-                          <td><span className="cyber-badge badge-success">{log.status}</span></td>
+                      {auditLogs.map((log) => (
+                        <tr key={log._id}>
+                          <td><code className="text-glow" style={{ color: 'var(--accent-cyan)' }}>{log.auditHash?.substring(0, 10)}...</code></td>
+                          <td>{log.eventId?.name || 'Unknown Event'}</td>
+                          <td><span className="text-dim">{log.behavioralSignature || 'General Adjustment'}</span></td>
+                          <td><span className="cyber-badge badge-success">COMMITTED</span></td>
                           <td><span style={{ color: 'var(--success)' }}>100%</span></td>
                         </tr>
                       ))}
+                      {auditLogs.length === 0 && (
+                        <tr><td colSpan="5" className="text-center text-dim">No audit trails synced.</td></tr>
+                      )}
                     </tbody>
                   </table>
                 </div>

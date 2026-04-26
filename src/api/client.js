@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { API_URL } from '../config/api';
+import config from '../config';
 
 /**
  * 🛰️ Expert Network Client
@@ -16,7 +17,7 @@ const client = axios.create({
 
 // ── Network Expert: Browser Logging ──────────────────────────────────────
 const logNetwork = (type, message, traceId, color = '#6366f1') => {
-  if (import.meta.env.MODE === 'production') return;
+  if (config.isProd) return;
   console.log(
     `%c[FanFever-Net] %c[${traceId}] %c${type} %c${message}`,
     `color: ${color}; font-weight: bold;`,

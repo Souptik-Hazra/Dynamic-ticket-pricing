@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import config from '../shared/config/index.js';
 import { logError, logSecurity } from '../shared/utils/logger.js';
 
 const MONGO_DUPLICATE_KEY = 11000;
@@ -58,7 +59,7 @@ export const errorHandler = (err, req, res, _next) => {
 
   // 7. Default Internal Server Error
   const status = err.status || 500;
-  const message = (status === 500 && process.env.NODE_ENV === 'production') 
+  const message = (status === 500 && config.isProd) 
     ? 'An unexpected system error occurred' 
     : err.message;
   

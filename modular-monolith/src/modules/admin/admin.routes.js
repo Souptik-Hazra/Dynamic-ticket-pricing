@@ -19,6 +19,8 @@ router.get('/users', requireDB, adminController.getUsers);
 router.put('/users/:id/role', requireDB, adminController.updateRole);
 router.post('/broadcast', requireDB, adminController.broadcast);
 router.get('/commissions', requireDB, adminController.getCommissions);
+router.get('/audit-logs', requireDB, adminController.getAuditLogs);
+router.get('/security-logs', requireDB, adminController.getSecurityLogs);
 router.get('/wallets', requireDB, adminController.getWallets);
 router.post('/wallets/:id/adjust', requireDB, adminController.adjustWallet);
 router.get(['/health', '/system/health'], adminController.health);

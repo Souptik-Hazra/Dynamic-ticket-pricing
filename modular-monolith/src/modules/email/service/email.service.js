@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import config from '../../../shared/config/index.js';
 import bus from '../../../shared/utils/bus.js';
 import { emailQueue } from '../../../shared/utils/taskQueue.js';
 
@@ -6,16 +7,16 @@ let smtpReady = false;
 let smtpError = null;
 
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: process.env.SMTP_SECURE === 'true',
-  auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+  host: config.smtp.host,
+  port: config.smtp.port,
+  secure: config.smtp.secure,
+  auth: { user: config.smtp.user, pass: config.smtp.pass },
   pool: true,
   maxConnections: 5,
   connectionTimeout: 10000,
 });
 
-if (process.env.SMTP_HOST && process.env.SMTP_USER) {
+if (config.smtp.host && config.smtp.user) {
   transporter.verify((err) => {
     if (err) {
       smtpError = err.message;
@@ -76,7 +77,7 @@ export const sendEmail = async (to, templateName, data) => {
 
       const { subject, html } = templateFn(data || {});
       await transporter.sendMail({
-        from: `"FanFever" <${process.env.SMTP_USER}>`,
+        from: `"FanFever" <${config.smtp.user}>`,
         to, subject, html
       });
     } catch (err) {

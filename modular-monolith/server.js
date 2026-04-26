@@ -1,5 +1,4 @@
-import dotenv from 'dotenv';
-dotenv.config();
+import config from './src/shared/config/index.js';
 
 import { WebSocketServer } from 'ws';
 import { spawn } from 'child_process';
@@ -7,6 +6,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import cluster from 'cluster';
 import os from 'os';
+import { execSync } from 'child_process';
 
 import { connectMongoDB, connectNeo4j } from './src/shared/db/index.js';
 import { createApp, createHttpServer } from './src/app.js';
@@ -24,20 +24,32 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // ── ML Model Lifecycle (Self-Healing Supervisor) ───────────────────────────
 let mlApp;
 const startMLModel = () => {
-  console.log('🤖 Starting ML Model sidecar...');
+  console.log('🤖 [Master] Starting ML Model sidecar...');
   const pythonPath = process.env.PYTHON_PATH || 'python';
-  mlApp = spawn(pythonPath, ['app.py'], {
-    cwd: path.join(__dirname, 'ml-model'),
-    stdio: 'inherit',
-    shell: true
-  });
+  
+  try {
+    mlApp = spawn(pythonPath, ['app.py'], {
+      cwd: path.join(__dirname, 'ml-model'),
+      stdio: 'inherit',
+      shell: process.platform === 'win32' // Robust shell spawning on Windows
+    });
 
-  mlApp.on('exit', (code) => {
-    if (code !== 0 && code !== null) {
-      console.error(`🚩 ML Model crashed (code ${code}). Respawning in 3s...`);
-      setTimeout(startMLModel, 3000);
-    }
-  });
+    mlApp.on('error', (err) => {
+      console.error(`❌ [Master] Failed to start ML Model: ${err.message}`);
+      if (err.code === 'ENOENT') {
+        console.error(`💡 Suggestion: Ensure "${pythonPath}" is in your PATH or update PYTHON_PATH in .env`);
+      }
+    });
+
+    mlApp.on('exit', (code) => {
+      if (code !== 0 && code !== null) {
+        console.error(`🚩 [Master] ML Model crashed (code ${code}). Respawning in 5s...`);
+        setTimeout(startMLModel, 5000);
+      }
+    });
+  } catch (err) {
+    console.error(`❌ [Master] Critical error spawning ML sidecar: ${err.message}`);
+  }
 
   return mlApp;
 };
@@ -53,15 +65,39 @@ if (cluster.isPrimary) {
 }
 
 // ── Clustering Strategy (Multi-Core Scaling) ───────────────────────────────
-const numCPUs = os.cpus().length;
+const getWorkerCount = () => {
+  const envCount = parseInt(process.env.CPU_CLUSTERS);
+  const totalCPUs = os.cpus().length;
+  
+  if (!isNaN(envCount) && envCount > 0) return Math.min(envCount, totalCPUs);
+  if (process.env.NODE_ENV === 'production') return totalCPUs;
+  
+  // OS Expert Tip: In dev, don't saturate all cores. Use 2 or 50% of cores.
+  return Math.min(2, totalCPUs);
+};
 
 if (cluster.isPrimary && (process.env.NODE_ENV === 'production' || process.env.CLUSTER_DEV === 'true')) {
-  console.log(`[Monolith Master] 🚀 Spawning ${numCPUs} workers for multi-core scaling...`);
-  for (let i = 0; i < numCPUs; i++) cluster.fork();
+  const numWorkers = getWorkerCount();
+  console.log(`[Monolith Master] 🚀 Spawning ${numWorkers} workers for multi-core scaling...`);
+  
+  for (let i = 0; i < numWorkers; i++) cluster.fork();
 
-  cluster.on('exit', (worker) => {
-    console.error(`[Monolith Master] 🚩 Worker ${worker.process.pid} died. Respawning...`);
-    cluster.fork();
+  cluster.on('exit', (worker, code, signal) => {
+    if (signal) {
+      console.log(`[Monolith Master] Worker ${worker.process.pid} was killed by signal: ${signal}`);
+    } else if (code !== 0) {
+      console.error(`[Monolith Master] 🚩 Worker ${worker.process.pid} died (code ${code}). Respawning...`);
+      cluster.fork();
+    } else {
+      console.log(`[Monolith Master] Worker ${worker.process.pid} exited gracefully.`);
+    }
+  });
+
+  // Cleanup sidecar on master exit
+  process.on('SIGINT', () => {
+    console.log('\n🛑 [Master] Shutting down systems...');
+    if (mlApp) mlApp.kill();
+    process.exit(0);
   });
 } else if (cluster.isWorker || !cluster.isPrimary || process.env.NODE_ENV !== 'production') {
   const app = createApp();
@@ -84,7 +120,7 @@ if (cluster.isPrimary && (process.env.NODE_ENV === 'production' || process.env.C
       await connectMongoDB();
       connectNeo4j();
 
-      const PORT = process.env.PORT || 4000;
+      const PORT = config.port;
       httpServer.listen(PORT, () => console.log(`🚀 Worker ${process.pid} | Monolith running on port ${PORT}`))
         .on('error', (err) => {
           if (err.code === 'EADDRINUSE') {
@@ -103,7 +139,7 @@ if (cluster.isPrimary && (process.env.NODE_ENV === 'production' || process.env.C
   // ── Systems Sentinels ──
   setInterval(() => {
     const usage = process.memoryUsage();
-    const memoryLimit = parseInt(process.env.MAX_WORKER_MEMORY_MB || '1024') * 1024 * 1024;
+    const memoryLimit = config.clustering.maxWorkerMemoryMb * 1024 * 1024;
     if (usage.heapUsed > memoryLimit) {
       console.warn(`🚩 Worker ${process.pid} exceeding memory limit (${Math.round(usage.heapUsed/1024/1024)}MB). Graceful restart triggered.`);
       process.exit(1);

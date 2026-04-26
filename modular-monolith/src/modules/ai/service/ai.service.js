@@ -9,10 +9,10 @@ import { logSecurity } from '../../../shared/utils/logger.js';
 import catalogRepo from '../../catalog/repository/catalog.repo.js';
 import userRepo from '../../users/repository/user.repo.js';
 
-const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:5000';
-const CLIP_NORM = parseFloat(process.env.ML_CLIP_NORM || '15.0');
-const DP_EPSILON = parseFloat(process.env.ML_DP_EPSILON || '0.05');
-const AGGREGATION_THRESHOLD = parseInt(process.env.ML_AGGREGATION_THRESHOLD || '3');
+const ML_SERVICE_URL = config.ml.serviceUrl;
+const CLIP_NORM = config.ml.clipNorm;
+const DP_EPSILON = config.ml.dpEpsilon;
+const AGGREGATION_THRESHOLD = config.ml.aggregationThreshold;
 
 export const federatedUpdatesBuffer = [];
 

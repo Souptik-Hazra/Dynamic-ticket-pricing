@@ -140,6 +140,10 @@ export const getSystemHealth = async () => {
   };
 };
 
+export const getAuditLogs = () => adminRepo.listAuditLogs();
+
+export const getSecurityLogs = () => adminRepo.listSecurityLogs();
+
 export default { 
   getSystemStats, 
   getAllEvents,
@@ -148,6 +152,8 @@ export default {
   getAllUsers,
   getAllCommissions,
   getAllWallets,
+  getAuditLogs,
+  getSecurityLogs,
   createEvent,
   updateUserRole,
   manageEventStatus, 

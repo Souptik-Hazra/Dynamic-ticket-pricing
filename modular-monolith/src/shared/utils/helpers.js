@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import axios from 'axios';
+import config from '../config/index.js';
 
 export const verifyTemporalProof = (challenge, proof, difficulty = 2000) => {
   let result = challenge;
@@ -18,7 +19,7 @@ export const createBookingReference = () => {
 export const createTicketQrToken = () => crypto.randomBytes(32).toString('base64url');
 
 export const predictMLPrice = async (category, event, cognitive_score = 1.0) => {
-  const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:5000';
+  const ML_SERVICE_URL = config.ml.serviceUrl;
   try {
     const basePrice = category ? Number(category.price) : (Number(event.basePrice) || 0);
     const maxPrice = category ? (Number(category.maxPrice) || basePrice * 3) : (basePrice * 3);

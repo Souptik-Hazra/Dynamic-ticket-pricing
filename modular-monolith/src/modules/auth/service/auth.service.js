@@ -8,7 +8,7 @@ export const issueToken = (user) => {
   return jwt.sign(
     { id: user._id.toString(), email: user.email, role: user.role },
     config.jwt.secret,
-    { expiresIn: config.jwt.expiresIn }
+    { expiresIn: config.jwt.expiry }
   );
 };
 
@@ -37,7 +37,7 @@ export const registerUser = async (name, email, password, role) => {
   const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
   await authRepo.updateRefreshToken(user._id, refreshTokenHash);
 
-  return { token, refreshToken, userId: user._id };
+  return { token, refreshToken, user: { id: user._id, name: user.name, email: user.email, role: user.role } };
 };
 
 export const loginUser = async (email, password) => {
@@ -51,7 +51,7 @@ export const loginUser = async (email, password) => {
   const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
   await authRepo.updateRefreshToken(user._id, refreshTokenHash);
 
-  return { token, refreshToken, userId: user._id };
+  return { token, refreshToken, user: { id: user._id, name: user.name, email: user.email, role: user.role } };
 };
 
 export const refreshSession = async (refreshToken) => {

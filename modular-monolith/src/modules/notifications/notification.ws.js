@@ -23,30 +23,40 @@ export const broadcastToRoom = (roomId, payload) => {
 /**
  * 💓 Live Pulse Broadcast (Phase 6)
  * Periodically sends the "Viewing" count to all users in a room.
+ * OS Expert Note: Optimized for clusters to prevent duplicate broadcasts.
  */
 export const broadcastLivePulse = async () => {
   const redis = getRedisClient();
   if (!redis) return;
 
+  const workerId = process.pid;
+
   for (const [roomId, roomClients] of rooms.entries()) {
     const localCount = roomClients.size;
-    const workerId = process.pid;
 
     // 🕸️ Expert Step: Cluster-Aware Pulse (Phase 16)
     // Update this worker's count for this room in Redis
     await redis.hset(`rooms:viewer_counts:${roomId}`, workerId, localCount);
     await redis.expire(`rooms:viewer_counts:${roomId}`, 60);
 
-    // Fetch total count across all workers
-    const allCounts = await redis.hvals(`rooms:viewer_counts:${roomId}`);
-    const totalCount = allCounts.reduce((sum, c) => sum + parseInt(c || 0), 0);
+    // To prevent duplicate broadcasts in a cluster, only the "leader" for this room 
+    // (worker with the lowest PID among those having active clients in this room) 
+    // will aggregate and broadcast.
+    const allWorkers = await redis.hkeys(`rooms:viewer_counts:${roomId}`);
+    const leaderId = Math.min(...allWorkers.map(id => parseInt(id)));
 
-    if (totalCount > 0) {
-      broadcastToRoom(roomId, { 
-        type: 'live_pulse', 
-        roomId, 
-        viewerCount: totalCount + Math.floor(Math.random() * 3) 
-      });
+    if (workerId === leaderId) {
+      // Fetch total count across all workers
+      const allCounts = await redis.hvals(`rooms:viewer_counts:${roomId}`);
+      const totalCount = allCounts.reduce((sum, c) => sum + parseInt(c || 0), 0);
+
+      if (totalCount > 0) {
+        broadcastToRoom(roomId, { 
+          type: 'live_pulse', 
+          roomId, 
+          viewerCount: totalCount + Math.floor(Math.random() * 3) 
+        });
+      }
     }
   }
 };

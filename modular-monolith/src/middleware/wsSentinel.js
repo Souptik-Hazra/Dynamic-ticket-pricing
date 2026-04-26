@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import config from '../shared/config/index.js';
 import User from '../modules/users/model/user.model.js';
 import { logSecurity } from '../shared/utils/logger.js';
 
@@ -40,7 +41,7 @@ export const wsSentinel = async (ws, req) => {
 
 export const verifyWsToken = async (ws, token) => {
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, config.jwt.secret);
     const user = await User.findById(decoded.id).select('botScore role');
     
     if (!user) return false;

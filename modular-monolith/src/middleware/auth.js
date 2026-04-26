@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import config from '../shared/config/index.js';
 import { logSecurity } from '../shared/utils/logger.js';
 
 /**
@@ -15,7 +16,7 @@ export const authMiddleware = async (req, res, next) => {
     }
 
     const token = authHeader.split(' ')[1];
-    const secret = process.env.JWT_SECRET;
+    const secret = config.jwt.secret;
 
     // Diamond Step: Check Blacklist
     const { isTokenBlacklisted } = await import('../shared/utils/cache.js');
@@ -23,11 +24,6 @@ export const authMiddleware = async (req, res, next) => {
       return res.status(401).json({ error: 'Session revoked. Please log in again.' });
     }
     
-    if (!secret) {
-      console.error('[Auth] CRITICAL: JWT_SECRET missing.');
-      return res.status(500).json({ error: 'System configuration error.' });
-    }
-
     const decoded = jwt.verify(token, secret);
     req.user = decoded;
 

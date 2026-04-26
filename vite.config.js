@@ -6,8 +6,7 @@ import mkcert from 'vite-plugin-mkcert'
 export default defineConfig(({ mode }) => {
   // Load env file from the current directory
   const env = loadEnv(mode, process.cwd());
-  const backendUrl = env.VITE_WS_PROXY_TARGET || 'http://localhost:4000';
-
+  const backendUrl = env.VITE_WS_PROXY_TARGET
   return {
     base: './',
     plugins: [
