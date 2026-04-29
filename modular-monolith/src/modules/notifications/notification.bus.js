@@ -13,7 +13,10 @@ import { broadcastLivePulse } from './notification.ws.js';
  * Maps internal system events to user-facing notifications and WS broadcasts.
  */
 
+import { createLogger } from '../../shared/utils/logger.js';
+
 export const initNotificationBus = () => {
+  const logger = createLogger('NotificationBus');
   // Diamond Step: Periodic Live Pulse (Phase 6)
   setInterval(() => {
     broadcastLivePulse();
@@ -86,7 +89,7 @@ export const initNotificationBus = () => {
     });
   });
 
-  console.log('📢 [NotificationBus] All subscriptions active');
+  logger.info('All subscriptions active');
 };
 
 export default initNotificationBus;

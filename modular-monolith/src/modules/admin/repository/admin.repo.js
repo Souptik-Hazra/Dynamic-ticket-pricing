@@ -27,8 +27,8 @@ export const listAllWallets = async () => {
   return await Wallet.find().populate('userId', 'name email');
 };
 
-export const createCommission = async (data) => {
-  return await Commission.create(data);
+export const createCommission = async (data, options = {}) => {
+  return await Commission.create(data, options);
 };
 
 export const listAuditLogs = async (limit = 50) => {

@@ -195,45 +195,85 @@
     </div>
 
     <script>
-        const API_URL = "http://localhost:3001/api/analytics";
+        const API_BASE = 'http://localhost:4000';
+        const API_URL = `${API_BASE}/api/analytics`;
         let timeChart, distChart;
+        let authToken = '';
+
+        const tokenInput = document.createElement('input');
+        tokenInput.type = 'password';
+        tokenInput.placeholder = 'Bearer token';
+        tokenInput.style.padding = '8px 12px';
+        tokenInput.style.border = '1px solid rgba(255,255,255,0.12)';
+        tokenInput.style.borderRadius = '999px';
+        tokenInput.style.background = 'rgba(255,255,255,0.04)';
+        tokenInput.style.color = '#ffffff';
+        tokenInput.style.marginLeft = '1rem';
+        tokenInput.oninput = () => authToken = tokenInput.value.trim();
+
+        const refreshButton = document.createElement('button');
+        refreshButton.textContent = 'Refresh';
+        refreshButton.style.border = 'none';
+        refreshButton.style.padding = '10px 16px';
+        refreshButton.style.borderRadius = '999px';
+        refreshButton.style.background = '#00f2fe';
+        refreshButton.style.color = '#050914';
+        refreshButton.style.cursor = 'pointer';
+        refreshButton.onclick = refreshData;
+
+        const headerControls = document.createElement('div');
+        headerControls.style.display = 'flex';
+        headerControls.style.alignItems = 'center';
+        headerControls.style.gap = '0.75rem';
+        headerControls.appendChild(refreshButton);
+        headerControls.appendChild(tokenInput);
+        document.querySelector('header').appendChild(headerControls);
 
         async function refreshData() {
+            const headers = { 'Content-Type': 'application/json' };
+            if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+
             try {
-                const [healthData, logData] = await Promise.all([
-                    fetch(`${API_URL}/system-health`).then(r => r.json()),
-                    fetch(`${API_URL}/system-logs`).then(r => r.json())
+                const [healthRes, logsRes] = await Promise.all([
+                    fetch(`${API_URL}/system-health`, { headers }),
+                    fetch(`${API_URL}/system-logs`, { headers })
                 ]);
+
+                if (!healthRes.ok) {
+                    const error = await healthRes.json().catch(() => ({ error: healthRes.statusText }));
+                    throw new Error(error.error || healthRes.statusText);
+                }
+                if (!logsRes.ok) {
+                    const error = await logsRes.json().catch(() => ({ error: logsRes.statusText }));
+                    throw new Error(error.error || logsRes.statusText);
+                }
+
+                const healthData = await healthRes.json();
+                const logData = await logsRes.json();
 
                 updateCharts(healthData);
                 updateTable(logData);
             } catch (err) {
-                console.error("Link Failure:", err);
+                console.error('Link Failure:', err);
+                alert(`Monitor failed: ${err.message}`);
             }
         }
 
         function updateCharts(data) {
-            // 1. Line Graph WRT Time (Filling in 0s for missing hours to ensure it's a "Line" graph)
             const canvas = document.getElementById('timeChart');
-            
-            // Generate last 24 hours
+            const timelineMap = new Map();
+            (data.errorTimeline || []).forEach(item => {
+                const key = new Date(item.time).toISOString().slice(0, 13);
+                timelineMap.set(key, item.errors || 0);
+            });
+
             const now = new Date();
             const fullTimeline = [];
             for (let i = 23; i >= 0; i--) {
                 const hourDate = new Date(now.getTime() - i * 3600000);
-                hourDate.setMinutes(0, 0, 0);
-                
-                // Find data for this specific local hour
-                const found = data.errorTimeline.find(t => {
-                    const logDate = new Date(t.timestamp);
-                    return logDate.getHours() === hourDate.getHours() && 
-                           logDate.getDate() === hourDate.getDate();
-                });
-                
-                fullTimeline.push({
-                    x: hourDate,
-                    y: found ? found.errors : 0
-                });
+                hourDate.setMinutes(0, 0, 0, 0);
+                const key = hourDate.toISOString().slice(0, 13);
+                fullTimeline.push({ x: hourDate, y: timelineMap.get(key) || 0 });
             }
 
             if (!timeChart) {
@@ -253,7 +293,7 @@
                             borderWidth: 3,
                             fill: true,
                             tension: 0.4,
-                            pointRadius: i => (fullTimeline[i.dataIndex]?.y > 0 ? 5 : 0), // Show points only where there's data
+                            pointRadius: (ctx) => (ctx.parsed.y > 0 ? 5 : 0),
                             pointHoverRadius: 8,
                             pointBackgroundColor: '#00f2fe',
                             pointBorderColor: '#050914',
@@ -266,22 +306,14 @@
                         scales: {
                             x: {
                                 type: 'time',
-                                time: { 
-                                    unit: 'hour', 
-                                    stepSize: 2,
-                                    displayFormats: { hour: 'HH:mm' } 
-                                },
+                                time: { unit: 'hour', stepSize: 2, displayFormats: { hour: 'HH:mm' } },
                                 grid: { color: 'rgba(255,255,255,0.02)' },
                                 ticks: { color: '#94a3b8', font: { size: 10 } }
                             },
                             y: {
                                 beginAtZero: true,
                                 grid: { color: 'rgba(255,255,255,0.05)' },
-                                ticks: { 
-                                    color: '#94a3b8', 
-                                    stepSize: 1,
-                                    callback: function(value) { if (Math.floor(value) === value) return value; }
-                                }
+                                ticks: { color: '#94a3b8', stepSize: 1 }
                             }
                         },
                         plugins: {
@@ -306,15 +338,15 @@
                 timeChart.update('none');
             }
 
-            // 2. Distribution Chart
             const canvasDist = document.getElementById('distChart');
+            const distribution = data.serviceDistribution || [];
             if (!distChart) {
                 distChart = new Chart(canvasDist, {
                     type: 'doughnut',
                     data: {
-                        labels: data.serviceDistribution.map(s => s.name),
+                        labels: distribution.map(s => s.name),
                         datasets: [{
-                            data: data.serviceDistribution.map(s => s.value),
+                            data: distribution.map(s => s.value),
                             backgroundColor: ['#ff4b2b', '#ff9068', '#00f2fe', '#4facfe', '#8b5cf3'],
                             borderWidth: 0,
                             hoverOffset: 20
@@ -330,15 +362,15 @@
                     }
                 });
             } else {
-                distChart.data.labels = data.serviceDistribution.map(s => s.name);
-                distChart.data.datasets[0].data = data.serviceDistribution.map(s => s.value);
+                distChart.data.labels = distribution.map(s => s.name);
+                distChart.data.datasets[0].data = distribution.map(s => s.value);
                 distChart.update();
             }
         }
 
         function updateTable(logs) {
             const tbody = document.querySelector('#logs-table tbody');
-            tbody.innerHTML = logs.length ? "" : "<tr><td colspan='5' style='text-align:center; padding: 40px;'>✨ NO INCIDENTS DETECTED</td></tr>";
+            tbody.innerHTML = logs.length ? '' : '<tr><td colspan="5" style="text-align:center; padding: 40px;">✨ NO INCIDENTS DETECTED</td></tr>';
 
             logs.forEach(log => {
                 const tr = document.createElement('tr');
@@ -347,14 +379,13 @@
                     <td><span class="badge ${badgeClass}">${log.level}</span></td>
                     <td><span class="service-tag">${log.service}</span></td>
                     <td><b>${log.message}</b></td>
-                    <td><code>${log.traceId}</code></td>
+                    <td><code>${log.traceId || '-'}</code></td>
                     <td class="timestamp">${new Date(log.timestamp).toLocaleTimeString()}</td>
                 `;
                 tbody.appendChild(tr);
             });
         }
 
-        // Run
         refreshData();
         setInterval(refreshData, 5000);
     </script>

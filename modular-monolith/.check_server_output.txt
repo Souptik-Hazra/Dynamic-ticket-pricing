@@ -1,0 +1,55 @@
+TIMEOUT
+stdout:
+ ◇ injected env (1) from ..\.env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+2026-04-28T20:29:24.097Z [Master] [INFO] Starting ML Model sidecar...
+2026-04-28T20:29:24.152Z [Swagger] [INFO] Documentation available at /api/docs
+2026-04-28T20:29:24.155Z [NotificationBus] [INFO] All subscriptions active
+2026-04-28T20:29:24.155Z [GraphSync] [INFO] Initializing listeners...
+2026-04-28T20:29:24.155Z [GraphSync] [INFO] Ready
+2026-04-28T20:29:24.155Z [StatsSync] [INFO] Initializing projection listeners...
+2026-04-28T20:29:24.189Z [ML-Scheduler] [INFO] Automated retraining active (Weekly: Sunday 02:00)
+2026-04-28T20:29:24.189Z [BigData] [INFO] Initializing ingestion pipeline...
+2026-04-28T20:29:24.189Z [BigData] [INFO] Pipeline active
+2026-04-28T20:29:24.193Z [Database] [INFO] MongoDB connected (Optimized Pool)
+2026-04-28T20:29:24.195Z [Database] [INFO] Neo4j driver initialized
+2026-04-28T20:29:24.237Z [Database] [INFO] MongoDB connected (Optimized Pool)
+2026-04-28T20:29:24.246Z [Master] [INFO] MongoDB connected
+2026-04-28T20:29:24.247Z [Automation] [INFO] Initializing Background Services...
+2026-04-28T20:29:24.270Z [Automation] [INFO] All background tasks scheduled.
+[2026-04-29 01:59:40,031] INFO in app: Unified Neural Engine (MCENN) loaded successfully (Inference Only)!
+ * Serving Flask app 'app'
+ * Debug mode: off
+[2026-04-29 01:59:40,073] INFO in _internal: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://10.169.89.159:5000
+[2026-04-29 01:59:40,073] INFO in _internal: [33mPress CTRL+C to quit[0m
+
+stderr:
+ (node:25280) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:25280) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+2026-04-28T20:29:24.198Z [Server] [ERROR] Uncaught Exception | {
+  "errorMessage": "listen EADDRINUSE: address already in use :::4000",
+  "stack": "Error: listen EADDRINUSE: address already in use :::4000\n    at Server.setupListenHandle [as _listen2] (node:net:1948:16)\n    at listenInCluster (node:net:2005:12)\n    at Server.listen (node:net:2110:7)\n    at start (file:///C:/Users/User/Downloads/React/Dynamic-ticket-pricing/modular-monolith/server.js:161:18)"
+}
+2026-04-28T20:29:24.203Z [Cache] [WARN] Redis SUB error | {
+  "message": "connect ECONNREFUSED 127.0.0.1:6379"
+}
+2026-04-28T20:29:24.423Z [Cache] [WARN] Redis SUB error | {
+  "message": "connect ECONNREFUSED 127.0.0.1:6379"
+}
+2026-04-28T20:29:24.831Z [Cache] [WARN] Redis SUB error | {
+  "message": "connect ECONNREFUSED 127.0.0.1:6379"
+}
+2026-04-28T20:29:25.449Z [Cache] [WARN] Redis SUB error | {
+  "message": "connect ECONNREFUSED 127.0.0.1:6379"
+}
+2026-04-28T20:29:25.452Z [Broadcaster] [ERROR] Subscription failed | {
+  "errorMessage": "Reached the max retries per request limit (which is 3). Refer to \"maxRetriesPerRequest\" option for details.",
+  "stack": "MaxRetriesPerRequestError: Reached the max retries per request limit (which is 3). Refer to \"maxRetriesPerRequest\" option for details.\n    at Socket.<anonymous> (C:\\Users\\User\\Downloads\\React\\Dynamic-ticket-pricing\\modular-monolith\\node_modules\\ioredis\\built\\redis\\event_handler.js:207:37)\n    at Object.onceWrapper (node:events:623:26)\n    at Socket.emit (node:events:508:28)\n    at TCP.<anonymous> (node:net:346:12)"
+}
+2026-04-28T20:29:26.255Z [Cache] [WARN] Redis SUB error | {
+  "message": "connect ECONNREFUSED 127.0.0.1:6379"
+}
+

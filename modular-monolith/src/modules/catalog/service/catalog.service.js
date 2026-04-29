@@ -1,12 +1,12 @@
 import catalogRepo from '../repository/catalog.repo.js';
 import { cacheGet, cacheSet, getCacheVersion } from '../../../shared/utils/cache.js';
-import aiService from '../../ai/service/ai.service.js';
+import { aiService } from '../../ai/index.js';
 
 export const getPublicEventList = async ({ page = 1, limit = 20, cursor = null } = {}) => {
   const version = await getCacheVersion();
   const cacheKey = `events:list:public:v${version}:p${page}:l${limit}`;
   const cached = await cacheGet(cacheKey, { includeMetadata: true });
-  
+
   if (cached) {
     // 🔄 Stale-While-Revalidate (Phase 16)
     const age = (Date.now() - cached.at) / 1000;
@@ -17,7 +17,7 @@ export const getPublicEventList = async ({ page = 1, limit = 20, cursor = null }
           const total = await catalogRepo.countEvents({ status: { $ne: 'cancelled' } });
           const payload = { items: events, page: Number(page), limit: Number(limit), total, totalPages: Math.ceil(total / Number(limit || 20)) };
           await cacheSet(cacheKey, payload, 300);
-        } catch (e) {}
+        } catch (e) { }
       })();
     }
     if (page === 1) prefetchNextPages({ limit });
@@ -37,7 +37,7 @@ export const getPublicEventList = async ({ page = 1, limit = 20, cursor = null }
   };
 
   await cacheSet(cacheKey, payload, 300); // 5 mins cache for list pages
-  
+
   // Trigger background pre-caching for next few pages
   prefetchNextPages({ currentPage: page, limit });
 
@@ -50,12 +50,12 @@ export const getPublicEventList = async ({ page = 1, limit = 20, cursor = null }
  */
 async function prefetchNextPages({ currentPage = 1, limit = 20, category = null } = {}) {
   const nextPages = [Number(currentPage) + 1, Number(currentPage) + 2];
-  
+
   for (const page of nextPages) {
-    const cacheKey = category 
+    const cacheKey = category
       ? `events:list:cat:${category}:page:${page}:limit:${limit}`
       : `events:list:public:page:${page}:limit:${limit}`;
-      
+
     // Check if already in cache to avoid redundant DB hits
     const exists = await cacheGet(cacheKey);
     if (exists) continue;
@@ -71,7 +71,7 @@ async function prefetchNextPages({ currentPage = 1, limit = 20, category = null 
           items = await catalogRepo.listPublicEvents({ page, limit });
           total = await catalogRepo.countEvents({ status: { $ne: 'cancelled' } });
         }
-        
+
         if (items && items.length > 0) {
           const payload = {
             items,
@@ -96,7 +96,7 @@ export const getEventDetail = async (eventId) => {
 
   const event = await catalogRepo.findById(eventId);
   if (!event) throw new Error('EVENT_NOT_FOUND');
-  
+
   await cacheSet(cacheKey, event, 600);
   return event;
 };
@@ -122,7 +122,7 @@ export const getLivePricing = async (eventId, cognitiveScore = 1.0, userId = nul
     try {
       const event = await catalogRepo.findById(eventId);
       if (!event) throw new Error('EVENT_NOT_FOUND');
-      
+
       const prices = {};
       if (event.ticketCategories && event.ticketCategories.length > 0) {
         for (const cat of event.ticketCategories) {
@@ -131,12 +131,12 @@ export const getLivePricing = async (eventId, cognitiveScore = 1.0, userId = nul
       } else {
         prices['standard'] = await aiService.getCalculatedPrice(null, event, cognitiveScore, userId);
       }
-      
+
       const aiStatus = await aiService.getAiHealth();
 
-      const response = { 
-        eventId: event._id, 
-        prices, 
+      const response = {
+        eventId: event._id,
+        prices,
         occupancyRate: Math.round(((event.ticketsSold || 0) / (event.capacity || 1)) * 100),
         mlStatus: aiStatus
       };
@@ -156,7 +156,7 @@ export const getEventsByCategory = async (category, { page = 1, limit = 20 } = {
   const version = await getCacheVersion();
   const cacheKey = `events:list:cat:${category}:v${version}:p${page}:l${limit}`;
   const cached = await cacheGet(cacheKey, { includeMetadata: true });
-  
+
   if (cached) {
     // 🔄 Stale-While-Revalidate (Phase 16)
     const age = (Date.now() - cached.at) / 1000;
@@ -167,7 +167,7 @@ export const getEventsByCategory = async (category, { page = 1, limit = 20 } = {
           const total = await catalogRepo.countEvents({ category, status: 'upcoming' });
           const payload = { items: events, page: Number(page), limit: Number(limit), total, totalPages: Math.ceil(total / Number(limit)) };
           await cacheSet(cacheKey, payload, 300);
-        } catch (e) {}
+        } catch (e) { }
       })();
     }
     return cached.val;
@@ -175,7 +175,7 @@ export const getEventsByCategory = async (category, { page = 1, limit = 20 } = {
 
   const events = await catalogRepo.findByCategory(category, { page, limit });
   const total = await catalogRepo.countEvents({ category, status: 'upcoming' });
-  
+
   const payload = {
     items: events,
     page: Number(page),
@@ -186,7 +186,7 @@ export const getEventsByCategory = async (category, { page = 1, limit = 20 } = {
 
   await cacheSet(cacheKey, payload, 300);
   prefetchNextPages({ currentPage: page, limit, category });
-  
+
   return payload;
 };
 
@@ -194,17 +194,23 @@ export const getEventsByCategory = async (category, { page = 1, limit = 20 } = {
 export const countEvents = (filter = {}) => catalogRepo.countEvents(filter);
 export const findById = (id) => catalogRepo.findById(id);
 export const create = (data) => catalogRepo.create(data);
-export const findOneAndDelete = (filter) => catalogRepo.findOneAndDelete(filter);
+export const findOneAndDelete = (filter, options = {}) => catalogRepo.findOneAndDelete(filter, options);
+export const findMany = (filter, select = {}, options = {}) => catalogRepo.findMany(filter, select, options);
+export const findOneAndUpdate = (filter, update, options = { new: true }) => catalogRepo.findOneAndUpdate(filter, update, options);
+export const findByIdAndOrganizer = (id, organizerId) => catalogRepo.findOne({ _id: id, organizerId });
 export const updateInventory = (filter, update, options) => catalogRepo.updateInventory(filter, update, options);
 
-export default { 
-  getPublicEventList, 
-  getEventDetail, 
-  getLivePricing, 
+export default {
+  getPublicEventList,
+  getEventDetail,
+  getLivePricing,
   getEventsByCategory,
   countEvents,
   findById,
   create,
   findOneAndDelete,
+  findMany,
+  findOneAndUpdate,
+  findByIdAndOrganizer,
   updateInventory
 };

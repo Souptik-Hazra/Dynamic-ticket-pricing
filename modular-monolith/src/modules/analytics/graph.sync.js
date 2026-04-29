@@ -1,5 +1,6 @@
 import bus from '../../shared/utils/bus.js';
 import { getNeo4jSession } from '../../shared/db/index.js';
+import { createLogger, logError } from '../../shared/utils/logger.js';
 
 /**
  * 🕸️ Neo4j Graph Sync Service
@@ -9,7 +10,8 @@ import { getNeo4jSession } from '../../shared/db/index.js';
  */
 
 export const initGraphSync = () => {
-  console.log('🕸️ [GraphSync] Initializing listeners...');
+  const logger = createLogger('GraphSync');
+  logger.info('Initializing listeners...');
 
   // 1. Sync User Creation
   bus.subscribe('user.registered', async (payload) => {
@@ -20,7 +22,7 @@ export const initGraphSync = () => {
         { id: String(payload._id), name: payload.name, email: payload.email, city: payload.city || '' }
       );
     } catch (err) {
-      console.error('[GraphSync] User sync failed:', err.message);
+      logError('GraphSync', 'User sync failed', err, { payload });
     } finally {
       await session.close();
     }
@@ -45,7 +47,7 @@ export const initGraphSync = () => {
         { uid: String(userId), eid: String(eventId), count }
       );
     } catch (err) {
-      console.error('[GraphSync] Ticket sync failed:', err.message);
+      logError('GraphSync', 'Ticket sync failed', err, { payload });
     } finally {
       await session.close();
     }
@@ -60,13 +62,13 @@ export const initGraphSync = () => {
         { uid: String(payload.userId), plan: payload.plan }
       );
     } catch (err) {
-      console.error('[GraphSync] Sub sync failed:', err.message);
+      logError('GraphSync', 'Subscription sync failed', err, { payload });
     } finally {
       await session.close();
     }
   });
 
-  console.log('✅ [GraphSync] Ready');
+  logger.info('Ready');
 };
 
 export default initGraphSync;

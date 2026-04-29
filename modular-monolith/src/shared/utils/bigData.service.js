@@ -1,5 +1,6 @@
 import { getRedisClient } from './cache.js';
 import bus from './bus.js';
+import { createLogger, logError } from './logger.js';
 
 /**
  * 🌊 Big Data Ingestion Service (Phase 15)
@@ -11,6 +12,8 @@ import bus from './bus.js';
 
 const STREAM_NAME = 'fanfever:telemetry:stream';
 const MAX_STREAM_LEN = 100000; // Cap stream to prevent memory overflow
+
+const logger = createLogger('BigData');
 
 export async function ingestTelemetry(type, payload) {
   const redis = getRedisClient();
@@ -26,7 +29,7 @@ export async function ingestTelemetry(type, payload) {
     // XADD stream * MAXLEN ~ 100000 key data
     await redis.xadd(STREAM_NAME, 'MAXLEN', '~', MAX_STREAM_LEN, '*', 'data', JSON.stringify(data));
   } catch (err) {
-    console.error('❌ [BigData] Ingestion failed:', err.message);
+    logError('BigData', 'Ingestion failed', err, { type, payload });
   }
 }
 
@@ -35,7 +38,7 @@ export async function ingestTelemetry(type, payload) {
  * Automatically ingests critical events into the big data stream
  */
 export const initBigDataPipeline = () => {
-  console.log('🌊 [BigData] Initializing ingestion pipeline...');
+  logger.info('Initializing ingestion pipeline...');
 
   // Buffer price updates
   bus.subscribe('price.updated', (payload) => {
@@ -52,7 +55,7 @@ export const initBigDataPipeline = () => {
     ingestTelemetry('SECURITY_THREAT', payload);
   });
 
-  console.log('✅ [BigData] Pipeline active');
+  logger.info('Pipeline active');
 };
 
 export default { ingestTelemetry, initBigDataPipeline };

@@ -1,6 +1,7 @@
 import cron from 'node-cron';
-import { logEvent } from './logger.js';
-import { predictMLPrice } from './helpers.js';
+import { createLogger, logEvent } from './logger.js';
+import { predictMLPrice } from '../../modules/ai/service/ai.service.js';
+import { generalQueue, analyticsQueue } from './taskQueue.js';
 
 // Services/Repos
 import ticketRepo from '../../modules/tickets/repository/ticket.repo.js';
@@ -14,57 +15,51 @@ import intelligenceService from '../../modules/analytics/service/intelligence.se
  * Handles scheduled tasks to keep the system clean and optimized.
  */
 export const initAutomation = () => {
-  console.log('🤖 [Automation] Initializing Background Services...');
+  const logger = createLogger('Automation');
+  logger.info('Initializing Background Services...');
 
   // 1. Cleanup Pending Tickets (Every 15 minutes)
   cron.schedule('*/15 * * * *', async () => {
-    try {
+    generalQueue.add('cleanup.pending_tickets', async () => {
       const expirationThreshold = new Date(Date.now() - 30 * 60 * 1000);
       const expiredTickets = await ticketRepo.findPendingExpired(expirationThreshold);
 
       if (expiredTickets.length > 0) {
-        console.log(`扫 [Automation] Expiring ${expiredTickets.length} pending tickets...`);
+        logger.info(`Expiring ${expiredTickets.length} pending tickets...`, { expiredTickets: expiredTickets.length });
         for (const ticket of expiredTickets) {
           await ticketService.cancelTicket(ticket._id, 'system_timeout');
         }
         await logEvent('Automation', 'CLEANUP', `Cleaned up ${expiredTickets.length} expired pending tickets.`, {}, 'INFO');
       }
-    } catch (err) {
-      console.error('❌ [Automation] Cleanup Pending Tickets Failed:', err.message);
-    }
+    });
   });
 
   // 2. Update Event Status (Daily at midnight)
   cron.schedule('0 0 * * *', async () => {
-    try {
+    generalQueue.add('update.event.status', async () => {
       const now = new Date();
       const count = await catalogRepo.completePastEvents(now);
       
       if (count > 0) {
-        console.log(`📅 [Automation] Marked ${count} events as completed.`);
+        logger.info(`Marked ${count} events as completed.`, { count });
         await logEvent('Automation', 'SCHEDULED_TASK', `Auto-completed ${count} past events.`, {}, 'INFO');
       }
-    } catch (err) {
-      console.error('❌ [Automation] Update Event Status Failed:', err.message);
-    }
+    });
   });
 
   // 3. Auto-Aggregate Federated Learning (Every hour)
   cron.schedule('0 * * * *', async () => {
-    try {
-      // Logic moved to aiService.checkAndAggregate()
+    analyticsQueue.add('ai.auto_aggregate', async () => {
       const result = await aiService.checkAndAggregate();
       if (result && result.success) {
         await logEvent('Automation', 'AI_TASK', `Auto-aggregated FL model ${result.modelVersion}.`, {}, 'INFO');
       }
-    } catch (err) {
-      console.error('❌ [Automation] FL Auto-Aggregation Failed:', err.message);
-    }
+    });
   });
 
   // 4. Precompute Prices (Every 30 minutes)
   cron.schedule('*/30 * * * *', async () => {
-    try {
+    analyticsQueue.add('precompute.prices', async () => {
       const activeEvents = await catalogRepo.findMany({ status: { $in: ['upcoming', 'ongoing'] } });
       let updatedCount = 0;
 
@@ -78,15 +73,13 @@ export const initAutomation = () => {
         updatedCount++;
       }
       
-      console.log(`📈 [Automation] Precomputed prices for ${updatedCount} active events.`);
-    } catch (err) {
-      console.error('❌ [Automation] Price Precomputation Failed:', err.message);
-    }
+      logger.info(`Precomputed prices for ${updatedCount} active events.`, { updatedCount });
+    });
   });
 
   // 5. Daily Sales Summary (Daily at 11:55 PM)
   cron.schedule('55 23 * * *', async () => {
-    try {
+    generalQueue.add('daily.sales.summary', async () => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
@@ -95,22 +88,18 @@ export const initAutomation = () => {
       const totalTickets = tickets.reduce((sum, t) => sum + t.quantity, 0);
 
       await logEvent('Automation', 'REPORT', `Daily Summary: ${totalTickets} tickets sold, ₹${totalRevenue.toFixed(2)} total revenue.`, {}, 'INFO');
-      console.log(`📊 [Automation] Daily sales summary generated.`);
-    } catch (err) {
-      console.error('❌ [Automation] Daily Report Failed:', err.message);
-    }
+      logger.info('Daily sales summary generated.', { totalTickets, totalRevenue });
+    });
   });
 
   // 6. Intelligence Aggregation (Hourly)
   cron.schedule('0 * * * *', async () => {
-    try {
-      console.log('🧠 [Automation] Running Intelligence Aggregation...');
+    analyticsQueue.add('intelligence.aggregation', async () => {
+      logger.info('Running Intelligence Aggregation...');
       await intelligenceService.aggregateDailyRevenue();
       await intelligenceService.aggregateEventOccupancy();
-    } catch (err) {
-      console.error('❌ [Automation] Intelligence Aggregation Failed:', err.message);
-    }
+    });
   });
 
-  console.log('✅ [Automation] All background tasks scheduled.');
+  logger.info('All background tasks scheduled.');
 };

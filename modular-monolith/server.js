@@ -9,6 +9,16 @@ import os from 'os';
 import { execSync } from 'child_process';
 
 import { connectMongoDB, connectNeo4j } from './src/shared/db/index.js';
+import { logInfo, logWarn, logError } from './src/shared/utils/logger.js';
+
+// Global safety: prevent optional-service failures (eg. Redis timeouts) from
+// crashing the whole process during development.
+process.on('unhandledRejection', (reason) => {
+  logError('Server', 'Unhandled Rejection', reason);
+});
+process.on('uncaughtException', (err) => {
+  logError('Server', 'Uncaught Exception', err);
+});
 import { createApp, createHttpServer } from './src/app.js';
 import { handleWsConnection, startWsHeartbeat } from './src/modules/notifications/notification.ws.js';
 import { initNotificationBus } from './src/modules/notifications/notification.bus.js';
@@ -18,13 +28,18 @@ import { initMLScheduler } from './src/modules/ai/service/ml.scheduler.js';
 import { initAutomation } from './src/shared/utils/automation.js';
 import { initBigDataPipeline } from './src/shared/utils/bigData.service.js';
 import { initBroadcaster } from './src/shared/utils/broadcaster.js';
+import { monitorSystemHealth } from './src/middleware/adaptiveThrottler.js';
+
+// Start resource monitoring
+monitorSystemHealth();
+
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // ── ML Model Lifecycle (Self-Healing Supervisor) ───────────────────────────
 let mlApp;
 const startMLModel = () => {
-  console.log('🤖 [Master] Starting ML Model sidecar...');
+  logInfo('Master', 'Starting ML Model sidecar...');
   const pythonPath = process.env.PYTHON_PATH || 'python';
   
   try {
@@ -35,20 +50,20 @@ const startMLModel = () => {
     });
 
     mlApp.on('error', (err) => {
-      console.error(`❌ [Master] Failed to start ML Model: ${err.message}`);
+      logError('Master', `Failed to start ML Model: ${err.message}`, err);
       if (err.code === 'ENOENT') {
-        console.error(`💡 Suggestion: Ensure "${pythonPath}" is in your PATH or update PYTHON_PATH in .env`);
+        logWarn('Master', `Suggestion: Ensure "${pythonPath}" is in your PATH or update PYTHON_PATH in .env`);
       }
     });
 
     mlApp.on('exit', (code) => {
       if (code !== 0 && code !== null) {
-        console.error(`🚩 [Master] ML Model crashed (code ${code}). Respawning in 5s...`);
+        logWarn('Master', `ML Model crashed (code ${code}). Respawning in 5s...`);
         setTimeout(startMLModel, 5000);
       }
     });
   } catch (err) {
-    console.error(`❌ [Master] Critical error spawning ML sidecar: ${err.message}`);
+    logError('Master', `Critical error spawning ML sidecar: ${err.message}`, err);
   }
 
   return mlApp;
@@ -58,10 +73,15 @@ if (cluster.isPrimary) {
   startMLModel();
   
   // Connect to DB and run any master-only initialization if needed
-  connectMongoDB().then(() => {
-    console.log('✅ [Master] MongoDB connected');
-    initAutomation();
-  });
+  connectMongoDB()
+    .then(() => {
+      logInfo('Master', 'MongoDB connected');
+      initAutomation();
+    })
+    .catch((err) => {
+      logError('Master', 'MongoDB master init failed', err);
+      process.exit(1);
+    });
 }
 
 // ── Clustering Strategy (Multi-Core Scaling) ───────────────────────────────
@@ -78,24 +98,24 @@ const getWorkerCount = () => {
 
 if (cluster.isPrimary && (process.env.NODE_ENV === 'production' || process.env.CLUSTER_DEV === 'true')) {
   const numWorkers = getWorkerCount();
-  console.log(`[Monolith Master] 🚀 Spawning ${numWorkers} workers for multi-core scaling...`);
+  logInfo('Master', `Spawning ${numWorkers} workers for multi-core scaling`);
   
   for (let i = 0; i < numWorkers; i++) cluster.fork();
 
   cluster.on('exit', (worker, code, signal) => {
     if (signal) {
-      console.log(`[Monolith Master] Worker ${worker.process.pid} was killed by signal: ${signal}`);
+      logWarn('Master', `Worker ${worker.process.pid} was killed by signal: ${signal}`);
     } else if (code !== 0) {
-      console.error(`[Monolith Master] 🚩 Worker ${worker.process.pid} died (code ${code}). Respawning...`);
+      logError('Master', `Worker ${worker.process.pid} died (code ${code}). Respawning...`, new Error(`Exit code ${code}`));
       cluster.fork();
     } else {
-      console.log(`[Monolith Master] Worker ${worker.process.pid} exited gracefully.`);
+      logInfo('Master', `Worker ${worker.process.pid} exited gracefully.`);
     }
   });
 
   // Cleanup sidecar on master exit
   process.on('SIGINT', () => {
-    console.log('\n🛑 [Master] Shutting down systems...');
+    logInfo('Master', 'Shutting down systems');
     if (mlApp) mlApp.kill();
     process.exit(0);
   });
@@ -138,15 +158,15 @@ if (cluster.isPrimary && (process.env.NODE_ENV === 'production' || process.env.C
       connectNeo4j();
 
       const PORT = config.port;
-      httpServer.listen(PORT, () => console.log(`🚀 Worker ${process.pid} | Monolith running on port ${PORT}`))
+      httpServer.listen(PORT, () => logInfo('Worker', `Worker ${process.pid} running on port ${PORT}`))
         .on('error', (err) => {
           if (err.code === 'EADDRINUSE') {
-            console.error(`❌ PORT ${PORT} IS BUSY. Change it in .env or kill the process using it.`);
+            logError('Worker', `PORT ${PORT} IS BUSY. Change it in .env or kill the process using it.`, err);
             process.exit(1);
           }
         });
     } catch (err) {
-      console.error(`❌ Worker ${process.pid} failed to start:`, err.message);
+      logError('Worker', `Worker ${process.pid} failed to start`, err);
       process.exit(1);
     }
   };
@@ -165,7 +185,7 @@ if (cluster.isPrimary && (process.env.NODE_ENV === 'production' || process.env.C
 
   // ── Graceful Shutdown (OS Context: Resource Cleanup) ──
   const shutdown = async (signal) => {
-    console.log(`\n🛑 [Worker ${process.pid}] Received ${signal}. Starting graceful shutdown...`);
+    logInfo('Worker', `Received ${signal}. Starting graceful shutdown...`);
     
     // Stop accepting new connections
     httpServer.close(async () => {
@@ -173,13 +193,14 @@ if (cluster.isPrimary && (process.env.NODE_ENV === 'production' || process.env.C
         clearInterval(heartbeatInterval);
         
         // Disconnect from databases in reverse order
-        const { closeNeo4j } = await import('./src/shared/db/index.js');
-        await closeNeo4j().catch(() => null);
+        const db = await import('./src/shared/db/index.js');
+        if (db.closeNeo4j) await db.closeNeo4j().catch(() => null);
+        if (db.closeMongo) await db.closeMongo().catch(() => null);
         
-        console.log(`👋 Worker ${process.pid} shutdown complete.`);
+        logInfo('Worker', `Worker ${process.pid} shutdown complete.`);
         process.exit(0);
       } catch (err) {
-        console.error(`❌ Shutdown error: ${err.message}`);
+        logError('Worker', 'Shutdown error', err);
         process.exit(1);
       }
     });

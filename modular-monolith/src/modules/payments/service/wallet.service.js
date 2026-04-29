@@ -1,6 +1,8 @@
 import Ledger from '../model/ledger.model.js';
-import User from '../../users/model/user.model.js';
+import { userService } from '../../users/index.js';
+import paymentRepo from '../repository/payment.repo.js';
 import mongoose from 'mongoose';
+import { logInfo, logWarn, logError } from '../../../shared/utils/logger.js';
 
 /**
  * 💳 Expert Wallet Service (Double-Entry)
@@ -12,25 +14,19 @@ import mongoose from 'mongoose';
 export const adjustBalance = async (userId, amount, category, referenceId, description = '') => {
   const session = await mongoose.startSession();
   session.startTransaction();
+  logInfo('WalletService', 'Starting wallet adjustment', { userId, amount, category, referenceId });
 
   try {
-    // 1. Get current balance (for the ledger audit)
-    const user = await User.findById(userId).session(session);
-    if (!user) throw new Error('USER_NOT_FOUND');
+    // Update User Balance via User Module
+    // This handles both getting current balance and updating it atomically if using $inc
+    const newBalance = await userService.updateWalletBalance(userId, amount, session);
 
-    const currentBalance = user.walletBalance || 0;
-    const newBalance = currentBalance + amount;
+    if (newBalance < 0) {
+      logWarn('WalletService', 'Insufficient funds for adjustment', { userId, amount, balanceAfter: newBalance });
+      throw new Error('INSUFFICIENT_FUNDS');
+    }
 
-    if (newBalance < 0) throw new Error('INSUFFICIENT_FUNDS');
-
-    // 2. Update User Balance
-    await User.updateOne(
-      { _id: userId },
-      { $inc: { walletBalance: amount } },
-      { session }
-    );
-
-    // 3. Create Ledger Entry
+    // Create Ledger Entry
     await Ledger.create([{
       userId,
       amount,
@@ -42,13 +38,20 @@ export const adjustBalance = async (userId, amount, category, referenceId, descr
     }], { session });
 
     await session.commitTransaction();
+    logInfo('WalletService', 'Wallet adjustment committed', { userId, balanceAfter: newBalance });
     return newBalance;
   } catch (err) {
-    await session.abortTransaction();
+    if (session.inTransaction()) await session.abortTransaction();
+    logError('WalletService', 'Wallet adjustment failed', err, { userId, amount, category, referenceId });
     throw err;
   } finally {
-    session.endSession();
+    await session.endSession();
   }
 };
 
-export default { adjustBalance };
+export const findWalletById = (id) => paymentRepo.findWalletById(id);
+export const updateWalletBalance = (userId, amount, type, description, options) =>
+  paymentRepo.updateWalletBalance(userId, amount, type, description, options);
+export const listAllWallets = () => paymentRepo.listAllWallets();
+
+export default { adjustBalance, findWalletById, updateWalletBalance, listAllWallets };

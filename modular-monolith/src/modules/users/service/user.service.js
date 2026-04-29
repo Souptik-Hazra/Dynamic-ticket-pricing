@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import userRepo from '../repository/user.repo.js';
-import authService from '../../auth/service/auth.service.js';
+import { authService } from '../../auth/index.js';
+import { ROLES } from '../../../shared/constants/roles.js';
 
 const safeUser = (u) => ({
   _id: u._id,
@@ -26,7 +27,7 @@ export const listUsers = async (filter = {}) => {
 };
 
 export const updateProfile = async (userId, data, currentUser) => {
-  if (currentUser && currentUser.id !== userId && currentUser.role !== 'admin') {
+  if (currentUser && currentUser.id !== userId && currentUser.role !== ROLES.ADMIN) {
     throw new Error('UNAUTHORIZED');
   }
 
@@ -46,7 +47,7 @@ export const updateProfile = async (userId, data, currentUser) => {
   if (!user) throw new Error('USER_NOT_FOUND');
 
   const response = { user: safeUser(user) };
-  
+
   if (currentUser && email && email.toLowerCase() !== currentUser.email?.toLowerCase()) {
     response.token = authService.issueToken(user);
   }
@@ -60,16 +61,27 @@ export const deleteUser = async (userId) => {
   return true;
 };
 
+export const updateWalletBalance = async (userId, amount, session = null) => {
+  const user = await userRepo.update(
+    userId,
+    { $inc: { walletBalance: amount } },
+    { session, new: true }
+  );
+  if (!user) throw new Error('USER_NOT_FOUND');
+  return user.walletBalance;
+};
+
 // Advanced Service Methods for cross-module use
 export const countDocuments = (filter = {}) => userRepo.countDocuments(filter);
 export const findOne = (filter) => userRepo.findOne(filter);
 export const update = (id, data) => userRepo.update(id, data);
 
-export default { 
-  getProfile, 
-  listUsers, 
-  updateProfile, 
+export default {
+  getProfile,
+  listUsers,
+  updateProfile,
   deleteUser,
+  updateWalletBalance,
   countDocuments,
   findOne,
   update

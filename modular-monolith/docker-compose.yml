@@ -7,7 +7,8 @@ services:
     container_name: fan-fever-api
     ports:
       - "${PORT:-4000}:4000"
-    env_file: .env
+    # Use unified root .env to avoid per-module env files
+    env_file: ../.env
     environment:
       - MONGODB_URI=mongodb://mongo:27017/fanfever
       - REDIS_URI=redis://redis:6379

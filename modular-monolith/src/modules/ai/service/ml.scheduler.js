@@ -1,6 +1,6 @@
 import cron from 'node-cron';
 import aiService from './ai.service.js';
-import { logEvent } from '../../../shared/utils/logger.js';
+import { logEvent, createLogger } from '../../../shared/utils/logger.js';
 
 /**
  * 🤖 ML Model Retraining Scheduler (Phase 11)
@@ -24,7 +24,8 @@ export const initMLScheduler = () => {
     }
   });
 
-  console.log('🤖 [ML-Scheduler] Automated retraining active (Weekly: Sunday 02:00)');
+  const logger = createLogger('ML-Scheduler');
+  logger.info('Automated retraining active (Weekly: Sunday 02:00)');
 };
 
 export default { initMLScheduler };

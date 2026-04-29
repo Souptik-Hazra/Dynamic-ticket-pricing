@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { logWarn } from './logger.js';
 
 const LOCK_DIR = path.join(os.tmpdir(), 'fanfever-locks');
 
@@ -40,7 +41,7 @@ class LockManager {
         try {
           const pid = parseInt(fs.readFileSync(lockPath, 'utf8'));
           if (pid && !this._isProcessRunning(pid)) {
-            console.warn(`[LockManager] Stale lock detected for ${lockName} (PID ${pid}). Reclaiming...`);
+            logWarn('LockManager', `Stale lock detected for ${lockName} (PID ${pid}). Reclaiming...`, { lockName, pid });
             this.releaseLock(lockName);
             return this.acquireLock(lockName);
           }

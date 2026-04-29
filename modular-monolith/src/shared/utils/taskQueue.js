@@ -1,5 +1,6 @@
-import { logEvent } from './logger.js';
+import { createLogger, logEvent } from './logger.js';
 import bus from './bus.js';
+import { sleep } from './helpers.js';
 
 /**
  * 🚜 Platinum Task Queue (Internal Pattern)
@@ -19,11 +20,11 @@ class TaskQueue {
     this.queue = [];
     this.processing = 0;
     this.concurrency = concurrency;
+    this.logger = createLogger(`TaskQueue:${name}`);
   }
 
   async add(taskName, fn, payload = {}) {
-    console.log(`🚜 [Queue:${this.name}] Job Added: ${taskName}`);
-    
+    this.logger.info(`Job Added: ${taskName}`, { payload });
     this.queue.push({ taskName, fn, payload, retries: 0 });
     bus.publish('task.status', { taskName, status: 'queued', payload });
     this.process();
@@ -37,21 +38,26 @@ class TaskQueue {
     bus.publish('task.status', { taskName: job.taskName, status: 'processing', userId: job.payload?.userId });
 
     try {
-      console.log(`⚙️ [Queue:${this.name}] Processing: ${job.taskName}`);
+      this.logger.info(`Processing: ${job.taskName}`, { payload: job.payload });
       await job.fn(job.payload);
       
       bus.publish('task.status', { taskName: job.taskName, status: 'completed', userId: job.payload?.userId });
       await logEvent('TaskQueue', 'JOB_SUCCESS', `Job ${job.taskName} completed.`, { queue: this.name }, 'INFO');
     } catch (err) {
-      console.error(`🚩 [Queue:${this.name}] Job Failed: ${job.taskName}`, err.message);
+      this.logger.error(`Job Failed: ${job.taskName}`, err, { retries: job.retries, queue: this.name });
       
       if (job.retries < 3) {
         job.retries++;
-        bus.publish('task.status', { taskName: job.taskName, status: 'retrying', userId: job.payload?.userId });
-        this.queue.push(job);
+        const backoffMs = 1000 * job.retries;
+        bus.publish('task.status', { taskName: job.taskName, status: 'retrying', retry: job.retries, backoffMs, userId: job.payload?.userId });
+        (async () => {
+          await sleep(backoffMs);
+          this.queue.push(job);
+          this.process();
+        })();
       } else {
         bus.publish('task.status', { taskName: job.taskName, status: 'failed', error: err.message, userId: job.payload?.userId });
-        await logEvent('TaskQueue', 'JOB_FATAL', `Job ${job.taskName} failed after 3 retries.`, { error: err.message }, 'ERROR');
+        await logEvent('TaskQueue', 'JOB_FATAL', `Job ${job.taskName} failed after 3 retries.`, { error: err.message, queue: this.name }, 'ERROR');
       }
     } finally {
       this.processing--;

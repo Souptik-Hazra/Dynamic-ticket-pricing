@@ -1,5 +1,6 @@
 import notificationRepo from '../repository/notification.repo.js';
 import { clients, broadcastToRoom } from '../notification.ws.js';
+import { logInfo, logError } from '../../../shared/utils/logger.js';
 
 /**
  * ⚡ Notification Service with Smart Throttling
@@ -14,6 +15,7 @@ import { clients, broadcastToRoom } from '../notification.ws.js';
 const broadcastBuffers = new Map(); // roomId -> { payload, timeout }
 
 export const pushNotification = async (userId, data) => {
+  logInfo('NotificationService', 'Pushing user notification', { userId, type: data.type, title: data.title });
   try {
     // 1. Persist to DB
     const notification = await notificationRepo.create({ userId, ...data });
@@ -30,10 +32,11 @@ export const pushNotification = async (userId, data) => {
       userSockets.forEach(ws => { 
         if (ws.readyState === 1) ws.send(msg); 
       });
+      logInfo('NotificationService', 'Notification pushed via WebSocket', { userId, socketCount: userSockets.size });
     }
     return notification;
   } catch (err) {
-    console.error('[NotificationService] Push failed:', err.message);
+    logError('NotificationService', 'Push failed', err, { userId, data });
     throw err;
   }
 };

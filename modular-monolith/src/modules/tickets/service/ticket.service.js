@@ -1,16 +1,22 @@
 import bus from '../../../shared/utils/bus.js';
-import { cacheDel, cacheDelPattern, cacheSetNX } from '../../../shared/utils/cache.js';
+import { invalidateEventCache, cacheSetNX } from '../../../shared/utils/cache.js';
+import { ROLES } from '../../../shared/constants/roles.js';
+import crypto from 'crypto';
 
-import { createBookingReference, createTicketQrToken, verifyTemporalProof } from '../../../shared/utils/helpers.js';
 import { writeDurableLog } from '../../../shared/utils/durability.js';
+import { createBookingReference } from '../../../shared/utils/helpers.js';
 import { generateBrandedQR } from '../../../shared/utils/media.js';
 
 import ticketRepo from '../repository/ticket.repo.js';
 
-// Cross-module service calls
-import aiService from '../../ai/service/ai.service.js';
-import catalogRepo from '../../catalog/repository/catalog.repo.js';
+// Decoupled Module Interfaces
+import { aiService } from '../../ai/index.js';
+import { catalogService } from '../../catalog/index.js';
+import { securityService } from '../../auth/index.js';
 import { withTransaction } from '../../../shared/db/index.js';
+import { logInfo, logWarn, logError } from '../../../shared/utils/logger.js';
+
+export const createTicketQrToken = () => crypto.randomBytes(32).toString('base64url');
 
 
 const PRICE_ABS_TOLERANCE = 1.0; 
@@ -23,7 +29,7 @@ export const getTicketsByUser = async (userId) => {
 export const getTicketDetail = async (ticketId, user) => {
   const ticket = await ticketRepo.findById(ticketId);
   if (!ticket) throw new Error('TICKET_NOT_FOUND');
-  if (String(ticket.userId) !== user.id && user.role !== 'admin') throw new Error('UNAUTHORIZED');
+  if (String(ticket.userId) !== user.id && user.role !== ROLES.ADMIN) throw new Error('UNAUTHORIZED');
   return ticket;
 };
 
@@ -43,7 +49,7 @@ export async function purchaseTickets(userId, data, userDetails) {
 
 
 
-  if (!humanityProof || !temporalProof || !(await verifyTemporalProof(humanityProof, temporalProof))) {
+  if (!humanityProof || !temporalProof || !(await securityService.verifyTemporalProof(humanityProof, temporalProof))) {
     throw new Error('INVALID_TEMPORAL_PROOF');
   }
 
@@ -51,7 +57,7 @@ export async function purchaseTickets(userId, data, userDetails) {
   const isHuman = await aiService.auditHumanity(userId, humanityProof, behavioralMetadata || {});
   if (!isHuman) throw new Error('BEHAVIORAL_ANOMALY');
 
-  const event = await catalogRepo.findById(eventId);
+  const event = await catalogService.findById(eventId);
   if (!event) throw new Error('EVENT_NOT_FOUND');
 
   const cat = (event.ticketCategories || []).find(c => (categoryId && String(c._id) === String(categoryId)) || c.name === categoryName) || null;
@@ -72,8 +78,19 @@ export async function purchaseTickets(userId, data, userDetails) {
   if (absDiff > PRICE_ABS_TOLERANCE && relDiff > PRICE_REL_TOLERANCE) {
     const err = new Error('PRICE_MISMATCH');
     err.serverPrice = finalPricePerTicket;
+    logWarn('TicketService', 'Price mismatch detected', { userId, eventId, clientPrice, finalPricePerTicket, absDiff, relDiff });
     throw err;
   }
+
+  logInfo('TicketService', 'Ticket purchase pricing validated', {
+    userId,
+    eventId,
+    categoryId,
+    ticketCount,
+    clientPrice,
+    finalPricePerTicket,
+    bookingKey: iKey
+  });
 
   // Log price decision for A/B Testing
   const { logExperimentResult, getExperimentSegment } = await import('../../analytics/abTest.service.js');
@@ -82,9 +99,12 @@ export async function purchaseTickets(userId, data, userDetails) {
 
   await aiService.logAuditDecision({
     eventId, categoryId, price: finalPricePerTicket, qty: ticketCount, hash: temporalProof, humanitySignature: humanityProof
-  }, userId).catch(() => null);
+  }, userId).catch((err) => logWarn('AI', 'Failed to persist audit decision', { message: err?.message || err }));
 
-  return await withTransaction(async (session) => {
+  logInfo('TicketService', 'Beginning purchase transaction', { userId, eventId, categoryId, ticketCount, bookingKey: iKey });
+
+  try {
+    return await withTransaction(async (session) => {
     const updatedEvent = await allocateInventory(event._id, cat?._id, ticketCount, selectedSeats, null, session);
     if (!updatedEvent) throw new Error('INVENTORY_UNAVAILABLE_OR_SEATS_TAKEN');
 
@@ -113,32 +133,45 @@ export async function purchaseTickets(userId, data, userDetails) {
     // Ensure the transaction is physically written to disk before confirming to user.
     await writeDurableLog({
       bookingRef, userId, eventId, ticketCount, totalAmount: serverPrice * ticketCount
-    }).catch(err => console.warn('[Durability] Failed to write audit log:', err.message));
+    }).catch(err => logWarn('Durability', 'Failed to write audit log', { message: err.message }));
 
     bus.publish('ticket.sold', { eventId, categoryName: cat?.name || 'standard', remainingSeats: updatedEvent.availableTickets, count: tickets.length }, true);
     bus.publish('ticket.purchased', { userId, count: tickets.length, eventName: event.name }, true);
 
+    logInfo('TicketService', 'Ticket purchase completed successfully', {
+      userId,
+      bookingReference,
+      ticketCount: tickets.length,
+      totalAmount: serverPrice * ticketCount
+    });
+
     return tickets;
   });
+  } catch (err) {
+    logError('TicketService', 'Ticket purchase failed', err, { userId, eventId, bookingKey: iKey });
+    throw err;
+  }
 }
 
 
 export async function verifyAndUseTicket(token, user) {
-  const ticket = await ticketRepo.findByQrToken(token);
-  if (!ticket || ticket.isUsed || ticket.status !== 'confirmed') throw new Error('TICKET_INVALID_OR_USED');
+  logInfo('TicketService', 'Starting ticket verification', { token, userId: user.id });
+  try {
+    const ticket = await ticketRepo.findByQrToken(token);
+    if (!ticket || ticket.isUsed || ticket.status !== 'confirmed') throw new Error('TICKET_INVALID_OR_USED');
 
-  const event = await catalogRepo.findById(ticket.eventId);
-  if (!event) throw new Error('EVENT_NOT_FOUND');
+    const event = await catalogService.findById(ticket.eventId);
+    if (!event) throw new Error('EVENT_NOT_FOUND');
 
-  const isAuthorized = ['admin', 'staff', 'organizer'].includes(user.role) || 
-                       (event.organizerId && String(event.organizerId) === user.id);
+    const isAuthorized = [ROLES.ADMIN, ROLES.STAFF, ROLES.ORGANIZER].includes(user.role) || 
+                         (event.organizerId && String(event.organizerId) === user.id);
 
-  if (!isAuthorized) throw new Error('UNAUTHORIZED_VERIFIER');
+    if (!isAuthorized) throw new Error('UNAUTHORIZED_VERIFIER');
 
-  ticket.isUsed = true;
-  await ticket.save();
+    ticket.isUsed = true;
+    await ticket.save();
 
-  const [scannedCount, totalSold] = await Promise.all([
+    const [scannedCount, totalSold] = await Promise.all([
     ticketRepo.aggregate([
       { $match: { eventId: ticket.eventId, isUsed: true, status: 'confirmed' } },
       { $count: 'count' }
@@ -153,31 +186,42 @@ export async function verifyAndUseTicket(token, user) {
   const tSold = totalSold[0]?.count || 0;
 
   bus.publish('attendance.updated', { eventId: ticket.eventId, scannedCount: sCount, totalSold: tSold });
+  logInfo('TicketService', 'Ticket verified successfully', { ticketId: ticket._id, userId: user.id, eventId: ticket.eventId, scannedCount: sCount, totalSold: tSold });
   
   return { ticket, stats: { scannedCount: sCount, totalSold: tSold } };
+  } catch (err) {
+    logError('TicketService', 'Ticket verification failed', err, { token, userId: user.id });
+    throw err;
+  }
 }
 
 export async function cancelTicket(ticketId, reason = 'user_cancelled') {
+  logInfo('TicketService', 'Starting ticket cancelation', { ticketId, reason });
   const ticket = await ticketRepo.findById(ticketId);
-  if (!ticket || ticket.status === 'cancelled') return null;
-
-  // Restore inventory atomically
-  const filter = { _id: ticket.eventId };
-  const update = { $inc: { availableTickets: ticket.quantity, ticketsSold: -ticket.quantity } };
-  
-  if (ticket.categoryId) {
-    filter['ticketCategories._id'] = ticket.categoryId;
-    update.$inc['ticketCategories.$.availableSeats'] = ticket.quantity;
-    if (ticket.seatNumber) {
-      update.$pull = { 'ticketCategories.$.bookedSeats': ticket.seatNumber };
-    }
+  if (!ticket || ticket.status === 'cancelled') {
+    logWarn('TicketService', 'Cancel request ignored for non-existent or already cancelled ticket', { ticketId, reason });
+    return null;
   }
-  
-  await catalogRepo.updateInventory(filter, update);
 
-  ticket.status = 'cancelled';
-  ticket.metadata = { ...ticket.metadata, cancellationReason: reason };
-  return await ticket.save();
+  return await withTransaction(async (session) => {
+    // Restore inventory atomically
+    const filter = { _id: ticket.eventId };
+    const update = { $inc: { availableTickets: ticket.quantity, ticketsSold: -ticket.quantity } };
+    
+    if (ticket.categoryId) {
+      filter['ticketCategories._id'] = ticket.categoryId;
+      update.$inc['ticketCategories.$.availableSeats'] = ticket.quantity;
+      if (ticket.seatNumber) {
+        update.$pull = { 'ticketCategories.$.bookedSeats': ticket.seatNumber };
+      }
+    }
+    
+    await catalogService.updateInventory(filter, update, { session });
+
+    ticket.status = 'cancelled';
+    ticket.metadata = { ...ticket.metadata, cancellationReason: reason };
+    return await ticket.save({ session });
+  });
 }
 
 export const allocateInventory = async (eventId, categoryId, ticketCount, selectedSeats = [], expectedVersion = null, session = null) => {
@@ -208,11 +252,13 @@ export const allocateInventory = async (eventId, categoryId, ticketCount, select
     filter.availableTickets = { $gte: ticketCount };
   }
 
-  const updatedEvent = await catalogRepo.updateInventory(filter, update, { session });
+  const updatedEvent = await catalogService.updateInventory(filter, update, { session });
 
   if (updatedEvent) {
-    await cacheDel(`event:${eventId}`);
-    await cacheDelPattern('events:list:*');
+    await invalidateEventCache(eventId);
+    logInfo('TicketService', 'Inventory allocated successfully', { eventId, categoryId, ticketCount, selectedSeats, remainingTickets: updatedEvent.availableTickets });
+  } else {
+    logWarn('TicketService', 'Inventory allocation failed', { eventId, categoryId, ticketCount, selectedSeats });
   }
   return updatedEvent;
 }
@@ -229,6 +275,9 @@ export const updateStatus = async (filter, status, options = {}) => {
   return await ticketRepo.updateMany(filter, { $set: { status } }, options);
 };
 
+export const aggregate = (pipeline) => ticketRepo.aggregate(pipeline);
+export const updateMany = (filter, update, options) => ticketRepo.updateMany(filter, update, options);
+
 export default { 
   getTicketsByUser,
   getTicketDetail,
@@ -238,5 +287,9 @@ export default {
   allocateInventory,
   findWithEvent,
   findMany,
-  updateStatus
+  updateStatus,
+  aggregate,
+  updateMany,
+  createBookingReference,
+  createTicketQrToken
 };

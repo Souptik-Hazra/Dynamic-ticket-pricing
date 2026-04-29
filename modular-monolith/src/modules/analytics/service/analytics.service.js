@@ -1,5 +1,6 @@
 import analyticsRepo from '../repository/analytics.repo.js';
 import { cacheGet, cacheSet } from '../../../shared/utils/cache.js';
+import { getSystemMetrics } from '../../../shared/utils/metrics.js';
 
 export const getPlatformDashboard = async (userId, role, forceRefresh) => {
   const cacheKey = `analytics:dashboard:${userId}`;
@@ -61,6 +62,7 @@ export const getSystemHealthMetrics = async () => {
   ]);
 
   const result = {
+    systemMetrics: getSystemMetrics(),
     serviceDistribution: serviceDistribution.map(s => ({ name: s._id, value: s.count })),
     errorTimeline: errorTimeline.map(t => ({ 
       time: t._id.replace(' ', 'T') + ':00Z', 

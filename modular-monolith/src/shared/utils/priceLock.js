@@ -1,4 +1,5 @@
 import { cacheGet, cacheSet, cacheDel } from './cache.js';
+import { logInfo } from './logger.js';
 
 /**
  * 🔒 Price Lock Reservation System
@@ -41,7 +42,7 @@ export const getVerifiedPrice = async (userId, eventId, categoryId, currentServe
   const lockedData = await cacheGet(lockKey);
 
   if (lockedData && lockedData.expiresAt > Date.now()) {
-    console.log(`🔒 [PriceLock] Using locked price: ₹${lockedData.price} (Server: ₹${currentServerPrice})`);
+    logInfo('PriceLock', `Using locked price: ₹${lockedData.price} (Server: ₹${currentServerPrice})`, { lockedPrice: lockedData.price, serverPrice: currentServerPrice });
     return lockedData.price;
   }
 

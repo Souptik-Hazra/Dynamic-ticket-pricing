@@ -4,6 +4,8 @@ import config from '../../../shared/config/index.js';
 import authRepo from '../repository/auth.repo.js';
 import bus from '../../../shared/utils/bus.js';
 
+import { ROLES } from '../../../shared/constants/roles.js';
+
 export const issueToken = (user) => {
   return jwt.sign(
     { id: user._id.toString(), email: user.email, role: user.role },
@@ -26,7 +28,7 @@ export const registerUser = async (name, email, password, role) => {
     name, 
     email, 
     password: hashed, 
-    role: role === 'organizer' ? 'organizer' : 'user' 
+    role: role === ROLES.ORGANIZER ? ROLES.ORGANIZER : ROLES.USER 
   });
   
   // Publish for Neo4j Sync & Analytics

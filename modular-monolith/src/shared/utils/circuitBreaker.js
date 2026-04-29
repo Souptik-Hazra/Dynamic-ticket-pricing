@@ -4,6 +4,9 @@
  * Self-healing resilience layer that dynamically adjusts its own thresholds
  * based on real-time performance and error patterns.
  */
+import { createLogger } from './logger.js';
+
+const logger = createLogger('CircuitBreaker');
 class CircuitBreaker {
   constructor(serviceName, options = {}) {
     this.serviceName = serviceName;
@@ -25,7 +28,7 @@ class CircuitBreaker {
     if (this.state === 'OPEN') {
       if (Date.now() - this.lastFailureTime > this.adaptiveTimeout) {
         this.state = 'HALF-OPEN';
-        console.warn(`[CircuitBreaker] ${this.serviceName} entering HALF-OPEN state.`);
+        logger.warn(`${this.serviceName} entering HALF-OPEN state.`, { adaptiveTimeout: this.adaptiveTimeout });
       } else {
         return fallback ? fallback() : Promise.reject(new Error(`CIRCUIT_OPEN: ${this.serviceName}`));
       }
@@ -77,7 +80,7 @@ class CircuitBreaker {
 
     if (this.failures * multiplier >= this.failureThreshold) {
       this.state = 'OPEN';
-      console.error(`🚩 [CircuitBreaker] ${this.serviceName} state is now OPEN. Adaptive Timeout: ${this.adaptiveTimeout}ms`);
+      logger.error(`${this.serviceName} state is now OPEN. Adaptive Timeout: ${this.adaptiveTimeout}ms`, null, { adaptiveTimeout: this.adaptiveTimeout });
     }
   }
 
@@ -85,7 +88,7 @@ class CircuitBreaker {
     this.state = 'CLOSED';
     this.failures = 0;
     this.successes = 0;
-    console.log(`✅ [CircuitBreaker] ${this.serviceName} state is now CLOSED (Recovered).`);
+    logger.info(`${this.serviceName} state is now CLOSED (Recovered).`);
   }
 }
 

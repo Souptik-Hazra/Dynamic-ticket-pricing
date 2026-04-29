@@ -1,4 +1,7 @@
 import { EventEmitter } from 'events';
+import { createLogger } from './logger.js';
+
+const logger = createLogger('Bus');
 
 /**
  * 🚌 Internal Event Bus
@@ -29,25 +32,42 @@ class InternalBus extends EventEmitter {
     // During high traffic, skip non-critical events (like background analytics)
     // to keep the main thread responsive for sales.
     if (this.pendingEvents > this.highTrafficThreshold && !isCritical) {
-      console.warn(`⚠️ [Bus] Backpressure: Throttling non-critical event ${eventName}`);
+      logger.warn(`Backpressure: Throttling non-critical event ${eventName}`, { eventName, pendingEvents: this.pendingEvents });
       this.pendingEvents--;
       return;
     }
 
     if (this.pendingEvents > this.highTrafficThreshold) {
-      console.log(`📡 [Bus] High Traffic: Prioritizing critical event ${eventName}`);
+      logger.info(`High Traffic: Prioritizing critical event ${eventName}`, { eventName, pendingEvents: this.pendingEvents });
     } else {
-      console.log(`📡 [Bus] Publishing: ${eventName}`);
+      logger.info(`Publishing event ${eventName}`, { eventName, pendingEvents: this.pendingEvents });
     }
 
-    // Use setImmediate to allow the event loop to breathe
+    // Use setImmediate to allow the event loop to breathe.
     setImmediate(() => {
       try {
-        this.emit(eventName, payload);
+        this.safeEmit(eventName, payload);
       } finally {
         this.pendingEvents = Math.max(0, this.pendingEvents - 1);
       }
     });
+  }
+
+  safeEmit(eventName, payload) {
+    const listeners = this.listeners(eventName);
+    if (!listeners.length) return false;
+
+    for (const listener of listeners) {
+      try {
+        const result = listener.call(this, payload);
+        Promise.resolve(result).catch((err) => {
+          logger.error(`Async subscriber error on ${eventName}`, err, { eventName });
+        });
+      } catch (err) {
+        logger.error(`Subscriber error on ${eventName}`, err, { eventName });
+      }
+    }
+    return true;
   }
 
 

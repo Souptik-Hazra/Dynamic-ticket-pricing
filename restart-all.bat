@@ -71,7 +71,7 @@ echo.
 :: ── [5/5] System Health Check ────────────────────────────────────────────
 echo [5/5] 🧪 Running System Audit...
 cd modular-monolith
-node scripts/test-all.js
+node scripts/run_all.js
 cd ..
 
 echo.

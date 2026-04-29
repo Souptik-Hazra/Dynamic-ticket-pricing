@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import bus from '../../../shared/utils/bus.js';
+import { createLogger } from '../../../shared/utils/logger.js';
 
 /**
  * 📊 Materialized Stats Service (Projection Pattern)
@@ -20,7 +21,8 @@ const dailyStatsSchema = new mongoose.Schema({
 const DailyStats = mongoose.models.DailyStats || mongoose.model('DailyStats', dailyStatsSchema);
 
 export const initStatsSync = () => {
-  console.log('📊 [StatsSync] Initializing projection listeners...');
+  const logger = createLogger('StatsSync');
+  logger.info('Initializing projection listeners...');
 
   // 1. Sync on Payment Success
   bus.subscribe('payment.success', async (payload) => {
@@ -39,7 +41,7 @@ export const initStatsSync = () => {
         { upsert: true }
       );
     } catch (err) {
-      console.error('[StatsSync] Payment sync failed:', err.message);
+      logger.error('Payment sync failed', err);
     }
   });
 
@@ -53,7 +55,7 @@ export const initStatsSync = () => {
         { upsert: true }
       );
     } catch (err) {
-      console.error('[StatsSync] Event sync failed:', err.message);
+      logger.error('Event sync failed', err);
     }
   });
 };

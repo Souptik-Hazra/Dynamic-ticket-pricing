@@ -1,5 +1,6 @@
 import { getPubSub } from './cache.js';
 import { clients, rooms } from '../../modules/notifications/notification.ws.js';
+import { logInfo, logError } from './logger.js';
 
 /**
  * 📡 Distributed Broadcaster (Phase 16)
@@ -16,8 +17,8 @@ export const initBroadcaster = () => {
   if (!sub) return;
 
   sub.subscribe(CHANNEL, (err) => {
-    if (err) console.error('❌ [Broadcaster] Subscription failed:', err.message);
-    else console.log('📡 [Broadcaster] Subscribed to global sync channel');
+    if (err) logError('Broadcaster', 'Subscription failed', err);
+    else logInfo('Broadcaster', 'Subscribed to global sync channel');
   });
 
   sub.on('message', (channel, message) => {
@@ -34,7 +35,7 @@ export const initBroadcaster = () => {
         deliverToAllLocal(payload);
       }
     } catch (err) {
-      console.error('[Broadcaster] Sync processing error:', err.message);
+      logError('Broadcaster', 'Sync processing error', err);
     }
   });
 };

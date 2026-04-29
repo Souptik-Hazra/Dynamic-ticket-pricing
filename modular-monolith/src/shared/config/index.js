@@ -68,14 +68,6 @@ const config = {
     aggregationThreshold: parseInt(process.env.ML_AGGREGATION_THRESHOLD || '3', 10)
   },
 
-  // Communication (SMTP)
-  smtp: {
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT || '587', 10),
-    secure: process.env.SMTP_SECURE === 'true',
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
-  },
 
   // Infrastructure & Scaling
   clustering: {

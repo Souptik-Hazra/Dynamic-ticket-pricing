@@ -18,7 +18,8 @@ dictConfig({
 logger = logging.getLogger(__name__)
 
 # 2. Global Setup
-load_dotenv(os.path.join(os.path.dirname(__file__), '../.env'))
+# Load unified root .env (canonical env for the workspace)
+load_dotenv(os.path.join(os.path.dirname(__file__), '../../.env'))
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 def create_app():

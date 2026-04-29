@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import config from '../shared/config/index.js';
 import { logError, logSecurity } from '../shared/utils/logger.js';
+import { AppError } from '../shared/utils/errors.js';
 
 const MONGO_DUPLICATE_KEY = 11000;
 
@@ -19,10 +20,18 @@ export const errorHandler = (err, req, res, _next) => {
     });
   };
 
-  // 1. Log the error persistently (Fire and Forget with safety)
+  // 1. Handle Custom AppErrors
+  if (err instanceof AppError) {
+    if (err.status >= 500) {
+      logError('Server', `AppError: ${err.message}`, err, { traceId, path: req.path }).catch(() => null);
+    }
+    return sendError(err.status, err.code, err.message, err.extra);
+  }
+
+  // 2. Log the error persistently (Fire and Forget with safety)
   if (err.status >= 500 || !err.status) {
       logError('Server', `Unhandled Exception: ${err.message}`, err, { traceId, path: req.path })
-        .catch(logErr => console.error(`[ErrorLog] Failed to persist log: ${logErr.message}`));
+        .catch((logErr) => logError('Server', 'Failed to persist error log', logErr, { traceId, path: req.path }));
   }
 
   // 2. Mongoose Cast Errors (Invalid IDs)

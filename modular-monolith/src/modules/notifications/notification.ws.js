@@ -1,6 +1,7 @@
 import { wsSentinel, verifyWsToken } from '../../middleware/wsSentinel.js';
 import { broadcastGlobal, broadcastToRoomGlobal } from '../../shared/utils/broadcaster.js';
 import { getRedisClient } from '../../shared/utils/cache.js';
+import { logError, createLogger } from '../../shared/utils/logger.js';
 
 /**
  * WebSocket Manager for Notifications
@@ -81,6 +82,7 @@ export const handleWsConnection = (ws, req) => {
   
   ws.on('pong', () => { ws.isAlive = true; });
 
+  const logger = createLogger('WS');
   ws.on('message', async (raw) => {
     try {
       const msg = JSON.parse(raw.toString());
@@ -122,7 +124,7 @@ export const handleWsConnection = (ws, req) => {
       
       if (msg.type === 'ping') ws.send(JSON.stringify({ type: 'pong' }));
     } catch (err) {
-      console.error('[WS] Message error:', err.message);
+      logError('WS', 'Message error', err);
     }
   });
 

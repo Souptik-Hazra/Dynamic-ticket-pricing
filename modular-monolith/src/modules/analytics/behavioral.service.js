@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { logError } from '../../shared/utils/logger.js';
 
 /**
  * 🕵️ Behavioral Audit Service
@@ -22,7 +23,7 @@ export const logIntent = async (userId, eventId, action, metadata = {}) => {
     // We use a fire-and-forget approach or small buffer to avoid blocking the main thread
     await Intent.create({ userId, eventId, action, metadata });
   } catch (err) {
-    console.error('[Behavioral] Log failed:', err.message);
+    logError('Behavioral', 'Log failed', err, { userId, eventId, action });
   }
 };
 

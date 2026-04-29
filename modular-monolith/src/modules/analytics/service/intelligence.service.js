@@ -2,6 +2,7 @@ import Metrics from '../model/metrics.model.js';
 import Ledger from '../../payments/model/ledger.model.js';
 import Event from '../../catalog/model/event.model.js';
 import { cacheSet, cacheGet } from '../../../shared/utils/cache.js';
+import { createLogger, logError } from '../../../shared/utils/logger.js';
 
 /**
  * 🧠 Intelligence Service (Phase 16)
@@ -10,6 +11,8 @@ import { cacheSet, cacheGet } from '../../../shared/utils/cache.js';
  * high-level business intelligence metrics and stores them as
  * materialized views for O(1) retrieval.
  */
+
+const logger = createLogger('Intelligence');
 
 export async function aggregateDailyRevenue() {
   const today = new Date();
@@ -55,9 +58,9 @@ export async function aggregateDailyRevenue() {
       { upsert: true }
     );
 
-    console.log(`🧠 [Intelligence] Daily revenue aggregated: ₹${totalRevenue}`);
+    logger.info(`Daily revenue aggregated: ₹${totalRevenue}`, { totalRevenue, purchaseCount });
   } catch (err) {
-    console.error('❌ [Intelligence] Revenue aggregation failed:', err.message);
+    logError('Intelligence', 'Revenue aggregation failed', err, { metricKey });
   }
 }
 
@@ -82,7 +85,7 @@ export async function aggregateEventOccupancy() {
       );
     }
   } catch (err) {
-    console.error('❌ [Intelligence] Occupancy aggregation failed:', err.message);
+    logError('Intelligence', 'Occupancy aggregation failed', err);
   }
 }
 

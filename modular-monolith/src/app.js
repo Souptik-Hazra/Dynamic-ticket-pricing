@@ -6,11 +6,14 @@ import compression from 'compression';
 import { createServer } from 'http';
 import hpp from 'hpp';
 import config from './shared/config/index.js';
+import { requestLogger } from './shared/utils/logger.js';
 
 
 // Middleware
 import { errorHandler } from './middleware/error.js';
 import { apiLimiter, authLimiter } from './middleware/rateLimiter.js';
+import { adaptiveThrottler } from './middleware/adaptiveThrottler.js';
+
 
 // Modules
 import authRoutes from './modules/auth/auth.routes.js';
@@ -24,7 +27,6 @@ import aiRoutes from './modules/ai/ai.routes.js';
 import analyticsRoutes from './modules/analytics/analytics.routes.js';
 import adminRoutes from './modules/admin/admin.routes.js';
 import subscriptionRoutes from './modules/subscriptions/subscription.routes.js';
-import emailRoutes from './modules/email/email.routes.js';
 import { setupSwagger } from './shared/utils/swagger.js';
 import { botShield } from './middleware/botShield.js';
 
@@ -54,6 +56,7 @@ export function createApp() {
 
   app.use(compression());
   app.use(express.json({ limit: '10mb' }));
+  app.use(requestLogger('API'));
 
   // OS/Network Concept: Parameter Pollution Protection
   // Prevents multiple parameters of the same name (e.g. ?id=1&id=2) from crashing the server
@@ -64,15 +67,23 @@ export function createApp() {
 
   // Global Security Shield
   app.use(botShield);
+  
+  // Resource-Aware Throttling
+  app.use(adaptiveThrottler);
 
   // Global Rate Limiter
   app.use('/api', apiLimiter);
+
 
   // Setup API Documentation
   setupSwagger(app);
 
   // Health Check
   app.get('/health', (req, res) => res.json({ status: 'ok', time: new Date() }));
+  
+  // Test Route for Rate Limiting
+  app.get('/api/test', (req, res) => res.json({ status: 'ok' }));
+
 
   // ── API Versioning (v1) ──
   const v1Router = express.Router();
@@ -88,7 +99,7 @@ export function createApp() {
   v1Router.use('/analytics', analyticsRoutes);
   v1Router.use('/admin', adminRoutes);
   v1Router.use('/subscriptions', subscriptionRoutes);
-  v1Router.use('/email', emailRoutes);
+  // Email routes removed (email service disabled)
 
   app.use('/api/v1', v1Router);
 

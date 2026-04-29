@@ -1,6 +1,8 @@
 import jwt from 'jsonwebtoken';
 import config from '../shared/config/index.js';
-import { logSecurity } from '../shared/utils/logger.js';
+import { logSecurity, logWarn, logError } from '../shared/utils/logger.js';
+import { ROLES } from '../shared/constants/roles.js';
+import { ROLE_PERMISSIONS } from '../shared/constants/permissions.js';
 
 /**
  * Auth Middleware
@@ -30,7 +32,7 @@ export const authMiddleware = async (req, res, next) => {
     // Diamond Step: Adaptive Security Friction (Phase 8)
     if (decoded.botScore > 5) {
       const delay = Math.min(5000, (decoded.botScore - 5) * 500);
-      console.warn(`🛡️ [Security:Friction] Suspected bot (Score: ${decoded.botScore}). Injecting ${delay}ms delay.`);
+      logWarn('Auth', `Suspected bot (Score: ${decoded.botScore}). Injecting ${delay}ms delay.`, { botScore: decoded.botScore, delay });
       await new Promise(resolve => setTimeout(resolve, delay));
     }
 
@@ -39,7 +41,7 @@ export const authMiddleware = async (req, res, next) => {
     // 🔥 PERSISTENT SECURITY LOGGING
     // We don't await this to keep the response fast, but we catch internal errors
     logSecurity('Auth', `Blocked Attempt: ${err.name}`, { ip: req.ip, path: req.path })
-      .catch(logErr => console.error(`[AuthLog] Failed to log security event: ${logErr.message}`));
+      .catch((logErr) => logError('Auth', 'Failed to log security event', logErr, { path: req.path }));
 
     const message = err.name === 'TokenExpiredError'
       ? 'Session expired. Please log in again.'
@@ -49,12 +51,36 @@ export const authMiddleware = async (req, res, next) => {
   }
 };
 
+/**
+ * Require a specific role
+ */
 export const requireRole = (role) => (req, res, next) => {
   if (!req.user) return res.status(401).json({ error: 'Authentication required.' });
-  if (req.user.role === 'admin') return next();
+  
+  // Admin is superuser
+  if (req.user.role === ROLES.ADMIN) return next();
+  
   if (req.user.role !== role) {
     return res.status(403).json({ 
       error: `Forbidden: Requires ${role} privileges.` 
+    });
+  }
+  next();
+};
+
+/**
+ * Require a specific permission
+ */
+export const requirePermission = (permission) => (req, res, next) => {
+  if (!req.user) return res.status(401).json({ error: 'Authentication required.' });
+  
+  // Admin bypass
+  if (req.user.role === ROLES.ADMIN) return next();
+  
+  const userPermissions = ROLE_PERMISSIONS[req.user.role] || [];
+  if (!userPermissions.includes(permission)) {
+    return res.status(403).json({ 
+      error: `Forbidden: Missing required permission: ${permission}` 
     });
   }
   next();

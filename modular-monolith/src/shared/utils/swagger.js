@@ -1,5 +1,6 @@
 import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
+import { createLogger } from './logger.js';
 
 const options = {
   definition: {
@@ -36,7 +37,8 @@ export const setupSwagger = (app) => {
       persistAuthorization: true,
     }
   }));
-  console.log('📖 [Swagger] Documentation available at /api/docs');
+  const logger = createLogger('Swagger');
+  logger.info('Documentation available at /api/docs');
 };
 
 export default setupSwagger;

@@ -2,7 +2,8 @@ import mongoose from 'mongoose';
 
 const systemLogSchema = new mongoose.Schema({
   service: { type: String, required: true, index: true },
-  level: { type: String, enum: ['INFO', 'WARN', 'ERROR', 'CRITICAL'], default: 'INFO', index: true },
+  level: { type: String, enum: ['INFO', 'WARN', 'ERROR', 'CRITICAL', 'DEBUG'], default: 'INFO', index: true },
+  type: { type: String, index: true },
   message: { type: String, required: true },
   stack: String,
   traceId: { type: String, index: true },

@@ -1,4 +1,5 @@
 import Event from '../model/event.model.js';
+import { logWarn } from '../../../shared/utils/logger.js';
 
 export const listPublicEvents = async ({ page = 1, limit = 20, cursor = null } = {}) => {
   const filter = { status: { $ne: 'cancelled' } };
@@ -16,10 +17,10 @@ export const listPublicEvents = async ({ page = 1, limit = 20, cursor = null } =
 };
 
 export const findById = async (id) => {
-  const query = Event.findById(id).lean(); // Lean by default for single lookups
+  const query = Event.findById(id);
   const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('DB_QUERY_TIMEOUT')), 2000));
   return await Promise.race([query, timeout]).catch(err => {
-    if (err.message === 'DB_QUERY_TIMEOUT') console.warn(`🚩 [SRE] Query timeout on Event:${id}`);
+    if (err.message === 'DB_QUERY_TIMEOUT') logWarn('CatalogRepo', `Query timeout on Event:${id}`, { eventId: id });
     throw err;
   });
 };
@@ -54,8 +55,8 @@ export const findOneAndUpdate = async (filter, update, options = {}) => {
 };
 
 
-export const findOneAndDelete = async (filter) => {
-  return await Event.findOneAndDelete(filter);
+export const findOneAndDelete = async (filter, options = {}) => {
+  return await Event.findOneAndDelete(filter, options);
 };
 
 export const findByIdAndOrganizer = async (id, organizerId) => {

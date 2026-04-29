@@ -1,16 +1,46 @@
 import config from '../../../shared/config/index.js';
 import httpClient from '../../../shared/utils/network.js';
-import { predictMLPrice, validateBehavioralTelemetry as validateSignature } from '../../../shared/utils/helpers.js';
+import axios from 'axios';
 
 import aiRepo from '../repository/ai.repo.js';
 import bus from '../../../shared/utils/bus.js';
-import { logSecurity } from '../../../shared/utils/logger.js';
+import { createLogger, logSecurity } from '../../../shared/utils/logger.js';
 import workerManager from '../../../shared/utils/worker.manager.js';
 
+// Decoupled Module Interfaces
+import { catalogService } from '../../catalog/index.js';
+import { userService } from '../../users/index.js';
 
-// Cross-module repository calls
-import catalogRepo from '../../catalog/repository/catalog.repo.js';
-import userRepo from '../../users/repository/user.repo.js';
+export const predictMLPrice = async (category, event, cognitive_score = 1.0) => {
+  const ML_SERVICE_URL = config.ml.serviceUrl;
+  try {
+    const basePrice = category ? Number(category.price) : (Number(event.basePrice) || 0);
+    const maxPrice = category ? (Number(category.maxPrice) || basePrice * 3) : (basePrice * 3);
+
+    const payload = {
+      base_price: basePrice,
+      capacity: event.capacity || 1000,
+      tickets_sold: event.ticketsSold || 0,
+      days_until_event: Math.max(0, Math.ceil((new Date(event.startDate) - new Date()) / (1000 * 60 * 60 * 24))),
+      event_popularity: event.eventPopularity || 0.5,
+      cognitive_score: cognitive_score,
+      is_holiday: event.isHoliday ? 1 : 0
+    };
+
+    const { data } = await axios.post(`${ML_SERVICE_URL}/predict`, payload, { timeout: 2000 });
+    return Math.max(basePrice, Math.min(Math.round(data.predicted_price), maxPrice));
+  } catch (_err) {
+    return category ? Number(category.price) : (Number(event.basePrice) || 0);
+  }
+};
+
+export const validateBehavioralTelemetry = (signature, telemetry = {}) => {
+  if (!signature || typeof signature !== 'string') return false;
+  const { durationMs, sampleCount } = telemetry;
+  if (durationMs && durationMs < 500) return false;
+  if (sampleCount !== undefined && sampleCount < 50) return false;
+  return true;
+};
 
 const ML_SERVICE_URL = config.ml.serviceUrl;
 const CLIP_NORM = config.ml.clipNorm;
@@ -24,6 +54,8 @@ export const federatedUpdatesBuffer = [];
  * OS Concept: Memory Management & TTL (Time-To-Live)
  * Prevents memory leaks by removing stale weights that haven't reached the aggregation threshold.
  */
+const aiLogger = createLogger('AI-Service');
+
 export function cleanupStaleWeights() {
   const now = Date.now();
   const initialLength = federatedUpdatesBuffer.length;
@@ -36,7 +68,7 @@ export function cleanupStaleWeights() {
   }
 
   if (federatedUpdatesBuffer.length < initialLength) {
-    console.log(`🧹 [AI-Service] Cleaned up ${initialLength - federatedUpdatesBuffer.length} stale weights from buffer.`);
+    aiLogger.info('Cleaned up stale weights from buffer.', { removed: initialLength - federatedUpdatesBuffer.length });
   }
 }
 
@@ -45,7 +77,7 @@ setInterval(cleanupStaleWeights, 60 * 60 * 1000).unref();
 
 
 export async function predictEventPrices(eventId, cognitiveScore = 1.0) {
-  const event = await catalogRepo.findById(eventId);
+  const event = await catalogService.findById(eventId);
   if (!event) throw new Error('EVENT_NOT_FOUND');
 
   const prices = {};
@@ -204,7 +236,7 @@ export async function runFederatedAggregation() {
   // at any given time, preventing CPU resource exhaustion.
   const lockAcquired = lockManager.acquireLock('ai_aggregation');
   if (!lockAcquired) {
-    console.log('🧠 [AI-Service] Aggregation already in progress by another worker. Skipping.');
+    aiLogger.info('Aggregation already in progress by another worker. Skipping.', { currentBuffer: federatedUpdatesBuffer.length });
     return { success: false, reason: 'ALREADY_IN_PROGRESS' };
   }
 
@@ -264,9 +296,9 @@ export async function clearFederatedState() {
 }
 
 export async function auditHumanity(userId, signature, telemetry) {
-  const isValid = validateSignature(signature, telemetry);
+  const isValid = validateBehavioralTelemetry(signature, telemetry);
   if (!isValid && userId) {
-    await userRepo.update(userId, { $inc: { botScore: 1 } }).catch(() => null);
+    await userService.update(userId, { $inc: { botScore: 1 } }).catch(() => null);
   }
   return isValid;
 }
@@ -291,7 +323,7 @@ export async function notifyPurchaseToML(eventId, count) {
 
 export const checkAndAggregate = async () => {
   if (federatedUpdatesBuffer.length >= AGGREGATION_THRESHOLD) {
-    console.log(`🧠 [Automation] FL Threshold met (${federatedUpdatesBuffer.length}/${AGGREGATION_THRESHOLD}). Triggering auto-aggregation...`);
+    aiLogger.info(`FL Threshold met (${federatedUpdatesBuffer.length}/${AGGREGATION_THRESHOLD}). Triggering auto-aggregation...`, { currentBuffer: federatedUpdatesBuffer.length });
     return await runFederatedAggregation();
   }
   return null;

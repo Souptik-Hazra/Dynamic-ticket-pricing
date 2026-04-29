@@ -1,44 +1,51 @@
 import response from '../shared/utils/response.js';
 import { logSecurity } from '../shared/utils/logger.js';
+import { getRedisClient } from '../shared/utils/cache.js';
+
+const redis = getRedisClient();
 
 /**
  * 🛡️ Advanced Bot Shield (Anti-Scalper Middleware)
- * 
- * Performs multi-layer inspection of incoming requests:
- * 1. Missing/Suspicious Headers (Bot-like signatures)
- * 2. Rapid-fire requests from same Fingerprint
- * 3. Headless Browser Detection
  */
-
 export const botShield = async (req, res, next) => {
   const ua = req.headers['user-agent'] || '';
-  const isBot = /headless|bot|crawl|spider|selenium|puppeteer|axios|postman/i.test(ua);
+  const isAutomation = /headless|bot|crawl|spider|selenium|puppeteer|axios|postman/i.test(ua);
 
-  // 1. Block known automation tools from sensitive paths (e.g. purchase)
-  if (isBot && req.path.includes('/purchase')) {
-    logSecurity('BotShield', 'Blocked Automation Script', { ip: req.ip, ua, path: req.path });
+  // 1. Path-based critical protection
+  if (isAutomation && req.path.includes('/purchase')) {
+    logSecurity('BotShield', 'Blocked Automation Script on Purchase', { ip: req.ip, ua });
     return response.error(res, 'Access denied: Automation detected.', 403, 'ERR_BOT_DETECTED');
   }
 
-  // 2. Entropy Check (Advanced Phase 11 Hardening)
-  // Real browsers have consistent header order and specific entropy in fingerprints.
-  const hasBrowserHeaders = req.headers['accept-language'] && req.headers['sec-ch-ua'] && req.headers['sec-fetch-dest'];
-  const suspiciousHeaders = !req.headers['accept-encoding'] || !req.headers['connection'];
+  // 2. Multi-Layer Header Analysis
+  const hasBrowserHeaders = req.headers['accept-language'] && req.headers['sec-ch-ua'];
+  const isSuspicious = !ua || !hasBrowserHeaders || isAutomation;
 
-  if (isBot || (suspiciousHeaders && !req.path.includes('/auth'))) {
+  if (isSuspicious) {
     req.isSuspectedBot = true;
     
-    // Diamond Step: Adaptive Throttling (Increment suspicion in Redis)
-    const { cacheSet, cacheGet } = await import('../shared/utils/cache.js');
-    const suspicionKey = `suspicion:${req.ip}`;
-    const currentScore = (await cacheGet(suspicionKey)) || 0;
-    await cacheSet(suspicionKey, currentScore + 1, 3600);
+    // Persistent Suspicion Score in Redis
+    if (redis) {
+      const suspicionKey = `suspicion:${req.ip}`;
+      try {
+        const score = await redis.incr(suspicionKey);
+        if (score === 1) await redis.expire(suspicionKey, 3600); // 1 hour TTL
+        
+        req.suspicionScore = score;
+        
+        // Critical block for extreme offenders
+        if (score > 50) {
+          logSecurity('BotShield', 'IP Banned (Suspicion Overflow)', { ip: req.ip, score });
+          return response.error(res, 'Too many suspicious requests.', 429, 'ERR_IP_SUSPENDED');
+        }
+      } catch (err) {
+        // Fallback if Redis fails
+      }
+    }
   }
 
-  // 3. Simple Rate-Limit per Fingerprint (Custom logic)
-  // Here we could add more complex fingerprinting (IP + UA + Accept-Headers)
-  
   next();
 };
 
 export default botShield;
+

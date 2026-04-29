@@ -1,16 +1,17 @@
 import bus from '../../../shared/utils/bus.js';
-import { cacheDel, cacheDelPattern } from '../../../shared/utils/cache.js';
+import { invalidateEventCache } from '../../../shared/utils/cache.js';
 
-// Cross-module service calls
-import catalogRepo from '../../catalog/repository/catalog.repo.js';
-import ticketRepo from '../../tickets/repository/ticket.repo.js';
-import userRepo from '../../users/repository/user.repo.js';
+// Decoupled Module Interfaces
+import { catalogService } from '../../catalog/index.js';
+import { ticketService } from '../../tickets/index.js';
+import { userService } from '../../users/index.js';
+import { ROLES } from '../../../shared/constants/roles.js';
 
 export const getOrganizerDashboardStats = async (organizerId) => {
   // We can use repos directly for aggregation if it's complex, or add a service method
   const [eventsCount, ticketsAgg] = await Promise.all([
-    catalogRepo.countEvents({ organizerId }),
-    ticketRepo.aggregate([
+    catalogService.countEvents({ organizerId }),
+    ticketService.aggregate([
       { $match: { status: 'confirmed' } },
       { 
         $lookup: {
@@ -35,44 +36,42 @@ export const getOrganizerDashboardStats = async (organizerId) => {
 };
 
 export const getEventsByOrganizer = async (organizerId) => {
-  return await catalogRepo.findMany({ organizerId });
+  return await catalogService.findMany({ organizerId });
 };
 
 export const getTicketsByOrganizer = async (organizerId) => {
-  const events = await catalogRepo.findMany({ organizerId }, { _id: 1 });
+  const events = await catalogService.findMany({ organizerId }, { _id: 1 });
   const eventIds = events.map(e => e._id);
   // Ideally repo should handle population or we do it here
-  return await ticketRepo.findWithEvent({ eventId: { $in: eventIds } });
+  return await ticketService.findWithEvent({ eventId: { $in: eventIds } });
 };
 
 export const createEvent = async (organizerId, eventData) => {
-  // Use catalogRepo directly or catalogService
-  const event = await catalogRepo.create({ ...eventData, organizerId });
-  await cacheDelPattern('events:list:*');
+  // Use catalogService
+  const event = await catalogService.create({ ...eventData, organizerId });
+  await invalidateEventCache();
   bus.publish('event.created', { eventId: event._id, name: event.name });
   return event;
 };
 
 export const updateEvent = async (eventId, organizerId, updateData) => {
-  const event = await catalogRepo.findOneAndUpdate(
+  const event = await catalogService.findOneAndUpdate(
     { _id: eventId, organizerId },
     updateData
   );
   if (!event) throw new Error('EVENT_NOT_FOUND_OR_UNAUTHORIZED');
 
-  await cacheDel(`event:${eventId}`);
-  await cacheDelPattern('events:list:*');
+  await invalidateEventCache(eventId);
   return event;
 };
 
 export const deleteEventCascade = async (eventId, organizerId) => {
-  const event = await catalogRepo.findOneAndDelete({ _id: eventId, organizerId });
+  const event = await catalogService.findOneAndDelete({ _id: eventId, organizerId });
   if (!event) throw new Error('EVENT_NOT_FOUND_OR_UNAUTHORIZED');
 
-  await ticketRepo.updateMany({ eventId }, { $set: { status: 'cancelled' } });
+  await ticketService.updateMany({ eventId }, { $set: { status: 'cancelled' } });
   
-  await cacheDel(`event:${eventId}`);
-  await cacheDelPattern('events:list:*');
+  await invalidateEventCache(eventId);
   
   bus.publish('system.alert', { 
     title: 'Event Cancelled', 
@@ -83,10 +82,10 @@ export const deleteEventCascade = async (eventId, organizerId) => {
 };
 
 export const broadcastToAttendees = async (eventId, organizerId, title, message) => {
-  const event = await catalogRepo.findByIdAndOrganizer(eventId, organizerId);
+  const event = await catalogService.findByIdAndOrganizer(eventId, organizerId);
   if (!event) throw new Error('UNAUTHORIZED');
 
-  const tickets = await ticketRepo.findMany({ eventId, status: 'confirmed' }, { userId: 1 });
+  const tickets = await ticketService.findMany({ eventId, status: 'confirmed' }, { userId: 1 });
   const userIds = [...new Set(tickets.map(t => String(t.userId)))];
   
   for (const uid of userIds) {
@@ -100,7 +99,7 @@ export const broadcastToAttendees = async (eventId, organizerId, title, message)
 };
 
 export const messageAdminsFromOrganizer = async (organizerName, message) => {
-  const admins = await userRepo.listUsers({ role: 'admin' });
+  const admins = await userService.listUsers({ role: ROLES.ADMIN });
   for (const admin of admins) {
     bus.publish('system.alert', { 
       userId: admin._id, 
