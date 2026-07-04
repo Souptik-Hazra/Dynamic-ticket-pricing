@@ -17,19 +17,36 @@ const HomePage = ({ onNavigate }) => {
   }, []);
 
   const fetchEvents = async () => {
-    try {
-      const response = await api.get('/events');
-      setEvents(response.data);
-    } catch (error) {
-      console.error('Error fetching events:', error);
-    } finally {
-      setLoading(false);
+  try {
+    const response = await api.get('/events');
+
+    console.log("Events API Response:", response.data);
+
+    let eventsData = [];
+
+    if (Array.isArray(response.data)) {
+      eventsData = response.data;
+    } else if (Array.isArray(response.data.events)) {
+      eventsData = response.data.events;
+    } else if (Array.isArray(response.data.data)) {
+      eventsData = response.data.data;
+    } else if (Array.isArray(response.data.results)) {
+      eventsData = response.data.results;
     }
-  };
+
+    setEvents(eventsData);
+
+  } catch (error) {
+    console.error("Error fetching events:", error);
+    setEvents([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const categories = ['all', 'concert', 'sports', 'theater', 'conference', 'festival'];
 
-  const filteredEvents = events.filter(event => {
+  const filteredEvents = (Array.isArray(events) ? events : []).filter(event => {
     const matchesSearch = event.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          event.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = categoryFilter === 'all' || event.category === categoryFilter;

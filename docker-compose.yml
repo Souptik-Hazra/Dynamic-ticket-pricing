@@ -1,4 +1,3 @@
-version: '3.8'
 
 services:
   # ── Infrastructure ────────────────────────────────────────────────────────
@@ -38,6 +37,18 @@ services:
       - REDIS_URL=redis://redis:6379
       - AUTH_SERVICE_URL=http://authentication-service:4001
       - USER_SERVICE_URL=http://user-service:4002
+      - ADMIN_SERVICE_URL=http://admin-service:4003
+      - PAYMENT_SERVICE_URL=http://payment-service:4004
+      - CACHE_SERVICE_URL=http://cache-service:4005
+      - EMAIL_SERVICE_URL=http://email-service:4007
+      - NOTIFICATION_SERVICE_URL=http://notification-service:4009
+      - WEBSOCKET_SERVICE_URL=http://websocket-service:4010
+      - ANALYTICS_SERVICE_URL=http://analytics-service:4011
+      - SUBSCRIPTION_SERVICE_URL=http://subscription-service:4012
+      - QR_SERVICE_URL=http://qr-service:4014
+      - SCANNER_SERVICE_URL=http://scanner-service:4015
+      - WALLET_SERVICE_URL=http://wallet-service:4016
+      - ML_SERVICE_URL=http://ml-model:5000
       - ORGANIZER_SERVICE_URL=http://organizer-service:4013
 
   authentication-service:

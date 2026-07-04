@@ -14,5 +14,3 @@ Dockerfile
 docker-compose.yml
 .github
 *.md
-model.pkl
-scaler.pkl

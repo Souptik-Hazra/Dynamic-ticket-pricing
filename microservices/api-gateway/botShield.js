@@ -11,7 +11,16 @@ const BOT_USER_AGENTS = [
 const requestHistory = new Map(); // IP -> { lastHit: timestamp, count: number }
 
 export const botShield = (req, res, next) => {
-    const userAgent = (req.headers['user-agent'] || '').toLowerCase();
+    
+  // Allow health endpoints (Docker/Kubernetes/Monitoring)
+  if (
+    req.path.startsWith("/health") ||
+    req.path.startsWith("/api/health")
+) {
+    return next();
+}
+
+const userAgent = (req.headers['user-agent'] || '').toLowerCase();
     const userIp = req.headers['x-forwarded-for'] || req.ip;
 
     // 1. Signature Check

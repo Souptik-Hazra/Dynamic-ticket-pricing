@@ -1,5 +1,5 @@
 {
-  "modelVersion": "v2.1.20260421",
+  "modelVersion": "v2.1.20260704",
   "modelType": "XGBRegressor (XGBoost)",
   "features": [
     "capacity",
@@ -19,12 +19,12 @@
     "cat_other"
   ],
   "numFeatures": 15,
-  "trainScore": 0.999997056359301,
-  "testScore": 0.9829082619756047,
-  "trainMAE": 7.420632099615315,
-  "testMAE": 593.817598031979,
-  "trainRMSE": 10.677057736658204,
-  "testRMSE": 819.5043038680319,
+  "trainScore": 0.9999968965715735,
+  "testScore": 0.9827332436614236,
+  "trainMAE": 7.631346984153424,
+  "testMAE": 574.5987289200755,
+  "trainRMSE": 10.963016270657924,
+  "testRMSE": 823.6894533074619,
   "parameters": {
     "n_estimators": 500,
     "max_depth": 10,
@@ -32,7 +32,7 @@
     "subsample": 0.9
   },
   "metadata": {
-    "trainedAt": "2026-04-21T15:38:43.565598",
+    "trainedAt": "2026-07-04T15:57:25.197137",
     "currency": "INR"
   }
 }
