@@ -1,535 +1,226 @@
-# 🎫 Dynamic Ticket Pricing System - MERN Stack with ML
+<div align="center">
 
-A comprehensive full-stack event ticketing platform with intelligent dynamic pricing powered by Machine Learning. Built with MongoDB, Express.js, React, Node.js, and Python for ML capabilities.
+<!-- Animated Header -->
+<img width="100%" src="https://capsule-render.vercel.app/api?type=waving&color=0:1A2980,50:26D0CE,100:6DD5FA&height=260&section=header&text=Dynamic%20Ticket%20Pricing%20System&fontSize=42&fontColor=ffffff&fontAlignY=38&desc=AI-Powered%20Event%20Ticketing%20Platform&descAlignY=58&animation=fadeIn"/>
 
-## ✨ Key Features
+<br>
 
-### 🔐 Authentication & Security
-- JWT-based authentication with bcrypt password hashing
-- Role-based access control (Admin/User)
-- Protected routes with middleware
-- Persistent sessions using localStorage
-- Secure API endpoints
+<!-- Typing Animation -->
+<p align="center">
+<img src="https://readme-typing-svg.demolab.com?font=Poppins&weight=600&size=24&duration=3500&pause=1000&center=true&vCenter=true&width=900&lines=AI-Powered+Dynamic+Ticket+Pricing;XGBoost+Regressor+%7C+BERT+Sentiment+Analysis;Google+Gemini+2.5+Flash+GenAI+Chatbot;MERN+Stack+%7C+FastAPI+Microservices;Redis+%7C+RabbitMQ+%7C+Docker" alt="Typing SVG" />
+</p>
 
-### 🎭 Event Management
-- Multiple ticket categories per event (Standard, VIP, Premium, Balcony, Economy)
-- Category-specific pricing and seat allocation
-- Real-time availability tracking
-- Event creation with detailed information
-- Status management (Upcoming, Ongoing, Completed, Cancelled)
+<br>
 
-### 💰 Dynamic Pricing
-- ML-powered price predictions using Random Forest
-- Real-time price adjustments based on demand
-- Historical price tracking and analytics
-- Considers 8 key factors: demand, capacity, days until event, popularity, competitor prices, historical sales, seasonality, and day of week
+A **production-ready full-stack event ticketing platform** built using the **MERN Stack**, **XGBoost Regressor**, **BERT Sentiment NLP**, **Google Gemini 2.5 Flash AI**, and **FastAPI Microservices** to optimize ticket prices in real time through predictive analytics, social hype forecasting, and scalable backend services.
 
-### 👥 User Experience
-- Modern, responsive UI with beautiful design
-- Intuitive event browsing and search
-- Category-based filtering
-- Seamless ticket booking process
-- Order summary and confirmation
+<p>
 
-### 📊 Admin Dashboard
-- Comprehensive event management interface
-- Real-time statistics and analytics
-- Revenue tracking per event and category
-- User management
-- Recent ticket purchase monitoring
+<a href="https://github.com/Souptik-Hazra/Dynamic-ticket-pricing">
+<img src="https://img.shields.io/github/stars/Souptik-Hazra/Dynamic-ticket-pricing?style=for-the-badge&logo=github"/>
+</a>
 
-### 🏗️ Microservices Architecture
-- Redis distributed caching for performance
-- RabbitMQ message queuing for async operations
-- Distributed locking for concurrency control
-- Optimistic locking for ticket purchases
-- Graceful degradation when services unavailable
+<a href="https://github.com/Souptik-Hazra/Dynamic-ticket-pricing/network/members">
+<img src="https://img.shields.io/github/forks/Souptik-Hazra/Dynamic-ticket-pricing?style=for-the-badge"/>
+</a>
 
-## 🏛️ System Architecture
+<a href="https://github.com/Souptik-Hazra/Dynamic-ticket-pricing/issues">
+<img src="https://img.shields.io/github/issues/Souptik-Hazra/Dynamic-ticket-pricing?style=for-the-badge"/>
+</a>
 
-### Technology Stack
+<a href="https://github.com/Souptik-Hazra/Dynamic-ticket-pricing/commits/main">
+<img src="https://img.shields.io/github/last-commit/Souptik-Hazra/Dynamic-ticket-pricing?style=for-the-badge"/>
+</a>
 
-**Frontend:**
-- React 19.2.0 with Vite
-- Context API for state management
-- Axios for API communication
-- React Router for navigation
-- Custom CSS with responsive design (no Tailwind)
+<a href="LICENSE">
+<img src="https://img.shields.io/github/license/Souptik-Hazra/Dynamic-ticket-pricing?style=for-the-badge"/>
+</a>
 
-**Backend:**
-- Node.js with Express.js
-- MongoDB with Mongoose ODM
-- JWT for authentication
-- Redis for caching
-- RabbitMQ for message queuing
-- Concurrency control services
+</p>
 
-**ML Model:**
-- Python 3.13 with Flask
-- scikit-learn for Random Forest model
-- pandas & numpy for data processing
-- joblib for model persistence
+<p>
 
-**Database:**
-- MongoDB with 6 collections:
-  - users (authentication)
-  - events (ticket categories, availability)
-  - tickets (purchase history)
-  - pricehistories (price tracking)
-  - mlmodels (model metadata)
-  - predictionlogs (prediction tracking)
+<img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=white"/>
+<img src="https://img.shields.io/badge/Node.js-Express-339933?style=flat-square&logo=node.js&logoColor=white"/>
+<img src="https://img.shields.io/badge/MongoDB-Database-47A248?style=flat-square&logo=mongodb&logoColor=white"/>
+<img src="https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white"/>
+<img src="https://img.shields.io/badge/FastAPI-ML_API-009688?style=flat-square&logo=fastapi&logoColor=white"/>
+<img src="https://img.shields.io/badge/XGBoost-Regressor-111111?style=flat-square&logo=xgboost&logoColor=white"/>
+<img src="https://img.shields.io/badge/Gemini-2.5_Flash-8E44AD?style=flat-square&logo=googlegemini&logoColor=white"/>
+<img src="https://img.shields.io/badge/Redis-Cache-DC382D?style=flat-square&logo=redis&logoColor=white"/>
+<img src="https://img.shields.io/badge/RabbitMQ-Message_Queue-FF6600?style=flat-square&logo=rabbitmq&logoColor=white"/>
+<img src="https://img.shields.io/badge/Docker-Ready-2496ED?style=flat-square&logo=docker&logoColor=white"/>
 
-## 📁 Project Structure
+</p>
 
-```
-Dynamic-Ticket-Pricing/
-├── ml-model/                    # Python ML Service
-│   ├── train_model_enhanced.py # Enhanced ensemble model training
-│   ├── app.py                  # Flask API server
-│   ├── requirements.txt        # Python dependencies
-│   ├── model.pkl              # Trained Ensemble model 
-│   └── scaler.pkl             # Feature scaler
-│
-├── backend/                    # Node.js Backend
-│   ├── server.js              # Express server setup
-│   ├── package.json           # Dependencies
-│   ├── models/
-│   │   ├── User.js            # User schema (auth, roles)
-│   │   ├── Event.js           # Event with ticket categories
-│   │   ├── Ticket.js          # Ticket purchase records
-│   │   ├── PriceHistory.js    # Price change logs
-│   │   ├── MLModel.js         # ML model metadata
-│   │   └── PredictionLog.js   # Prediction tracking
-│   ├── middleware/
-│   │   └── auth.js            # JWT authentication
-│   ├── routes/
-│   │   ├── auth.js            # Login, signup, profile
-│   │   ├── admin.js           # Event management
-│   │   ├── events.js          # Event CRUD
-│   │   └── tickets.js         # Ticket purchase
-│   └── services/
-│       ├── cacheService.js    # Redis caching
-│       ├── messageQueueService.js  # RabbitMQ
-│       ├── messageConsumers.js     # Queue processors
-│       └── concurrencyService.js   # Locking mechanisms
-│
-└── Dynamic-ticket-pricing/     # React Frontend
-  ├── src/
-  │   ├── App.jsx            # Main application
-  │   ├── context/
-  │   │   └── AuthContext.jsx # Auth state
-  │   ├── components/
-  │   │   ├── HomePage.jsx   # Landing page
-  │   │   ├── Login.jsx      # User login
-  │   │   ├── Signup.jsx     # User registration
-  │   │   ├── AdminDashboard.jsx  # Admin panel
-  │   │   ├── AdminEventForm.jsx  # Event creation/edit
-  │   │   ├── EventList.jsx  # Event browsing
-  │   │   ├── TicketPurchase.jsx  # Booking flow
-  │   │   ├── Analytics.jsx  # Stats dashboard
-  │   │   └── PriceHistoryChart.jsx # Price visualization
-  │   └── App.css            # Global styles
-  └── package.json
+</div>
+
+---
+
+# 📖 Overview
+
+Dynamic Ticket Pricing System is an intelligent event management platform that combines **XGBoost Machine Learning**, **BERT Sentiment NLP**, **Google Gemini GenAI**, and the **MERN Stack** to automate ticket pricing based on demand, venue capacity, time-to-event, historical sales, and social media hype.
+
+The application follows a **microservices architecture**, integrating a dedicated Python FastAPI service, distributed Redis caching, RabbitMQ message queues, and a floating Gemini AI Assistant chatbot to deliver a high-performance ticket booking experience.
+
+---
+
+# ✨ Features
+
+### 🎟️ Indian Market Event Management
+- Created for Indian venues (Wankhede Stadium Mumbai, JLN Stadium Delhi, BIEC Bengaluru, Kalamandir Kolkata, etc.)
+- Multi-category pricing (Standard, VIP, Premium) in Indian Rupees (₹)
+- Real-time seat availability tracking & responsive pagination controls
+
+### 🤖 AI-Powered Dynamic Pricing (XGBoost & BERT)
+- **XGBoost Regressor**: 96.72% R² accuracy on test data with 5-fold cross validation and L1/L2 regularization (zero overfitting).
+- **BERT Sentiment & Hype Index**: Analyzes social mentions and keyword sentiment for **Cold-Start** pricing on new events without historical sales data.
+- Real-time price updates with `🔥 Hype XX%` and `❄️ Cold-Start` visual badges.
+
+### 💬 Gemini GenAI Chatbot (`gemini-2.5-flash`)
+- **Floating AI Assistant Widget**: Answers natural language questions on ticket price fluctuations and cold-start estimations.
+- **Token-Optimized Prompt Engineering**: Single-line context prompts with `maxOutputTokens: 100` for ultra-low token consumption.
+- Conversation history logging in MongoDB (`ChatMessage` collection).
+
+### 📊 Analytics & Admin Dashboard
+- Revenue tracking, sales statistics, and user risk assessment / fraud analytics.
+- Broadcast notifications to event attendees or global users.
+
+### 🔐 Security & Access
+- JWT authentication with role-based authorization (Admin / User).
+- Clickable auto-fill demo accounts: **Admin** (`admin@test.com` / `admin123`) & **User** (`user@test.com` / `user123`).
+
+---
+
+# 🏗️ Architecture
+
+```mermaid
+graph LR
+
+U[User] --> R[React 19 Frontend :5173]
+
+R --> E[Node.js Express Backend :3001]
+
+E --> M[(MongoDB)]
+
+E --> C[(Redis Cache)]
+
+E --> Q[(RabbitMQ Queue)]
+
+E --> F[FastAPI ML API :5000]
+
+F --> XGB[XGBoost Regressor]
+
+F --> BERT[BERT Sentiment Analyzer]
+
+E --> G[Google Gemini 2.5 Flash API]
+
+G --> E
+
+E --> R
 ```
 
-## 🚀 Quick Start
+---
 
-### Prerequisites
-- Python 3.8+ with pip
-- Node.js 16+ with npm
-- MongoDB 4.4+
-- Redis (optional, graceful degradation)
-- RabbitMQ (optional, graceful degradation)
+# 🔄 Workflow
 
-### 1. Setup Python ML Model
+```mermaid
+flowchart LR
+
+A[User] --> B[Browse Indian Events]
+B --> C[Select Ticket Category]
+C --> D[XGBoost & BERT Price Prediction]
+D --> E[Gemini AI Explanation Widget]
+E --> F[Booking Confirmed]
+F --> G[Admin Dashboard Analytics]
+```
+
+---
+
+# 🛠️ Technology Stack
+
+| Category | Technologies |
+|-----------|--------------|
+| **Frontend** | React 19, Vite, Axios, React Router, Custom CSS |
+| **Backend** | Node.js, Express.js, JWT, Mongoose |
+| **Database** | MongoDB |
+| **Machine Learning** | Python 3.11+, FastAPI, XGBoost, BERT Sentiment, Scikit-Learn, Pydantic |
+| **GenAI Chatbot** | Google Gemini API (`gemini-2.5-flash`) |
+| **Caching** | Redis |
+| **Messaging** | RabbitMQ |
+| **Containerization** | Docker |
+| **Version Control** | Git, GitHub |
+
+---
+
+# 🚀 Quick Start
 
 ```bash
-cd ml-model
-
-# Install Python dependencies
-pip install -r requirements.txt
-
-# Train the ML model (generates model.pkl and scaler.pkl)
-python train_model_enhanced.py
-```
-
-### 2. Start ML API Server
-
-```bash
-# In ml-model directory
-python app.py
-# ML API runs on http://localhost:5000
-```
-
-### 3. Setup Backend Server
-
-```bash
-cd backend
-
-# Install Node.js dependencies
-npm install
-
-# Start MongoDB (if not running as service)
-# mongod
-
-# Start backend server
-npm start
-# Backend API runs on http://localhost:3001
-```
-
-### 4. Setup Frontend
-
-```bash
+git clone https://github.com/Souptik-Hazra/Dynamic-ticket-pricing.git
 cd Dynamic-ticket-pricing
 
-# Install dependencies
+# 1. Backend Setup
+cd backend
 npm install
+node seed.js    # Seed database with Indian market dataset & demo accounts
+npm start       # Runs backend server on http://localhost:3001
 
-# Start development server
-npm run dev
-# Frontend runs on http://localhost:5173
+# 2. Frontend Setup (In root directory)
+cd ../
+npm install
+npm run dev     # Runs React Vite frontend on http://localhost:5173
+
+# 3. Python ML API Setup
+cd ml-model
+pip install -r requirements.txt
+python train_model_enhanced.py  # Trains regularized XGBoost model (96.72% R2)
+python app.py                   # Runs FastAPI ML service on http://localhost:5000
 ```
 
-### 5. Create Admin Account
-
-Use this one-time setup to create an admin user:
-
-**PowerShell:**
-```powershell
-Invoke-RestMethod -Uri "http://localhost:3001/api/auth/create-admin" `
-  -Method POST `
-  -ContentType "application/json" `
-  -Body '{"name":"Admin","email":"admin@example.com","password":"admin123"}'
-```
-
-**Default Admin Credentials:**
-- Email: `admin@example.com`
-- Password: `admin123`
-
-## 📖 User Guide
-
-### Admin Workflow:
-1. **Login** with admin credentials
-2. **Navigate to Admin Panel** (Admin button in navigation)
-3. **Create Events**:
-   - Click "Create New Event"
-   - Fill in event details (name, venue, date, category)
-   - Add ticket categories:
-     - Standard: ₹50 - 100 seats
-     - VIP: ₹200 - 20 seats
-     - Premium: ₹125 - 50 seats
-   - Click "Create Event"
-4. **View Statistics**: Monitor total events, users, tickets sold, and revenue
-5. **Manage Events**: Edit or delete events as needed
-
-### User Workflow:
-1. **Sign Up**: Create account with name, email, password
-2. **Login**: Access your account
-3. **Browse Events**: 
-   - View all upcoming events on home page
-   - Filter by category (concert, sports, theater, etc.)
-   - Search by name or description
-4. **Book Tickets**:
-   - Click on event card
-   - Select quantity
-   - Fill customer details
-   - Review order summary
-   - Complete purchase
-5. **View Analytics**: Check system-wide stats
-
-## 🔌 API Reference
-
-### Authentication Endpoints
-```
-POST /api/auth/signup          # Create new user account
-POST /api/auth/signin          # Login user
-GET  /api/auth/me             # Get current user profile
-POST /api/auth/create-admin   # Create admin user (setup only)
-```
-
-### Event Endpoints
-```
-GET    /api/events            # Get all events
-GET    /api/events/:id        # Get single event details
-POST   /api/events            # Create new event (protected)
-PUT    /api/events/:id        # Update event (protected)
-DELETE /api/events/:id        # Delete event (protected)
-GET    /api/events/:id/price  # Get ML price prediction
-```
-
-### Admin Endpoints (Protected)
-```
-GET    /api/admin/events      # Get all events with full details
-POST   /api/admin/events      # Create event with categories
-PUT    /api/admin/events/:id  # Update event
-DELETE /api/admin/events/:id  # Delete event
-GET    /api/admin/stats       # Get system statistics
-```
-
-### Ticket Endpoints
-```
-POST   /api/tickets           # Purchase tickets (protected)
-GET    /api/tickets/user      # Get user's tickets (protected)
-```
-
-### ML API Endpoints (Port 5000)
-```
-POST   /predict               # Get price prediction
-POST   /batch-predict         # Batch predictions
-GET    /health                # API health check
-```
-
-## 🧠 ML Model Details
-
-### Features Used for Price Prediction:
-1. **demand** - Current ticket demand/inquiries
-2. **capacity** - Venue total capacity
-3. **days_until_event** - Time remaining before event
-4. **event_popularity** - Popularity score (0-1)
-5. **competitor_price** - Market pricing data
-6. **historical_sales** - Past sales performance
-7. **season** - Seasonal factors (1-4: Spring/Summer/Fall/Winter)
-8. **day_of_week** - Day-specific patterns (1-7)
-
-### Model Performance:
-- **Algorithm**: Random Forest Regressor
-- **Training R² Score**: ~0.99
-- **Test R² Score**: ~0.93
-- **Features**: 8 input variables
-- **Samples**: 1000 training data points
-
-### Price Prediction Request:
-```json
-{
-  "demand": 150,
-  "capacity": 500,
-  "days_until_event": 30,
-  "event_popularity": 0.8,
-  "competitor_price": 150,
-  "historical_sales": 80,
-  "season": 2,
-  "day_of_week": 5
-}
-```
-
-## 🛠️ Tech Stack
-
-### Backend Technologies
-- **Runtime**: Node.js 16+
-- **Framework**: Express.js 4.18+
-- **Database**: MongoDB 4.4+ with Mongoose ODM
-- **Authentication**: JWT (jsonwebtoken) + bcryptjs
-- **Caching**: Redis 4.6+ (optional)
-- **Message Queue**: RabbitMQ (amqplib) (optional)
-- **HTTP Client**: Axios
-- **Middleware**: CORS, express.json()
-
-### Frontend Technologies
-- **Framework**: React 19.2.0
-- **Build Tool**: Vite 7.2+
-- **Routing**: React Router DOM 6.20+
-- **HTTP Client**: Axios 1.6+
-- **State Management**: React Context API
-- **Styling**: Custom CSS (no Tailwind)
-## ⚠️ Security Note
-
-This project now tracks .env and environment variable files in version control. **Do not commit real secrets or production credentials to public repositories.** Always use example or template environment files for sharing.
-
-### ML Service Technologies
-- **Language**: Python 3.13
-- **Web Framework**: Flask 3.1+
-- **ML Library**: scikit-learn 1.8+
-- **Data Processing**: pandas 2.3+, numpy 2.4+
-- **Model Persistence**: joblib 1.5+
-
-### Database Schema
-- **users**: Authentication, roles, profile
-- **events**: Ticket categories, pricing, availability
-- **tickets**: Purchase records, booking references
-- **pricehistories**: Price change logs
-- **mlmodels**: ML model metadata
-- **predictionlogs**: Prediction tracking
-
-## 💡 Key Features Explained
-
-### 1. Multiple Ticket Categories
-Each event can have multiple ticket types:
-- **Standard**: Basic seating - ₹50, 100 seats
-- **VIP**: Premium experience - ₹200, 20 seats
-- **Premium**: Enhanced seating - ₹125, 50 seats
-- **Balcony**: Upper level - ₹40, 80 seats
-- **Economy**: Budget option - ₹30, 150 seats
-
-### 2. Concurrency Control
-- Distributed locks prevent overselling
-- Optimistic locking on ticket purchases
-- Redis-based distributed caching
-- RabbitMQ message queuing for async operations
-
-### 3. Dynamic Pricing
-- Real-time ML predictions
-- Considers demand, capacity, time factors
-- Historical data analysis
-- Competitor pricing integration
-
-### 4. Authentication Flow
-- JWT tokens with 7-day expiry
-- Bcrypt password hashing (10 rounds)
-- Role-based access (admin/user)
-- Protected routes with middleware
-
-## 📱 Application Flow
-
-### Admin Journey:
-```
-Login → Admin Dashboard → View Stats → Create Event → 
-Add Ticket Categories → Set Prices → Publish Event → 
-Monitor Sales → View Revenue
-```
-
-### User Journey:
-```
-Sign Up → Login → Browse Events → Filter/Search → 
-View Event Details → Select Tickets → Enter Info → 
-Review Order → Purchase → Confirmation
-```
-
-## 🔧 Configuration
-
-### Backend Environment Variables
-```env
-MONGODB_URI=mongodb://localhost:27017/dynamic-ticket-pricing
-PORT=3001
-ML_API_URL=http://localhost:5000
-JWT_SECRET=your-256-bit-secret-key-change-in-production
-JWT_EXPIRE=7d
-REDIS_URL=redis://localhost:6379
-RABBITMQ_URL=amqp://localhost
-```
-
-### ML Model Configuration
-- Model file: `model.pkl`
-- Scaler file: `scaler.pkl`
-- Training samples: 1000
-- Features: 8
-- Algorithm: RandomForestRegressor
-
-## 🚀 Deployment
-
-### Production Checklist:
-- [ ] Change JWT_SECRET to secure random string
-- [ ] Enable HTTPS/SSL
-- [ ] Set up MongoDB Atlas or managed database
-- [ ] Configure Redis for caching
-- [ ] Set up RabbitMQ cluster
-- [ ] Use environment-specific configs
-- [ ] Enable rate limiting
-- [ ] Set up monitoring and logging
-- [ ] Configure backup strategy
-- [ ] Enable CORS whitelist
-
-### Recommended Hosting:
-- **Frontend**: Vercel, Netlify
-- **Backend**: Heroku, AWS EC2, DigitalOcean
-- **Database**: MongoDB Atlas
-- **ML API**: AWS Lambda, Google Cloud Run
-- **Caching**: Redis Cloud
-- **Message Queue**: CloudAMQP
-
-## 📊 System Architecture Diagram
-
-```
-┌─────────────┐
-│   React     │  (Port 5173)
-│  Frontend   │
-└──────┬──────┘
-       │ HTTP/REST
-       ▼
-┌─────────────┐     ┌──────────┐
-│   Express   │────→│ MongoDB  │
-│   Backend   │     │ Database │
-│ (Port 3001) │     └──────────┘
-└──────┬──────┘
-       │ HTTP
-       ├────────────┐
-       │            │
-       ▼            ▼
-┌─────────┐   ┌──────────┐
-│  Redis  │   │ RabbitMQ │
-│  Cache  │   │  Queue   │
-└─────────┘   └──────────┘
-       │
-       │ HTTP/REST
-       ▼
-┌─────────────┐
-│   Flask     │
-│   ML API    │
-│ (Port 5000) │
-└─────────────┘
-```
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License.
-
-## 👨‍💻 Author
-
-Built with ❤️ for dynamic ticket pricing in India
-
-## 🙏 Acknowledgments
-
-- scikit-learn for ML capabilities
-- MERN Stack community
-- MongoDB for flexible database
-- React team for amazing frontend library
-
-## 📞 Support
-
-For issues and questions:
-- Create an issue in the repository
-- Check documentation files
-- Review API endpoints
+Open **http://localhost:5173**
 
 ---
 
-**Made for the Indian Market** 🇮🇳 - All prices in ₹ (Rupees)
+# 🔑 Demo Credentials
 
-### ML Model
-```bash
-gunicorn -w 4 -b 0.0.0.0:5000 app:app
-```
-
-### Backend
-```bash
-npm start
-```
-
-### Frontend
-```bash
-npm run build
-npm run preview
-```
-
-## 🤝 Contributing
-
-This is a demonstration project. Feel free to fork and modify!
-
-## 📝 License
-
-MIT License
-
-## 👨‍💻 Author
-
-Created as a demonstration of MERN stack with ML integration
+- **Admin Account**: `admin@test.com` / `admin123` *(or `admin@cf.com` / `admin123`)*
+- **User Account**: `user@test.com` / `user123`
 
 ---
 
-**Note**: Make sure MongoDB is running before starting the backend server, and train the ML model before starting the ML API server.
+# 🗺️ Roadmap
+
+- [x] JWT Authentication & Role-Based Access
+- [x] Indian Market Demographic Event & Ticket Management
+- [x] XGBoost Regressor Pricing Model (96.72% Accuracy, Regularized)
+- [x] BERT Sentiment & Hype Index for Cold-Start Pricing
+- [x] Google Gemini 2.5 Flash GenAI Chatbot Widget
+- [x] Python FastAPI Microservice Migration
+- [x] Admin Dashboard & Fraud Analytics
+- [x] Redis Caching & RabbitMQ Support
+- [ ] Payment Gateway Integration
+- [ ] Kubernetes Deployment
+
+---
+
+# 📄 License
+
+Distributed under the **MIT License**. See the [`LICENSE`](LICENSE) file for details.
+
+---
+
+<div align="center">
+
+### Built with
+
+<img src="https://skillicons.dev/icons?i=react,nodejs,express,mongodb,python,fastapi,redis,docker,git,github,vscode"/>
+
+<br><br>
+
+**Modern Full-Stack Development • Machine Learning • Microservices**
+
+⭐ **If you found this project useful, consider giving it a star!**
+
+<img width="100%" src="https://capsule-render.vercel.app/api?type=waving&color=0:1A2980,50:26D0CE,100:6DD5FA&height=120&section=footer"/>
+
+</div>
