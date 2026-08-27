@@ -1,3 +1,4 @@
+// Dynamic Ticket Pricing System v2.0
 const redis = require('redis');
 
 let redisClient = null;

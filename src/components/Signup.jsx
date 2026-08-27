@@ -1,3 +1,4 @@
+// Dynamic Ticket Pricing System v2.0
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import './Login.css';

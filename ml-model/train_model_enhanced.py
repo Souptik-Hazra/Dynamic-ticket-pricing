@@ -1,3 +1,4 @@
+# Dynamic Ticket Pricing System v2.0
 """
 Dynamic Ticket Pricing Model v2.0
 - Optimized XGBRegressor (XGBoost) for high-accuracy pricing

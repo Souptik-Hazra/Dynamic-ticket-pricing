@@ -1,3 +1,4 @@
+// Dynamic Ticket Pricing System v2.0
 const jwt = require('jsonwebtoken');
 const jwtSecret = process.env.JWT_SECRET || 'default_secret';
 

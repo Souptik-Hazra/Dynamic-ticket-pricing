@@ -1,6 +1,6 @@
 {
   "name": "dynamic-ticket-pricing-backend",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Express backend for dynamic ticket pricing system",
   "main": "server.js",
   "scripts": {

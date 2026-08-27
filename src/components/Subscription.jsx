@@ -1,3 +1,4 @@
+// Dynamic Ticket Pricing System v2.0
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';

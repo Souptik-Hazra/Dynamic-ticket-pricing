@@ -1,3 +1,4 @@
+// Dynamic Ticket Pricing System v2.0
 const mongoose = require('mongoose');
 
 const chatMessageSchema = new mongoose.Schema({

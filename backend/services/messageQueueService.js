@@ -1,3 +1,4 @@
+// Dynamic Ticket Pricing System v2.0
 const amqp = require('amqplib');
 
 let channel = null;

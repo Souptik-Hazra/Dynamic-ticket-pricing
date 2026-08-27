@@ -1,3 +1,4 @@
+// Dynamic Ticket Pricing System v2.0
 const mongoose = require('mongoose');
 
 const notificationSchema = new mongoose.Schema({

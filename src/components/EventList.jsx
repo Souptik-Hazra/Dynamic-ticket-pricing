@@ -1,3 +1,4 @@
+// Dynamic Ticket Pricing System v2.0
 import React, { useState, useMemo } from 'react';
 import './EventList.css';
 import AutoPriceUpdater from './AutoPriceUpdater';

@@ -1,3 +1,4 @@
+// Dynamic Ticket Pricing System v2.0
 const WebSocket = require('ws');
 const jwt = require('jsonwebtoken');
 

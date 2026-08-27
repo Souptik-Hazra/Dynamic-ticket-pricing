@@ -1,3 +1,4 @@
+// Dynamic Ticket Pricing System v2.0
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import axios from 'axios';
 import { API_URL } from '../config/api';

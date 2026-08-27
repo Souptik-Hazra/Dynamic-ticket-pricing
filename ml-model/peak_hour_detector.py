@@ -1,3 +1,4 @@
+# Dynamic Ticket Pricing System v2.0
 """
 Peak Hour Demand Prediction Model
 Predicts ticket demand patterns based on time, day, and event characteristics

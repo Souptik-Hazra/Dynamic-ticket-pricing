@@ -1,3 +1,4 @@
+// Dynamic Ticket Pricing System v2.0
 const express = require('express');
 const router = express.Router();
 const Ticket = require('../models/Ticket');

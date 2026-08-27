@@ -1,3 +1,4 @@
+// Dynamic Ticket Pricing System v2.0
 import js from '@eslint/js';
 import globals from 'globals';
 import reactRefresh from 'eslint-plugin-react-refresh';

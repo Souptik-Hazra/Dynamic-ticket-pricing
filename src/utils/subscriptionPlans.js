@@ -1,3 +1,4 @@
+// Dynamic Ticket Pricing System v2.0
 // Subscription Plans Configuration
 // Edit this file to modify available plans
 

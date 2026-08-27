@@ -1,3 +1,4 @@
+// Dynamic Ticket Pricing System v2.0
 const mongoose = require('mongoose');
 const path = require('path');
 const { faker } = require('@faker-js/faker');

@@ -1,3 +1,4 @@
+// Dynamic Ticket Pricing System v2.0
 
 import { useState, useEffect } from 'react';
 import axios from 'axios';

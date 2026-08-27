@@ -1,3 +1,4 @@
+// Dynamic Ticket Pricing System v2.0
 // Script to create a new admin user in MongoDB
 const mongoose = require('mongoose');
 const path = require('path');

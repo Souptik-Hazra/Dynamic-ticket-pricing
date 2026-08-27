@@ -32,10 +32,11 @@
     "learning_rate": 0.05,
     "subsample": 0.8,
     "reg_alpha": 0.1,
-    "reg_lambda": 1.0
+    "reg_lambda": 1
   },
   "metadata": {
     "trainedAt": "2026-08-27T11:14:03.131368",
     "currency": "INR"
-  }
+  },
+  "lastUpdated": "2026-08-27"
 }

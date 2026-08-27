@@ -1,3 +1,4 @@
+# Dynamic Ticket Pricing System v2.0
 """
 Fraud Detection Model using Isolation Forest
 Detects suspicious ticket purchase patterns and user behavior
