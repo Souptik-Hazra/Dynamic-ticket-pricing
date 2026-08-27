@@ -36,7 +36,9 @@ export default function NotificationBell() {
         });
         // Update local state
         setNotifications(notifications.map(n => ({ ...n, read: true })));
-      } catch {}
+      } catch (err) {
+        console.warn('Failed to mark notifications as read:', err);
+      }
     }
   };
 

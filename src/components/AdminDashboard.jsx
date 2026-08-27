@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useAuth } from '../context/AuthContext';
 import AdminEventForm from './AdminEventForm';
 import AdminNotificationForm from './AdminNotificationForm';
 import { API_URL } from '../config/api';
 import './AdminDashboard.css';
 
 function AdminDashboard() {
-  const { user, logout } = useAuth();
   const [view, setView] = useState('stats');
   const [stats, setStats] = useState(null);
   const [events, setEvents] = useState([]);

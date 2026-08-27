@@ -28,19 +28,31 @@ function AutoPriceUpdater({ eventId, onPriceUpdate, compact = false }) {
     return () => clearInterval(interval);
   }, [fetchDynamicPrice]);
 
+  const hypeIndex = priceInfo?.factors?.bertHypeIndex;
+  const isColdStart = priceInfo?.factors?.isColdStart;
+
   return (
     <div className={`auto-price-updater ${compact ? 'compact' : ''} bg-white dark:bg-gray-900 text-gray-900 dark:text-white`}>
       <div className="updater-header">
         <span className="updater-icon">🤖</span>
-        <span className="updater-title">Dynamic Pricing</span>
-        {/* Removed daysUntilEvent display */}
+        <span className="updater-title">XGBoost Dynamic Pricing</span>
+        {hypeIndex !== undefined && (
+          <span className="hype-badge" title="BERT Hype Sentiment Index">
+            🔥 Hype {Math.round(hypeIndex * 100)}%
+          </span>
+        )}
+        {isColdStart && (
+          <span className="coldstart-badge" title="BERT Demand Signal Active for Cold-Start">
+            ❄️ Cold-Start
+          </span>
+        )}
       </div>
 
       {priceInfo?.prices && (
         <div className="prices-row">
           {Object.entries(priceInfo.prices).map(([category, price]) => (
             <span key={category} className="price-tag">
-              {category}: ₹{price}
+              {category.toUpperCase()}: ₹{price}
             </span>
           ))}
         </div>

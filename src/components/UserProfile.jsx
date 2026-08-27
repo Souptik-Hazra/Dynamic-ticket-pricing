@@ -9,7 +9,7 @@ const UserProfile = () => {
   const { user, updateUser } = useAuth();
   const [activeTab, setActiveTab] = useState("profile");
   // Demo notifications; replace with API call for real notifications
-  const [notifications, setNotifications] = useState([
+  const [notifications] = useState([
     { message: "Welcome to the platform!", time: "Just now", read: false },
     { message: "Your ticket for SJT Marathon is confirmed.", time: "1h ago", read: true },
   ]);

@@ -190,6 +190,16 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+}
+
+.card-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: absolute;
+  top: 0;
+  left: 0;
 }
 
 .event-badge {
@@ -277,11 +287,16 @@
   margin: 1.5rem 0;
 }
 
+.capacity-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.4rem;
+}
+
 .capacity-label {
-  display: block;
   font-size: 0.85rem;
   color: #666;
-  margin-bottom: 0.5rem;
   font-weight: 600;
 }
 

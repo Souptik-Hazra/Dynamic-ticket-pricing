@@ -88,44 +88,62 @@ const HomePage = ({ onNavigate }) => {
               <p>No events found. Check back soon!</p>
             </div>
           ) : (
-            <div className="events-grid" onClick={() => onNavigate('booking', event)}>
-              {filteredEvents.map(event => (
-                <div key={event._id} className="event-card">
-                  <div className="event-image">
-                    <div className="event-badge">{event.category}</div>
-                    <div className={`event-status-badge ${event.status}`}>{event.status}</div>
-                    <div className="event-date-badge">
-                      {event.startDate && event.endDate
-                        ? `${new Date(event.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} to ${new Date(event.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
-                        : event.startDate
-                          ? new Date(event.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                          : event.endDate
-                            ? new Date(event.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                            : 'Date not set'}
+            <div className="events-grid">
+              {filteredEvents.map(event => {
+                const totalSeats = event.ticketCategories?.length > 0
+                  ? event.ticketCategories.reduce((sum, cat) => sum + cat.seats, 0)
+                  : (event.capacity || 0);
+                const availSeats = event.ticketCategories?.length > 0
+                  ? event.ticketCategories.reduce((sum, cat) => sum + cat.availableSeats, 0)
+                  : Math.max(0, (event.capacity || 0) - (event.ticketsSold || 0));
+                const soldSeats = totalSeats - availSeats;
+                const occPct = totalSeats > 0 ? Math.min(100, (soldSeats / totalSeats) * 100).toFixed(0) : 0;
+
+                const startDateStr = event.startDate 
+                  ? new Date(event.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                  : '';
+
+                return (
+                  <div key={event._id} className="event-card" onClick={() => onNavigate && onNavigate('events')}>
+                    <div className="event-image">
+                      {event.image ? (
+                        <img 
+                          src={event.image} 
+                          alt={event.name} 
+                          className="card-cover-img"
+                          onError={(e) => { e.target.style.display = 'none'; }}
+                        />
+                      ) : null}
+                      <div className="event-badge">{event.category}</div>
+                      <div className={`event-status-badge ${event.status}`}>{event.status}</div>
+                      {startDateStr && <div className="event-date-badge">{startDateStr}</div>}
                     </div>
-                  </div>
-                  <div className="event-content">
-                    <h3 className="event-title">{event.name}</h3>
-                    <p className="event-venue">📍 {event.venue}</p>
-                    <p className="event-description">{event.description.substring(0, 100)}...</p>
-                    
-                    <div className="event-details">
-                      <div className="event-capacity">
-                        <span className="capacity-label">Availability</span>
-                        <div className="capacity-bar">
-                          <div 
-                            className="capacity-fill" 
-                            style={{ width: `${(event.ticketsSold / event.capacity) * 100}%` }}
-                          ></div>
+
+                    <div className="event-content">
+                      <h3 className="event-title">{event.name}</h3>
+                      <p className="event-venue">📍 {event.venue}</p>
+                      <p className="event-description">
+                        {event.description ? event.description.substring(0, 90) + '...' : ''}
+                      </p>
+                      
+                      <div className="event-details">
+                        <div className="event-capacity">
+                          <div className="capacity-header">
+                            <span className="capacity-label">Availability</span>
+                            <span className="capacity-text">{availSeats} / {totalSeats} left</span>
+                          </div>
+                          <div className="capacity-bar">
+                            <div 
+                              className="capacity-fill" 
+                              style={{ width: `${occPct}%` }}
+                            ></div>
+                          </div>
                         </div>
-                        <span className="capacity-text">
-                          {event.capacity - event.ticketsSold} / {event.capacity} left
-                        </span>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

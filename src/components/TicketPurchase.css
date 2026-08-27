@@ -93,8 +93,12 @@
 
 .form-group label {
   font-weight: 600;
-  color: #555;
+  color: #333 !important;
   margin-bottom: 0.5rem;
+}
+
+.form-group label small {
+  color: #666 !important;
 }
 
 .form-group input {
@@ -102,6 +106,8 @@
   border: 2px solid #e0e0e0;
   border-radius: 8px;
   font-size: 1rem;
+  color: #111 !important;
+  background: #ffffff !important;
   transition: border-color 0.3s ease;
 }
 
@@ -115,10 +121,11 @@
   padding: 1.5rem;
   border-radius: 8px;
   margin-top: 1rem;
+  color: #222;
 }
 
 .order-summary h4 {
-  color: #333;
+  color: #222 !important;
   margin-bottom: 1rem;
 }
 
@@ -129,6 +136,11 @@
   border-bottom: 1px solid #e0e0e0;
 }
 
+.summary-row span {
+  color: #333 !important;
+  font-weight: 600;
+}
+
 .summary-row.total {
   border-top: 2px solid #333;
   border-bottom: none;
@@ -136,6 +148,11 @@
   font-weight: 700;
   margin-top: 0.5rem;
   padding-top: 1rem;
+}
+
+.summary-row.total span {
+  color: #111 !important;
+  font-weight: 800;
 }
 
 .purchase-button {

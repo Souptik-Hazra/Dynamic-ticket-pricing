@@ -26,7 +26,7 @@ function TicketPurchase({ event, onBack, onSuccess }) {
         if (response.data.prices) {
           setDynamicPrices(response.data.prices);
         }
-      } catch (error) {
+      } catch {
         console.log('Using base prices');
         // Calculate simple dynamic pricing locally as fallback
         const occupancyRate = event.ticketsSold / event.capacity;
@@ -88,13 +88,6 @@ function TicketPurchase({ event, onBack, onSuccess }) {
       return dynamicPrices[selectedCategory.name] || selectedCategory.price;
     }
     return event.currentPrice || event.basePrice || 0;
-  };
-
-  const getBasePrice = () => {
-    if (selectedCategory) {
-      return selectedCategory.price;
-    }
-    return event.basePrice || 0;
   };
 
   const getAvailableTickets = () => {

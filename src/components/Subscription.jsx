@@ -6,7 +6,7 @@ import { subscriptionPlans } from '../utils/subscriptionPlans';
 import './Subscription.css';
 
 const Subscription = () => {
-    const { user, login } = useAuth(); // Assuming login updates the user state or we need a way to refresh user
+    const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
 

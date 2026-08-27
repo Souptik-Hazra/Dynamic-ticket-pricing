@@ -98,9 +98,21 @@ function Login({ onSwitchToSignup }) {
         </div>
 
         <div className="demo-credentials">
-          <p className="demo-title">Demo Credentials:</p>
-          <p><strong>Admin:</strong> admin@test.com / admin123</p>
-          <p><strong>User:</strong> user@test.com / user123</p>
+          <p className="demo-title">Click to Auto-Fill Credentials:</p>
+          <p 
+            className="demo-item cursor-pointer"
+            onClick={() => setFormData({ email: 'admin@test.com', password: 'admin123' })}
+            style={{ cursor: 'pointer' }}
+          >
+            🔑 <strong>Admin:</strong> admin@test.com / admin123
+          </p>
+          <p 
+            className="demo-item cursor-pointer"
+            onClick={() => setFormData({ email: 'user@test.com', password: 'user123' })}
+            style={{ cursor: 'pointer' }}
+          >
+            👤 <strong>User:</strong> user@test.com / user123
+          </p>
         </div>
       </div>
     </div>

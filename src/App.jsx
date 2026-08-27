@@ -13,10 +13,10 @@ import { API_URL } from './config/api';
 import './App.css';
 import './components/NavBadge.css';
 import UserProfile from "./components/UserProfile.jsx";
+import GeminiChatbot from "./components/GeminiChatbot.jsx";
 
 function AppContent() {
   const { user, loading: authLoading, logout, isAuthenticated, isAdmin } = useAuth();
-  const [authView, setAuthView] = useState('login'); // 'login' or 'signup'
   const [view, setView] = useState('home'); // Start with home page
   const [events, setEvents] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -122,10 +122,10 @@ function AppContent() {
           <div className="mobile-auth-buttons">
             {!isAuthenticated ? (
               <>
-                <button onClick={() => { setAuthView('login'); setView('login'); }} className="nav-login-btn">
+                <button onClick={() => setView('login')} className="nav-login-btn">
                   Login
                 </button>
-                <button onClick={() => { setAuthView('signup'); setView('signup'); }} className="nav-signup-btn">
+                <button onClick={() => setView('signup')} className="nav-signup-btn">
                   Sign Up
                 </button>
               </>
@@ -154,10 +154,10 @@ function AppContent() {
         <div className="nav-actions">
           {!isAuthenticated ? (
             <>
-              <button onClick={() => { setAuthView('login'); setView('login'); }} className="nav-login-btn">
+              <button onClick={() => setView('login')} className="nav-login-btn">
                 Login
               </button>
-              <button onClick={() => { setAuthView('signup'); setView('signup'); }} className="nav-signup-btn">
+              <button onClick={() => setView('signup')} className="nav-signup-btn">
                 Sign Up
               </button>
             </>
@@ -190,7 +190,7 @@ function AppContent() {
     return (
       <div className="App">
         {renderNavigation()}
-        <Login onSwitchToSignup={() => { setAuthView('signup'); setView('signup'); }} />
+        <Login onSwitchToSignup={() => setView('signup')} />
       </div>
     );
   }
@@ -199,7 +199,7 @@ function AppContent() {
     return (
       <div className="App">
         {renderNavigation()}
-        <Signup onSwitchToLogin={() => { setAuthView('login'); setView('login'); }} />
+        <Signup onSwitchToLogin={() => setView('login')} />
       </div>
     );
   }
@@ -250,6 +250,9 @@ function AppContent() {
       {view === 'subscription' && isAuthenticated && (
         <Subscription />
       )}
+
+      {/* Floating Gemini AI Assistant Chatbot Widget */}
+      <GeminiChatbot selectedEvent={selectedEvent} />
     </div>
   );
 }

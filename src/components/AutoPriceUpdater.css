@@ -30,6 +30,25 @@
   font-weight: 600;
 }
 
+.hype-badge {
+  margin-left: auto;
+  background: #ff6b6b;
+  color: white;
+  padding: 0.15rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.coldstart-badge {
+  background: #17a2b8;
+  color: white;
+  padding: 0.15rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
 .prices-row {
   display: flex;
   flex-wrap: wrap;
