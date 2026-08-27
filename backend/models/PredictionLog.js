@@ -8,16 +8,32 @@ const predictionLogSchema = new mongoose.Schema({
   inputFeatures: {
     demand: Number,
     capacity: Number,
+    ticketAvailabilityRatio: Number,
     daysUntilEvent: Number,
     eventPopularity: Number,
     competitorPrice: Number,
     historicalSales: Number,
     season: Number,
-    dayOfWeek: Number
+    dayOfWeek: Number,
+    bertHypeIndex: Number,
+    bertSentimentScore: Number,
+    isColdStart: Boolean
   },
   predictedPrice: {
     type: Number,
     required: true
+  },
+  xgboostFeatureImportance: {
+    demandWeight: Number,
+    timeToEventWeight: Number,
+    bertHypeWeight: Number,
+    availabilityWeight: Number
+  },
+  geminiExplanation: {
+    reasoningText: String,
+    generatedAt: { type: Date, default: Date.now },
+    promptTokens: Number,
+    candidateTokens: Number
   },
   priceRange: {
     min: Number,
@@ -29,7 +45,8 @@ const predictionLogSchema = new mongoose.Schema({
   },
   modelVersion: {
     type: String,
-    required: true
+    required: true,
+    default: 'XGBoost-v1.0'
   },
   actualPrice: {
     type: Number  // To be filled later for model accuracy tracking

@@ -8,7 +8,8 @@ const mlModelSchema = new mongoose.Schema({
   },
   modelType: {
     type: String,
-    default: 'RandomForestRegressor'
+    enum: ['XGBoostRegressor', 'BERT_Sentiment_Analyzer'],
+    default: 'XGBoostRegressor'
   },
   features: [{
     type: String
@@ -27,6 +28,9 @@ const mlModelSchema = new mongoose.Schema({
   },
   parameters: {
     nEstimators: Number,
+    learningRate: Number,
+    maxDepth: Number,
+    subsample: Number,
     randomState: Number,
     nSamples: Number
   },

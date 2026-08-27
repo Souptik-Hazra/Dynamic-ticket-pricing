@@ -91,6 +91,28 @@ const eventSchema = new mongoose.Schema({
     min: 0,
     max: 1
   },
+  // BERT Sentiment & Cold-Start Pricing Signals
+  isColdStart: {
+    type: Boolean,
+    default: true
+  },
+  bertSentiment: {
+    sentimentScore: { type: Number, min: -1.0, max: 1.0, default: 0.0 },
+    hypeIndex: { type: Number, min: 0.0, max: 1.0, default: 0.5 },
+    sentimentLabel: {
+      type: String,
+      enum: ['very_negative', 'negative', 'neutral', 'positive', 'viral_hype'],
+      default: 'neutral'
+    },
+    socialMentionsCount: { type: Number, default: 0 },
+    topKeywords: [{ type: String }]
+  },
+  // XGBoost Dynamic Pricing Config
+  xgboostConfig: {
+    historicalTrendFactor: { type: Number, default: 1.0 },
+    timeToEventDays: { type: Number },
+    availabilityRatio: { type: Number }
+  },
   category: {
     type: String,
     enum: ['concert', 'sports', 'theater', 'conference', 'festival', 'comedy', 'cinema', 'music', 'dance', 'other'],
