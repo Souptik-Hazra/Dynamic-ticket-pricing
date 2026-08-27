@@ -2,229 +2,100 @@ const express = require('express');
 const router = express.Router();
 const Event = require('../models/Event');
 const Ticket = require('../models/Ticket');
+const User = require('../models/User');
 const Notification = require('../models/Notification');
 const { protect, admin } = require('../middleware/auth');
 
 // @route   GET /api/admin/events
-// @desc    Get all events (admin view with full details)
+// @desc    Get all events with calculated profit metrics
 // @access  Private/Admin
 router.get('/events', protect, admin, async (req, res) => {
   try {
-    // Auto-update event statuses based on current date
     await Event.updateEventStatuses();
-    
     const events = await Event.find().sort({ createdAt: -1 });
-    
-    // Calculate profit margin for each event
+
     const eventsWithProfit = await Promise.all(events.map(async (event) => {
       const eventObj = event.toObject();
-      
-      // Get all tickets for this event
       const tickets = await Ticket.find({ eventId: event._id, status: 'confirmed' });
       
-      // Calculate actual revenue (from dynamic prices)
       const actualRevenue = tickets.reduce((sum, t) => sum + t.totalAmount, 0);
-      
-      // Calculate base revenue (what would have been if sold at base price)
       let baseRevenue = 0;
       tickets.forEach(ticket => {
-        const category = event.ticketCategories.find(c => c.name === ticket.categoryName);
+        const category = event.ticketCategories?.find(c => c.name === ticket.categoryName);
         if (category) {
           baseRevenue += category.price * ticket.quantity;
         }
       });
-      
-      // Calculate profit margin
+
       const profitAmount = actualRevenue - baseRevenue;
       const profitPercentage = baseRevenue > 0 ? ((profitAmount / baseRevenue) * 100) : 0;
-      
+
       return {
         ...eventObj,
         totalRevenue: actualRevenue,
-        baseRevenue: baseRevenue,
-        profitAmount: profitAmount,
-        profitPercentage: profitPercentage
+        baseRevenue,
+        profitAmount,
+        profitPercentage
       };
     }));
-    
-    res.json({
-      success: true,
-      count: eventsWithProfit.length,
-      events: eventsWithProfit
-    });
+
+    res.json({ success: true, count: eventsWithProfit.length, events: eventsWithProfit });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
 // @route   POST /api/admin/events
-// @desc    Create new event (admin only)
+// @desc    Create new event
 // @access  Private/Admin
 router.post('/events', protect, admin, async (req, res) => {
   try {
-    console.log('📝 Creating event with data:', req.body);
-    
-    // Validate required fields
-    if (!req.body.ticketCategories || req.body.ticketCategories.length === 0) {
-      return res.status(400).json({ error: 'At least one ticket category is required' });
+    if (!req.body.startDate || !req.body.ticketCategories?.length) {
+      return res.status(400).json({ error: 'Start date and ticket categories are required' });
     }
-    
-    // Validate event date is in the future
-    if (!req.body.startDate) {
-      return res.status(400).json({ error: 'Event start date is required' });
-    }
-    
-    const eventDate = new Date(req.body.startDate);
-    if (eventDate <= new Date()) {
-      return res.status(400).json({ error: 'Event date must be in the future' });
-    }
-    
-    // Validate new fields
-    if (req.body.hourOfDay !== undefined) {
-      const hour = parseInt(req.body.hourOfDay);
-      if (hour < 0 || hour > 23) {
-        return res.status(400).json({ error: 'Hour of day must be between 0 and 23' });
-      }
-    }
-    
-    if (req.body.venueTier !== undefined) {
-      const tier = parseInt(req.body.venueTier);
-      if (![1, 2, 3].includes(tier)) {
-        return res.status(400).json({ error: 'Venue tier must be 1 (Small), 2 (Medium), or 3 (Large/Stadium)' });
-      }
-    }
-    
-    if (req.body.artistTier !== undefined) {
-      const tier = parseInt(req.body.artistTier);
-      if (tier < 1 || tier > 5) {
-        return res.status(400).json({ error: 'Artist tier must be between 1 (Local) and 5 (International Superstar)' });
-      }
-    }
-    
-    // Create the event
+
     const event = await Event.create(req.body);
-    
-    console.log('✅ Event created successfully:', event._id);
-    
-    res.status(201).json({
-      success: true,
-      message: 'Event created successfully',
-      event
-    });
+    res.status(201).json({ success: true, message: 'Event created successfully', event });
   } catch (error) {
-    console.error('❌ Event creation error:', error);
     res.status(400).json({ error: error.message });
   }
 });
 
 // @route   PUT /api/admin/events/:id
-// @desc    Update event (admin only)
+// @desc    Update existing event
 // @access  Private/Admin
 router.put('/events/:id', protect, admin, async (req, res) => {
   try {
-    console.log('📝 Updating event with data:', req.body);
-    
-    // Validate ticket categories if provided
-    if (req.body.ticketCategories && req.body.ticketCategories.length === 0) {
-      return res.status(400).json({ error: 'At least one ticket category is required' });
-    }
-    
-    // Validate new fields
-    if (req.body.hourOfDay !== undefined) {
-      const hour = parseInt(req.body.hourOfDay);
-      if (hour < 0 || hour > 23) {
-        return res.status(400).json({ error: 'Hour of day must be between 0 and 23' });
-      }
-    }
-    
-    if (req.body.venueTier !== undefined) {
-      const tier = parseInt(req.body.venueTier);
-      if (![1, 2, 3].includes(tier)) {
-        return res.status(400).json({ error: 'Venue tier must be 1 (Small), 2 (Medium), or 3 (Large/Stadium)' });
-      }
-    }
-    
-    if (req.body.artistTier !== undefined) {
-      const tier = parseInt(req.body.artistTier);
-      if (tier < 1 || tier > 5) {
-        return res.status(400).json({ error: 'Artist tier must be between 1 (Local) and 5 (International Superstar)' });
-      }
-    }
-    
-    // Get existing event to preserve sold ticket data
-    const existingEvent = await Event.findById(req.params.id);
-    if (!existingEvent) {
+    const event = await Event.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    if (!event) {
       return res.status(404).json({ error: 'Event not found' });
     }
-    
-    // If updating ticket categories, preserve availableSeats for existing categories
-    if (req.body.ticketCategories) {
-      req.body.ticketCategories = req.body.ticketCategories.map(newCat => {
-        const existingCat = existingEvent.ticketCategories.find(c => c.name === newCat.name);
-        if (existingCat) {
-          // Preserve the sold ticket count
-          const soldTickets = existingCat.seats - existingCat.availableSeats;
-          return {
-            ...newCat,
-            availableSeats: Math.max(0, newCat.seats - soldTickets)
-          };
-        }
-        // New category - availableSeats = seats
-        return {
-          ...newCat,
-          availableSeats: newCat.availableSeats ?? newCat.seats
-        };
-      });
-    }
-    
-    const event = await Event.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
-
-    console.log('✅ Event updated successfully:', event._id);
-
-    res.json({
-      success: true,
-      message: 'Event updated successfully',
-      event
-    });
+    res.json({ success: true, message: 'Event updated successfully', event });
   } catch (error) {
-    console.error('❌ Event update error:', error);
     res.status(400).json({ error: error.message });
   }
 });
 
 // @route   DELETE /api/admin/events/:id
-// @desc    Delete event (admin only)
+// @desc    Delete event
 // @access  Private/Admin
 router.delete('/events/:id', protect, admin, async (req, res) => {
   try {
     const event = await Event.findByIdAndDelete(req.params.id);
-
     if (!event) {
       return res.status(404).json({ error: 'Event not found' });
     }
-
-    res.json({
-      success: true,
-      message: 'Event deleted successfully'
-    });
+    res.json({ success: true, message: 'Event deleted successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
 // @route   GET /api/admin/stats
-// @desc    Get admin dashboard statistics
+// @desc    Get dashboard statistics overview
 // @access  Private/Admin
 router.get('/stats', protect, admin, async (req, res) => {
   try {
-    const Event = require('../models/Event');
-    const Ticket = require('../models/Ticket');
-    const User = require('../models/User');
-
     const [totalEvents, totalUsers, totalTickets, recentTickets] = await Promise.all([
       Event.countDocuments(),
       User.countDocuments(),
@@ -232,26 +103,14 @@ router.get('/stats', protect, admin, async (req, res) => {
       Ticket.find()
         .sort({ purchaseDate: -1 })
         .limit(10)
-        .populate('eventId', 'name venue eventDate')
+        .populate('eventId', 'name venue')
         .populate('userId', 'name email')
     ]);
 
-    const revenueResult = await Ticket.aggregate([
+    const revResult = await Ticket.aggregate([
       { $match: { status: 'confirmed' } },
       { $group: { _id: null, total: { $sum: '$totalAmount' } } }
     ]);
-    const totalRevenue = revenueResult.length > 0 ? revenueResult[0].total : 0;
-
-    // Transform recentTickets to include event object
-    const formattedTickets = recentTickets.map(ticket => ({
-      _id: ticket._id,
-      customerName: ticket.customerName || ticket.userId?.name || 'Unknown',
-      event: ticket.eventId ? { name: ticket.eventId.name, venue: ticket.eventId.venue } : null,
-      quantity: ticket.quantity,
-      totalAmount: ticket.totalAmount,
-      purchaseDate: ticket.purchaseDate,
-      categoryName: ticket.categoryName
-    }));
 
     res.json({
       success: true,
@@ -259,242 +118,131 @@ router.get('/stats', protect, admin, async (req, res) => {
         totalEvents,
         totalUsers,
         totalTickets,
-        totalRevenue,
-        recentTickets: formattedTickets
+        totalRevenue: revResult[0]?.total || 0,
+        recentTickets: recentTickets.map(t => ({
+          _id: t._id,
+          customerName: t.customerName || t.userId?.name || 'Customer',
+          event: t.eventId ? { name: t.eventId.name, venue: t.eventId.venue } : null,
+          quantity: t.quantity,
+          totalAmount: t.totalAmount,
+          purchaseDate: t.purchaseDate,
+          categoryName: t.categoryName
+        }))
       }
     });
   } catch (error) {
-    console.error('Stats error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
 // @route   GET /api/admin/tickets
-// @desc    Get all tickets with buyer details (admin only)
+// @desc    Get all tickets with buyer information
 // @access  Private/Admin
 router.get('/tickets', protect, admin, async (req, res) => {
   try {
-    const Ticket = require('../models/Ticket');
-    
     const tickets = await Ticket.find()
       .sort({ purchaseDate: -1 })
-      .populate('eventId', 'name venue eventDate category')
+      .populate('eventId', 'name venue category')
       .populate('userId', 'name email');
 
     res.json({
       success: true,
       count: tickets.length,
-      tickets: tickets.map(ticket => ({
-        _id: ticket._id,
-        bookingReference: ticket.bookingReference,
-        eventName: ticket.eventId?.name || 'Unknown Event',
-        eventVenue: ticket.eventId?.venue || '',
-        eventDate: ticket.eventId?.eventDate,
-        buyerName: ticket.customerName || ticket.userId?.name || 'Unknown',
-        buyerEmail: ticket.customerEmail || ticket.userId?.email || 'Unknown',
-        categoryName: ticket.categoryName || 'standard',
-        quantity: ticket.quantity,
-        pricePerTicket: ticket.price,
-        totalAmount: ticket.totalAmount,
-        status: ticket.status,
-        purchaseDate: ticket.purchaseDate
+      tickets: tickets.map(t => ({
+        _id: t._id,
+        bookingReference: t.bookingReference,
+        eventName: t.eventId?.name || 'Event',
+        eventVenue: t.eventId?.venue || '',
+        buyerName: t.customerName || t.userId?.name || 'Customer',
+        buyerEmail: t.customerEmail || t.userId?.email || 'N/A',
+        categoryName: t.categoryName || 'standard',
+        quantity: t.quantity,
+        pricePerTicket: t.price,
+        totalAmount: t.totalAmount,
+        status: t.status,
+        purchaseDate: t.purchaseDate
       }))
     });
   } catch (error) {
-    console.error('Tickets fetch error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
 // @route   GET /api/admin/fraud-analytics
-// @desc    Get fraud analytics with user risk rankings
+// @desc    Get risk assessment and fraud analytics
 // @access  Private/Admin
 router.get('/fraud-analytics', protect, admin, async (req, res) => {
   try {
-    const Ticket = require('../models/Ticket');
-    const User = require('../models/User');
+    const tickets = await Ticket.find({ status: 'confirmed' }).populate('userId', 'name email');
+    const userMap = {};
 
-    // Get all confirmed tickets
-    const tickets = await Ticket.find({ status: 'confirmed' })
-      .populate('userId', 'name email')
-      .sort({ purchaseDate: -1 });
-
-    // Analyze user purchase patterns
-    const userFraudMap = {};
-
-    tickets.forEach(ticket => {
-      const userId = ticket.userId?._id || 'unknown';
-      const userName = ticket.userId?.name || ticket.customerName || 'Unknown User';
-      const userEmail = ticket.userId?.email || ticket.customerEmail || 'N/A';
-
-      if (!userFraudMap[userId]) {
-        userFraudMap[userId] = {
-          userId,
-          userName,
-          userEmail,
+    tickets.forEach(t => {
+      const uid = t.userId?._id?.toString() || 'guest';
+      if (!userMap[uid]) {
+        userMap[uid] = {
+          userId: uid,
+          userName: t.customerName || t.userId?.name || 'Guest User',
+          userEmail: t.customerEmail || t.userId?.email || 'N/A',
           totalPurchases: 0,
           totalTickets: 0,
           totalSpent: 0,
-          avgTicketsPerPurchase: 0,
-          purchaseFrequency: 0,
-          maxTicketsInOne: 0,
-          lastPurchase: null,
-          flaggedReasons: [],
-          fraudScore: 0,
-          riskLevel: 'low',
-          purchases: []
+          fraudScore: t.fraudScore || 0,
+          riskLevel: (t.fraudScore || 0) >= 60 ? 'high' : (t.fraudScore || 0) >= 30 ? 'medium' : 'low',
+          flaggedReasons: t.fraudReasons || []
         };
       }
-
-      const userData = userFraudMap[userId];
-      userData.totalPurchases++;
-      userData.totalTickets += ticket.quantity;
-      userData.totalSpent += ticket.totalAmount;
-      userData.lastPurchase = ticket.purchaseDate;
-      userData.maxTicketsInOne = Math.max(userData.maxTicketsInOne, ticket.quantity);
-      userData.purchases.push({
-        date: ticket.purchaseDate,
-        quantity: ticket.quantity,
-        amount: ticket.totalAmount,
-        categoryName: ticket.categoryName
-      });
+      userMap[uid].totalPurchases += 1;
+      userMap[uid].totalTickets += t.quantity;
+      userMap[uid].totalSpent += t.totalAmount;
     });
 
-    // Calculate fraud indicators for each user
-    Object.values(userFraudMap).forEach(user => {
-      let fraudScore = 0;
-      const flagged = [];
-
-      // Indicator 1: Bulk purchases (15+ tickets at once)
-      if (user.maxTicketsInOne >= 15) {
-        fraudScore += 35;
-        flagged.push(`Bulk purchase detected (${user.maxTicketsInOne} tickets)`);
-      } else if (user.maxTicketsInOne >= 10) {
-        fraudScore += 20;
-        flagged.push(`High quantity purchase (${user.maxTicketsInOne} tickets)`);
-      }
-
-      // Indicator 2: Multiple purchases in short time (purchase frequency)
-      if (user.totalPurchases > 5) {
-        fraudScore += 25;
-        flagged.push(`High purchase frequency (${user.totalPurchases} purchases)`);
-      } else if (user.totalPurchases > 3) {
-        fraudScore += 15;
-        flagged.push(`Frequent purchaser (${user.totalPurchases} purchases)`);
-      }
-
-      // Indicator 3: Average tickets per purchase
-      user.avgTicketsPerPurchase = user.totalTickets / user.totalPurchases;
-      if (user.avgTicketsPerPurchase > 10) {
-        fraudScore += 20;
-        flagged.push(`High avg tickets per purchase (${user.avgTicketsPerPurchase.toFixed(1)} avg)`);
-      }
-
-      // Indicator 4: Calculate purchase velocity (purchases in last 7 days)
-      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      const recentPurchases = user.purchases.filter(p => new Date(p.date) > sevenDaysAgo).length;
-      if (recentPurchases >= 3) {
-        fraudScore += 15;
-        flagged.push(`Rapid purchases (${recentPurchases} in last 7 days)`);
-      }
-
-      // Indicator 5: High total spending spike
-      if (user.totalSpent > 50000) {
-        fraudScore += 10;
-        flagged.push(`High total spending (₹${user.totalSpent.toFixed(0)})`);
-      }
-
-      // Calculate final fraud score and risk level
-      user.fraudScore = Math.min(100, fraudScore);
-      user.flaggedReasons = flagged;
-
-      if (user.fraudScore >= 60) {
-        user.riskLevel = 'high';
-      } else if (user.fraudScore >= 35) {
-        user.riskLevel = 'medium';
-      } else {
-        user.riskLevel = 'low';
-      }
-    });
-
-    // Get statistics
-    const allUsers = Object.values(userFraudMap);
-    const highRiskUsers = allUsers.filter(u => u.riskLevel === 'high').length;
-    const mediumRiskUsers = allUsers.filter(u => u.riskLevel === 'medium').length;
-    const avgFraudScore = allUsers.reduce((sum, u) => sum + u.fraudScore, 0) / allUsers.length || 0;
-
-    // Get timeline data (last 30 days of purchases for chart)
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const timelineData = {};
-
-    Object.values(userFraudMap).forEach(user => {
-      user.purchases.forEach(purchase => {
-        const purchaseDate = new Date(purchase.date);
-        if (purchaseDate > thirtyDaysAgo) {
-          const dateStr = purchaseDate.toISOString().split('T')[0];
-          if (!timelineData[dateStr]) {
-            timelineData[dateStr] = { low: 0, medium: 0, high: 0, total: 0 };
-          }
-          timelineData[dateStr][user.riskLevel]++;
-          timelineData[dateStr].total++;
-        }
-      });
-    });
-
-    const timeline = Object.entries(timelineData).map(([date, data]) => ({
-      date,
-      ...data
-    })).sort((a, b) => new Date(a.date) - new Date(b.date));
+    const userRankings = Object.values(userMap).sort((a, b) => b.fraudScore - a.fraudScore);
+    const highRiskUsers = userRankings.filter(u => u.riskLevel === 'high').length;
+    const mediumRiskUsers = userRankings.filter(u => u.riskLevel === 'medium').length;
 
     res.json({
       success: true,
       fraudAnalytics: {
         summary: {
-          totalUsers: allUsers.length,
+          totalUsers: userRankings.length,
           highRiskUsers,
           mediumRiskUsers,
-          lowRiskUsers: allUsers.length - highRiskUsers - mediumRiskUsers,
-          avgFraudScore: avgFraudScore.toFixed(2),
-          suspiciousActivityRate: ((highRiskUsers + mediumRiskUsers) / allUsers.length * 100).toFixed(1)
+          lowRiskUsers: Math.max(0, userRankings.length - highRiskUsers - mediumRiskUsers),
+          avgFraudScore: userRankings.length ? (userRankings.reduce((sum, u) => sum + u.fraudScore, 0) / userRankings.length).toFixed(1) : 0
         },
-        userRankings: allUsers
-          .sort((a, b) => b.fraudScore - a.fraudScore)
-          .slice(0, 50), // Top 50 risky users
-        timeline
+        userRankings: userRankings.slice(0, 30)
       }
     });
   } catch (error) {
-    console.error('Fraud analytics error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Admin send notification to all users
-// Enhanced: Send notification to all users or users of a specific event
+// @route   POST /api/admin/notify
+// @desc    Broadcast notification to users
+// @access  Private/Admin
 router.post('/notify', protect, admin, async (req, res) => {
   try {
     const { message, eventId } = req.body;
-    if (!message || !message.trim()) {
-      return res.status(400).json({ error: 'Message is required' });
-    }
-    let users = [];
+    if (!message) return res.status(400).json({ error: 'Notification message is required' });
+
+    let targetUsers = [];
     if (eventId) {
-      // Find users who bought tickets for this event
-      const tickets = await require('../models/Ticket').find({ eventId }, 'userId');
-      const userIds = [...new Set(tickets.map(t => t.userId.toString()))];
-      users = await require('../models/User').find({ _id: { $in: userIds }, role: 'user' }, '_id');
+      const tickets = await Ticket.find({ eventId }, 'userId');
+      const uids = [...new Set(tickets.map(t => t.userId.toString()))];
+      targetUsers = await User.find({ _id: { $in: uids } }, '_id');
     } else {
-      // All users (excluding admins)
-      users = await require('../models/User').find({ role: 'user' }, '_id');
+      targetUsers = await User.find({ role: 'user' }, '_id');
     }
-    if (!users.length) {
-      return res.status(404).json({ error: 'No users found to notify.' });
+
+    const notifications = targetUsers.map(u => ({ userId: u._id, message }));
+    if (notifications.length > 0) {
+      await Notification.insertMany(notifications);
     }
-    const notifications = users.map(u => ({ userId: u._id, message }));
-    await require('../models/Notification').insertMany(notifications);
+
     res.json({ success: true, count: notifications.length });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to send notifications' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 

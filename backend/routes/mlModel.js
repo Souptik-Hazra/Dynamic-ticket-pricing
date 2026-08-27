@@ -21,7 +21,7 @@ router.post('/update-metadata', async (req, res) => {
     // Create or update the model entry
     const modelData = {
       modelVersion,
-      modelType: modelType || 'XGBRegressor (XGBoost)',
+      modelType: modelType || 'XGBoostRegressor',
       features: features || [],
       trainScore: trainScore || 0,
       testScore: testScore || 0,
@@ -89,6 +89,8 @@ router.post('/prediction-log', async (req, res) => {
       event,
       inputFeatures,
       predictedPrice,
+      xgboostFeatureImportance,
+      geminiExplanation,
       priceRange,
       confidence,
       modelVersion
@@ -98,9 +100,11 @@ router.post('/prediction-log', async (req, res) => {
       event,
       inputFeatures,
       predictedPrice,
+      xgboostFeatureImportance,
+      geminiExplanation,
       priceRange,
       confidence,
-      modelVersion: modelVersion || 'v1.0'
+      modelVersion: modelVersion || 'XGBoost-v1.0'
     });
 
     res.status(201).json({

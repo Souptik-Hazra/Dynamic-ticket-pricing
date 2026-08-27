@@ -101,42 +101,33 @@ router.post('/signup', async (req, res) => {
   }
 });
 
-// @route   POST /api/auth/signin
-// @desc    Login user
-// @access  Public
-router.post('/signin', async (req, res) => {
+const handleSignin = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Validation
     if (!email || !password) {
       return res.status(400).json({ error: 'Please provide email and password' });
     }
 
-    // Find user (include password for comparison)
     const user = await User.findOne({ email }).select('+password');
     
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Check if user is active
     if (!user.isActive) {
       return res.status(401).json({ error: 'Account is inactive. Please contact support.' });
     }
 
-    // Check password
     const isMatch = await user.comparePassword(password);
     
     if (!isMatch) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Update last login
     user.lastLogin = Date.now();
     await user.save();
 
-    // Generate token
     const token = generateToken(user._id);
 
     res.json({
@@ -154,7 +145,13 @@ router.post('/signin', async (req, res) => {
     console.error('Signin error:', error);
     res.status(500).json({ error: error.message || 'Server error' });
   }
-});
+};
+
+// @route   POST /api/auth/signin & POST /api/auth/login
+// @desc    Login user (Backward compatible routes)
+// @access  Public
+router.post('/signin', handleSignin);
+router.post('/login', handleSignin);
 
 // @route   GET /api/auth/me
 // @desc    Get current user

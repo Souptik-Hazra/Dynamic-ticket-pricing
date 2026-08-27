@@ -21,9 +21,23 @@ router.get('/', async (req, res) => {
 
     // Get upcoming events count
     const upcomingEvents = await Event.countDocuments({
-      date: { $gte: new Date() },
+      startDate: { $gte: new Date() },
       status: 'upcoming'
     });
+
+    // Get average BERT hype index across events
+    const hypeStats = await Event.aggregate([
+      {
+        $group: {
+          _id: null,
+          avgHypeIndex: { $avg: '$bertSentiment.hypeIndex' },
+          viralEventsCount: {
+            $sum: { $cond: [{ $eq: ['$bertSentiment.sentimentLabel', 'viral_hype'] }, 1, 0] }
+          }
+        }
+      }
+    ]);
+    const hypeData = hypeStats[0] || { avgHypeIndex: 0.5, viralEventsCount: 0 };
 
     // Get total tickets sold
     const ticketStats = await Ticket.aggregate([
@@ -57,6 +71,8 @@ router.get('/', async (req, res) => {
       success: true,
       totalEvents,
       upcomingEvents,
+      avgHypeIndex: Math.round(hypeData.avgHypeIndex * 100) / 100,
+      viralEventsCount: hypeData.viralEventsCount,
       totalTicketsSold: stats.totalTickets,
       totalRevenue: stats.totalRevenue,
       topEvents: eventRevenue
